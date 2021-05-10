@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.github.unthingable</groupId>
+    <artifactId>monsterjam</artifactId>
+    <packaging>jar</packaging>
+    <name>MonsterJam</name>
+    <version>0.1</version>
+
+    <repositories>
+        <repository>
+            <id>bitwig</id>
+            <name>Bitwig Maven Repository</name>
+            <url>https://maven.bitwig.com</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.bitwig</groupId>
+            <artifactId>extension-api</artifactId>
+            <version>13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.13.5</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-xml -->
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-xml_2.13</artifactId>
+            <version>2.0.0-RC1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>4.5.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <!--							<goal>testCompile</goal>-->
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>com.bitwig:extension-api</exclude>
+                                </excludes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <!-- Silence overlap warnings -->
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.MF</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
+                <configuration>
+                    <optimize>true</optimize>
+                    <fork>true</fork>
+                    <source>12</source>
+                    <target>12</target>
+                    <encoding>UTF-8</encoding>
+                    <maxmem>1024m</maxmem>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>rename-file</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/${project.build.finalName}.jar</sourceFile>
+                            <destinationFile>${project.build.directory}/MonsterJam.bwextension</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
