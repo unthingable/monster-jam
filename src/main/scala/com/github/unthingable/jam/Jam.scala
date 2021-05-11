@@ -62,10 +62,14 @@ class Jam(val ext: MonsterJamExt) {
       val strip = j.stripBank.strips(i)
       val track = trackBank.getItemAt(i)
       track.volume().markInterested()
+      track.exists().markInterested()
       strip.slider.addBindingWithRange(track.volume(), 0, 1)
-      track.volume().value().addValueObserver(128, j.stripBank.setValue(i, _))
+      track.exists().addValueObserver(j.stripBank.setActive(i, _))
+      track.volume().value().addValueObserver(128, j.stripBank.setValue(i, _)) // move fader dot
       //track.volume().value().addValueObserver(128, strip.update) // move the fader dot
+
       track.addVuMeterObserver(128, -1, true, strip.update)
+
       //strip.light.setColorSupplier(track.color())
       track.color().markInterested()
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
@@ -100,18 +104,18 @@ class Jam(val ext: MonsterJamExt) {
     //  enc.channel, enc.event.value, 127))
     //knob.setStepSize(1 / 127.0)
 
-    val navLayer = Layer(Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
+    val navLayer = ModeLayer("navlayer", Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
       ext.transport.fastForwardAction(),
       ext.transport.rewindAction())))
 
     LayerStack.push(navLayer)
 
-    val swingLayer = Layer(Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
+    val swingLayer = ModeLayer("swinglayer", Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
       ext.binding(() => ext.transport.increaseTempo(1,64*4), "inc tempo"),
       ext.binding(() => ext.transport.increaseTempo(-1,64*4), "dec tempo"))))
 
     val swing = j.swing
     swing.button.pressedAction().addBinding(ext.binding(() => LayerStack.push(swingLayer), "push swing"))
-    swing.button.releasedAction().addBinding(ext.binding(() => LayerStack.pop(), "pop swing"))
+    swing.button.releasedAction().addBinding(ext.binding(() => LayerStack.pop(swingLayer), "pop swing"))
   }
 }

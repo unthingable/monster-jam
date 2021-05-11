@@ -98,17 +98,18 @@ object JamControl {
 abstract class JamLitButton[L <: HardwareLight](ext: MonsterJamExt, infoB: MidiInfo, infoL: MidiInfo)
   extends JamButton(ext, infoB) {
   val light: L
-  button.setBackgroundLight(light)
 }
 
 case class JamRgbButton(ext: MonsterJamExt, infoB: MidiInfo, infoL: MidiInfo)
   extends JamLitButton[MultiStateHardwareLight](ext, infoB, infoL) {
   val light: MultiStateHardwareLight = JamControl.rgbLight(ext, infoL)
+  button.setBackgroundLight(light)
 }
 
 case class JamOnOffButton(ext: MonsterJamExt, info: MidiInfo)
   extends JamLitButton[OnOffHardwareLight](ext, info, info) {
   val light: OnOffHardwareLight = JamControl.onOffLight(ext, info)
+  button.setBackgroundLight(light)
 }
 
 case class JamVUStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo) {
@@ -136,6 +137,7 @@ case class StripBank(ext: MonsterJamExt) extends Util {
   var barMode: BarMode = BarMode.DUAL
   private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
+  private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
 
   def setColor(idx: Int, color: Int): Unit = {
     colors.update(idx, color)
@@ -145,12 +147,19 @@ case class StripBank(ext: MonsterJamExt) extends Util {
     values.update(idx, value)
     flushValues()
   }
+  def setActive(idx: Int, value: Boolean) = {
+    active.update(idx, value)
+    flushColors()
+  }
 
   def flushColors(): Unit =
-    ext.midiOut.sendSysex(createCommand("05", colors.map(n => f"${barMode.v}${n}%02x").mkString))
+    ext.midiOut.sendSysex(createCommand("05",
+      colors.zip(active).map { case (n, a) => f"${if (a) barMode.v else "00"}${n}%02x"}.mkString))
   def flushValues(): Unit = {
     //clear()
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
+    ext.host.println(active.toString())
+    ext.host.println(values.toString())
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
