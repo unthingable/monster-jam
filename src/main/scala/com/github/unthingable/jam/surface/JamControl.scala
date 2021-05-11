@@ -3,7 +3,7 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
 import scala.collection.mutable
@@ -98,6 +98,7 @@ object JamControl {
 abstract class JamLitButton[L <: HardwareLight](ext: MonsterJamExt, infoB: MidiInfo, infoL: MidiInfo)
   extends JamButton(ext, infoB) {
   val light: L
+  button.setBackgroundLight(light)
 }
 
 case class JamRgbButton(ext: MonsterJamExt, infoB: MidiInfo, infoL: MidiInfo)
@@ -123,12 +124,14 @@ case class JamVUStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo) {
   }
 }
 
-case class StripBank(ext: MonsterJamExt) {
+case class StripBank(ext: MonsterJamExt) extends Util {
   val strips: Vector[JamVUStrip] = ('A' to 'H').map { idx =>
     JamVUStrip(ext,
       touch = ext.xmlMap.button(s"CapTst$idx", ext.xmlMap.touchElems),
       slide = ext.xmlMap.knob(s"Tst$idx", ext.xmlMap.touchElems))
   }.toVector
+    .forIndex(_.button.setIndexInGroup(_))
+    .forIndex(_.slider.setIndexInGroup(_))
 
   var barMode: BarMode = BarMode.DUAL
   private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)

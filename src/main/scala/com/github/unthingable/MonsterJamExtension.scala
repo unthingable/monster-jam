@@ -1,7 +1,7 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Application, ControllerHost, CursorTrack, DocumentState, HardwareSurface, MidiIn, MidiOut, SettableColorValue, Transport}
+import com.bitwig.extension.controller.api.{Application, ControllerHost, CursorTrack, DocumentState, HardwareActionBindable, HardwareSurface, MidiIn, MidiOut, SettableColorValue, Transport}
 import com.bitwig.extension.controller.ControllerExtension
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
@@ -19,7 +19,9 @@ case class MonsterJamExt(
   document: DocumentState,
   application: Application,
   xmlMap: XmlMap
-) extends Util
+) {
+  def binding(f: () => Unit, id: String): HardwareActionBindable = host.createAction(() => f(), () => id)
+}
 
 class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {
 

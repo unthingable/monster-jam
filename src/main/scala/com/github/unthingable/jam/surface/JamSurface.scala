@@ -3,11 +3,11 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
 import com.bitwig.extension.controller.api.{HardwareButton, RelativeHardwareKnob}
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface
 
 // Surface model All the controls, wired to MIDI
-class JamSurface(ext: MonsterJamExt) {
+class JamSurface(ext: MonsterJamExt) extends Util {
   //val ext: MonsterJamExt
 
   private def b(id: String) = JamOnOffButton(ext, ext.xmlMap.button(id))
@@ -65,7 +65,7 @@ class JamSurface(ext: MonsterJamExt) {
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
     )
-  }.toVector
+  }.toVector.forIndex(_.button.setIndexInGroup(_))
 
   val matrix: Vector[Vector[JamRgbButton]] = (1 to 8).map { row =>
     ('A' to 'H').map { col =>
@@ -83,7 +83,7 @@ class JamSurface(ext: MonsterJamExt) {
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
     )
-  }.toVector
+  }.toVector.forIndex(_.button.setIndexInGroup(_))
 
   // Touchstrips
   val stripBank = StripBank(ext)
