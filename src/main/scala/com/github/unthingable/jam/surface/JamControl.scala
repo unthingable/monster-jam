@@ -44,31 +44,35 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 
 case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
   val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
-  var updatedColor: Int = 0
+  var updatedColorState: JamColorState = JamColorState.empty
 
   light.setColorToStateFunction(toState)
   light.state().onUpdateHardware { state: JamColorState =>
-    updatedColor = state.color
-    sendColor(state.color)
+    updatedColorState = state
+    sendColor(state)
   }
-  light.state().setValue(JamColorState(0))
+  light.state().setValue(JamColorState.empty)
 
-  case class JamColorState(color: Int) extends InternalHardwareLightState {
+  case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
     override def getVisualState: HardwareLightVisualState = null
+    val value: Int = color + brightness
+  }
+  object JamColorState {
+    val empty: JamColorState = JamColorState(0, 0)
   }
 
-  def sendColor(color: Int): Unit = {
+  def sendColor(color: JamColorState): Unit = {
     info.event match {
       case CC(cc) =>
         //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${state.color}")
-        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
+        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color.value)
       case Note(note) =>
         //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${state.color}")
-        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
+        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color.value)
     }
   }
 
-  def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color))
+  def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
 
   def toColorIndex(color: Color): Int =
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)

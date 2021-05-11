@@ -22,6 +22,7 @@ class Jam(val ext: MonsterJamExt) {
 
     trackBank.cursorIndex().markInterested()
     trackBank.setSkipDisabledItems(true)
+    //sceneBank.setIndication(true)
 
     // wire scene buttons
     for (i <- j.sceneButtons.indices) {
@@ -38,13 +39,19 @@ class Jam(val ext: MonsterJamExt) {
     for (col <- j.groupButtons.indices) {
       val btn = j.groupButtons(col)
       val track = trackBank.getItemAt(col)
+      track.clipLauncherSlotBank().setIndication(true)
+
       track.color().markInterested()
       track.exists().markInterested()
       btn.light.setColorSupplier(track.color())
 
+      track.addIsSelectedInEditorObserver { v =>
+        btn.jamLight.updatedColorState = btn.jamLight.updatedColorState.copy(brightness = if (v) 2 else 0)
+      }
+
       track.playingNotes().markInterested()
       track.playingNotes().addValueObserver { notes =>
-        btn.jamLight.sendColor(btn.jamLight.updatedColor + (if (notes.nonEmpty) 2 else 0))
+        btn.jamLight.sendColor(btn.jamLight.updatedColorState.copy(brightness = if (notes.nonEmpty) 2 else btn.jamLight.updatedColorState.brightness))
       }
 
       // wire clips to matrix
