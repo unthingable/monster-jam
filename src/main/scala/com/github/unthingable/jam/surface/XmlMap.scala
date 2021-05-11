@@ -6,6 +6,12 @@ import scala.io.Source
 import scala.util.Try
 import scala.xml.{Elem, Node, NodeSeq, XML}
 
+sealed trait MidiEvent { val value: Int }
+case class CC(value: Int) extends MidiEvent
+case class Note(value: Int) extends MidiEvent
+//case class Poly(value: Int) extends MidiEvent
+case class MidiInfo(id: String, channel: Int, event: MidiEvent)
+
 /**
  * Convenience parser for NI JAM controller mapping
  */

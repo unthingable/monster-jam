@@ -1,11 +1,8 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.callback.IntegerValueChangedCallback
-import com.bitwig.extension.controller.api.{BooleanValue, RelativeHardwareKnob, Scene, SceneBank, TrackBank}
+import com.bitwig.extension.controller.api.{BooleanValue, Scene, SceneBank, TrackBank}
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.surface.{CC, JamOnOffButton, JamRgbButton, JamSurface, MidiInfo, NIColorUtil, XmlMap}
-
-import java.util.function.Supplier
+import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
 
 
@@ -45,6 +42,11 @@ class Jam(val ext: MonsterJamExt) {
       track.exists().markInterested()
       btn.light.setColorSupplier(track.color())
 
+      track.playingNotes().markInterested()
+      track.playingNotes().addValueObserver { notes =>
+        btn.jamLight.sendColor(btn.jamLight.updatedColor + (if (notes.nonEmpty) 2 else 0))
+      }
+
       // wire clips to matrix
       val clips = track.clipLauncherSlotBank()
       for (row <- 0 until 8) {
@@ -69,11 +71,15 @@ class Jam(val ext: MonsterJamExt) {
       //track.volume().value().addValueObserver(128, strip.update) // move the fader dot
 
       track.addVuMeterObserver(128, -1, true, strip.update)
+      track.unsubscribe()
+      track.subscribe()
+      track.addVuMeterObserver(128, -1, true, _ => ())
 
       //strip.light.setColorSupplier(track.color())
       track.color().markInterested()
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
     }
+    trackBank.unsubscribe()
 
     // wire dpad
     Seq(

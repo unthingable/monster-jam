@@ -29,8 +29,8 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   val auto = b("BtnAuto")
 
   object encoder {
-    val push: HardwareButton = JamControl.button(ext, ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems))
-    val touch: HardwareButton = JamControl.button(ext, ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems))
+    val push: HardwareButton = JamButton(ext, ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems)).button
+    val touch: HardwareButton = JamButton(ext, ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems)).button
     val turn: RelativeHardwareKnob = {
       val enc: MidiInfo = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
       val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
