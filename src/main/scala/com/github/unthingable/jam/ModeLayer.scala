@@ -4,7 +4,16 @@ import com.bitwig.extension.controller.api.{HardwareActionBindable, HardwareBind
 
 import scala.collection.mutable
 
-case class Binding[S, T](source: S, target: T)
+trait Modifier
+case class ModLayer(modifier: Modifier, layer: ModeLayer)
+
+trait HasModLayers { def modLayers: Seq[ModLayer] }
+
+sealed trait Binding
+// Controller <- Bitwig
+case class InBinding[C, B](source: B, target: C) extends Binding
+// Controller -> Bitwig
+case class OutBinding[C, B](source: C, target: B) extends Binding
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers

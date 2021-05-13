@@ -33,12 +33,12 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 
   button.pressedAction.setActionMatcher(on)
   button.releasedAction.setActionMatcher(off)
-  button.pressedAction.setBinding(ext.host.createAction(handlePressed(info.id), () => "Handle button pressed"))
-  button.releasedAction.setBinding(ext.host.createAction(handleReleased(info.id), () => "Handle button released"))
-
-  def handlePressed(id: String): Runnable = () => ext.host.println(s"$id pressed")
-
-  def handleReleased(id: String): Runnable = () => ext.host.println(s"$id released")
+  //button.pressedAction.setBinding(ext.host.createAction(handlePressed(info.id), () => "Handle button pressed"))
+  //button.releasedAction.setBinding(ext.host.createAction(handleReleased(info.id), () => "Handle button released"))
+  //
+  //def handlePressed(id: String): Runnable = () => ext.host.println(s"$id pressed")
+  //
+  //def handleReleased(id: String): Runnable = () => ext.host.println(s"$id released")
 }
 
 

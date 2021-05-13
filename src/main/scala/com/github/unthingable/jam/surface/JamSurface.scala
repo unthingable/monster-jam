@@ -12,6 +12,10 @@ class JamSurface(ext: MonsterJamExt) extends Util {
 
   private def b(id: String) = JamOnOffButton(ext, ext.xmlMap.button(id))
 
+  object Modifiers {
+    var Shift: Boolean = false
+  }
+
   // Left side
   val song: JamOnOffButton = b("BtnArrange")
 
@@ -151,8 +155,12 @@ class JamSurface(ext: MonsterJamExt) extends Util {
     import com.github.unthingable.jam.surface.BlackSysexMagic._
 
     ext.midiIn.setSysexCallback {
-      case ShiftDownCommand => ext.host.println("shift pressed")
-      case ShiftReleaseCommand => ext.host.println("shift released")
+      case ShiftDownCommand =>
+        Modifiers.Shift = true
+        ext.host.println("shift pressed")
+      case ShiftReleaseCommand =>
+        Modifiers.Shift = false
+        ext.host.println("shift released")
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()

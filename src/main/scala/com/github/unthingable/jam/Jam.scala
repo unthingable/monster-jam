@@ -1,6 +1,7 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.controller.api.{BooleanValue, Scene, SceneBank, TrackBank}
+import com.bitwig.extension.callback.BooleanValueChangedCallback
+import com.bitwig.extension.controller.api.{BooleanValue, HardwareAction, HardwareActionBindable, HardwareActionBinding, Scene, SceneBank, Scrollable, SettableBooleanValue, TrackBank}
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
@@ -78,17 +79,18 @@ class Jam(val ext: MonsterJamExt) {
       //track.volume().value().addValueObserver(128, strip.update) // move the fader dot
 
       track.addVuMeterObserver(128, -1, true, strip.update)
-      track.unsubscribe()
-      track.subscribe()
-      track.addVuMeterObserver(128, -1, true, _ => ())
+      //track.unsubscribe()
+      //track.subscribe()
+      //track.addVuMeterObserver(128, -1, true, _ => ())
 
       //strip.light.setColorSupplier(track.color())
       track.color().markInterested()
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
     }
-    trackBank.unsubscribe()
+    //trackBank.unsubscribe()
 
     // wire dpad
+    // this behavior ls always the same, can wire it here directly
     Seq(
       j.dpad.left -> trackBank.canScrollBackwards,
       j.dpad.right -> trackBank.canScrollForwards,
@@ -98,10 +100,21 @@ class Jam(val ext: MonsterJamExt) {
       e.markInterested()
       b.light.isOn.setValueSupplier(e)
     }
-    j.dpad.left.button.pressedAction.addBinding(trackBank.scrollPageBackwardsAction())
-    j.dpad.right.button.pressedAction.addBinding(trackBank.scrollPageForwardsAction())
-    j.dpad.up.button.pressedAction.addBinding(sceneBank.scrollPageBackwardsAction())
-    j.dpad.down.button.pressedAction.addBinding(sceneBank.scrollPageForwardsAction())
+
+    def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
+      ext.host.createAction( () =>
+        (j.Modifiers.Shift, forward) match {
+          case (false, true) => target.scrollPageForwards()
+          case (false, false) => target.scrollPageForwards()
+          case (true, true) => target.scrollForwards()
+          case (true, false) => target.scrollBackwards()
+        }, () => s"scroll_$forward")
+    }
+
+    j.dpad.left.button.pressedAction.addBinding(scroll(false, trackBank))
+    j.dpad.right.button.pressedAction.addBinding(scroll(true, trackBank))
+    j.dpad.up.button.pressedAction.addBinding(scroll(false, sceneBank))
+    j.dpad.down.button.pressedAction.addBinding(scroll(true, sceneBank))
 
     // meters
     masterTrack.addVuMeterObserver(128, 0, true, j.levelMeter.uL)
