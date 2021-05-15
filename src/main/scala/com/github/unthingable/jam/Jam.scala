@@ -73,69 +73,41 @@ class Jam(val ext: MonsterJamExt) {
       val track = trackBank.getItemAt(i)
       track.volume().markInterested()
       track.exists().markInterested()
-      val b = strip.slider.setBindingWithRange(track.volume(), 0, 1)
-      //strip.sliderRel.addBinding(track.volume())
+      strip.slider.setBindingWithRange(track.volume(), 0, 1)
 
       val touchP = ext.host.createAction(() => {
         val current = track.volume().get
-        var stripValue: Option[Double] = None
-        ext.host.println(s"in current strip $current $stripValue")
+        var startValue: Option[Double] = None
         strip.setOffsetCallback { v =>
-          val offset = (v - stripValue.getOrElse(v)) * 0.2
+          val offset = (v - startValue.getOrElse(v)) * 0.2
           track.volume().set(current + offset)
-          if (stripValue.isEmpty) stripValue = Some(v)
+          if (startValue.isEmpty) startValue = Some(v)
         }
       }, () => "shift")
-      val touchR = ext.host.createAction(() => {
-        val current = track.volume().get
-        val stripValue = strip.slider.value().get() // slider hasn't updated yet :(
-        ext.host.println(s"out current strip $current $stripValue")
-        strip.clearOffsetCallback()
-      }
-        , () => "shift")
+
+      val touchR = ext.host.createAction(() => strip.clearOffsetCallback(), () => "shift")
 
       j.Modifiers.shiftPressed.addOne { () =>
-        //strip.slider.clearBindings()
-        //track.exists().markInterested()
-        //strip.sliderRel.setBindingWithRangeAndSensitivity(track.volume(),0,1, 0.5)
-
-        //b.setSensitivity(0.1)
-
         strip.slider.clearBindings()
-
-        strip.button.pressedAction().addBinding(touchP)
-        strip.button.releasedAction().addBinding(touchR)
+        strip.button.pressedAction().setBinding(touchP)
+        strip.button.releasedAction().setBinding(touchR)
       }
       j.Modifiers.shiftReleased.addOne { () =>
-        //strip.sliderRel.clearBindings()
-        //track.exists().markInterested()
-        //strip.slider.setBindingWithRange(track.volume(), 0, 1)
-
+        strip.clearOffsetCallback()
         strip.button.pressedAction().clearBindings()
         strip.button.releasedAction().clearBindings()
         strip.slider.setBinding(track.volume())
-        //b.setNormalizedRange(0, 1)
-        //b.setSensitivity(1.0)
       }
 
       track.exists().addValueObserver(j.stripBank.setActive(i, _))
       track.volume().value().markInterested()
       track.volume().value().addValueObserver(128, j.stripBank.setValue(i, _)) // move fader dot
-      //track.volume().value().addValueObserver(128, strip.update) // move the fader dot
 
       track.addVuMeterObserver(128, -1, true, strip.update)
-      //track.unsubscribe()
-      //track.subscribe()
-      //track.addVuMeterObserver(128, -1, true, _ => ())
 
-      //strip.light.setColorSupplier(track.color())
       track.color().markInterested()
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
-
-      //strip.slider.value().markInterested()
-      //strip.slider.value().addValueObserver(track.volume().set(_))
     }
-    //trackBank.unsubscribe()
 
     // wire dpad
     // this behavior ls always the same, can wire it here directly
