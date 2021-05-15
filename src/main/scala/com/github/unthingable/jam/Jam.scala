@@ -78,16 +78,18 @@ class Jam(val ext: MonsterJamExt) {
 
       val touchP = ext.host.createAction(() => {
         val current = track.volume().get
-        val stripValue = strip.slider.value().get()
-        //b.setNormalizedRange(
-        //  Math.max(current - 0.05, 0.0),
-        //  Math.min(current + 0.05, 1))
+        var stripValue: Option[Double] = None
+        ext.host.println(s"in current strip $current $stripValue")
         strip.setOffsetCallback { v =>
-          val offset = (v - stripValue) * 0.2
+          val offset = (v - stripValue.getOrElse(v)) * 0.2
           track.volume().set(current + offset)
+          if (stripValue.isEmpty) stripValue = Some(v)
         }
       }, () => "shift")
       val touchR = ext.host.createAction(() => {
+        val current = track.volume().get
+        val stripValue = strip.slider.value().get() // slider hasn't updated yet :(
+        ext.host.println(s"out current strip $current $stripValue")
         strip.clearOffsetCallback()
       }
         , () => "shift")

@@ -176,8 +176,8 @@ case class StripBank(ext: MonsterJamExt) extends Util {
   def flushValues(): Unit = {
     //clear()
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
-    ext.host.println(active.toString())
-    ext.host.println(values.toString())
+    //ext.host.println(active.toString())
+    //ext.host.println(values.toString())
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
