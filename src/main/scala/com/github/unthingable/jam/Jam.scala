@@ -73,8 +73,51 @@ class Jam(val ext: MonsterJamExt) {
       val track = trackBank.getItemAt(i)
       track.volume().markInterested()
       track.exists().markInterested()
-      strip.slider.addBindingWithRange(track.volume(), 0, 1)
+      val b = strip.slider.setBindingWithRange(track.volume(), 0, 1)
+      //strip.sliderRel.addBinding(track.volume())
+
+      val touchP = ext.host.createAction(() => {
+        val current = track.volume().get
+        val stripValue = strip.slider.value().get()
+        //b.setNormalizedRange(
+        //  Math.max(current - 0.05, 0.0),
+        //  Math.min(current + 0.05, 1))
+        strip.setOffsetCallback { v =>
+          val offset = (v - stripValue) * 0.2
+          track.volume().set(current + offset)
+        }
+      }, () => "shift")
+      val touchR = ext.host.createAction(() => {
+        strip.clearOffsetCallback()
+      }
+        , () => "shift")
+
+      j.Modifiers.shiftPressed.addOne { () =>
+        //strip.slider.clearBindings()
+        //track.exists().markInterested()
+        //strip.sliderRel.setBindingWithRangeAndSensitivity(track.volume(),0,1, 0.5)
+
+        //b.setSensitivity(0.1)
+
+        strip.slider.clearBindings()
+
+        strip.button.pressedAction().addBinding(touchP)
+        strip.button.releasedAction().addBinding(touchR)
+      }
+      j.Modifiers.shiftReleased.addOne { () =>
+        //strip.sliderRel.clearBindings()
+        //track.exists().markInterested()
+        //strip.slider.setBindingWithRange(track.volume(), 0, 1)
+
+        strip.button.pressedAction().clearBindings()
+        strip.button.releasedAction().clearBindings()
+        strip.slider.setBinding(track.volume())
+        //b.setNormalizedRange(0, 1)
+        //b.setSensitivity(1.0)
+      }
+
       track.exists().addValueObserver(j.stripBank.setActive(i, _))
+      track.volume().value().markInterested()
       track.volume().value().addValueObserver(128, j.stripBank.setValue(i, _)) // move fader dot
       //track.volume().value().addValueObserver(128, strip.update) // move the fader dot
 
@@ -86,6 +129,9 @@ class Jam(val ext: MonsterJamExt) {
       //strip.light.setColorSupplier(track.color())
       track.color().markInterested()
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
+
+      //strip.slider.value().markInterested()
+      //strip.slider.value().addValueObserver(track.volume().set(_))
     }
     //trackBank.unsubscribe()
 
@@ -102,10 +148,10 @@ class Jam(val ext: MonsterJamExt) {
     }
 
     def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
-      ext.host.createAction( () =>
+      ext.host.createAction(() =>
         (j.Modifiers.Shift, forward) match {
           case (false, true) => target.scrollPageForwards()
-          case (false, false) => target.scrollPageForwards()
+          case (false, false) => target.scrollPageBackwards()
           case (true, true) => target.scrollForwards()
           case (true, false) => target.scrollBackwards()
         }, () => s"scroll_$forward")

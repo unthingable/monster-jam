@@ -120,15 +120,25 @@ case class JamOnOffButton(ext: MonsterJamExt, info: MidiInfo) extends Button wit
 case class JamTouchStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo, led: MidiInfo) extends Button {
   val button: HardwareButton = JamButton(ext, touch).button
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
+  // relative slider for shift
+  val sliderRel: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(slide.id + "_rel")
   //val light = JamRgbLight(ext, led).light // experimental, useless with sysex
 
   // assume it's always CC
-  slider.setAdjustValueMatcher(ext.midiIn.createAbsoluteCCValueMatcher(slide.channel, slide.event.value))
+  val matcher = ext.midiIn.createAbsoluteCCValueMatcher(slide.channel, slide.event.value)
+  slider.setAdjustValueMatcher(matcher)
+  //sliderRel.setAdjustValueMatcher(ext.midiIn.createRelativeBinOffsetValueMatcher(matcher, 127))
 
   def update(value: Int): Unit = {
     //ext.host.println(s"updating slider ${slide} to $level")
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
   }
+
+  var offsetCallback: () => Option[Double => Unit] = () => None
+  def setOffsetCallback(f: Double => Unit): Unit = offsetCallback = () => Some(f)
+  def clearOffsetCallback(): Unit = offsetCallback = () => None
+
+  slider.value().addValueObserver(v => offsetCallback().foreach(f => f(v)))
 }
 
 case class StripBank(ext: MonsterJamExt) extends Util {

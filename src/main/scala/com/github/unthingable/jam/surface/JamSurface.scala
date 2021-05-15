@@ -6,6 +6,8 @@ import com.bitwig.extension.controller.api.{HardwareButton, RelativeHardwareKnob
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface
 
+import scala.collection.mutable
+
 // Surface model All the controls, wired to MIDI
 class JamSurface(ext: MonsterJamExt) extends Util {
   //val ext: MonsterJamExt
@@ -14,6 +16,9 @@ class JamSurface(ext: MonsterJamExt) extends Util {
 
   object Modifiers {
     var Shift: Boolean = false
+    // wip
+    val shiftPressed: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
+    val shiftReleased: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
   }
 
   // Left side
@@ -157,9 +162,11 @@ class JamSurface(ext: MonsterJamExt) extends Util {
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
         Modifiers.Shift = true
+        Modifiers.shiftPressed.foreach(_())
         ext.host.println("shift pressed")
       case ShiftReleaseCommand =>
         Modifiers.Shift = false
+        Modifiers.shiftReleased.foreach(_())
         ext.host.println("shift released")
       case ReturnFromHostCommand =>
         ext.host.println("return from host")

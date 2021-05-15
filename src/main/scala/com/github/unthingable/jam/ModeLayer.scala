@@ -15,6 +15,24 @@ case class InBinding[C, B](source: B, target: C) extends Binding
 // Controller -> Bitwig
 case class OutBinding[C, B](source: C, target: B) extends Binding
 
+/*
+Layer behavior modification strategies:
+1 inherent behavior defined by layer's own bindings
+2 poll: layer proactively observes modifiers value
+3 push: modifier notifications are pushed to layer (redundant because can be done with 1)
+4 subscribe: layer observers other modifiers value, possibly overriding modifier's behavior? (example: SOLO mode pin by SONG)
+
+Layers and modifiers can interact in complex ways.
+
+Layer combinator types:
+- carousel: only one layer (of several) can be active at a time
+- stackable: active layers can be added to and removed from the top of the stack, overriding bindings
+
+A layer container controls how its layers combine
+
+Panel: a group of layers for a specific area of Jam
+ */
+
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers
  * @param bindings
@@ -23,6 +41,14 @@ case class ModeLayer(
   name: String,
   bindings: Map[HardwareBindingSource[_], HardwareBindable] = Map.empty
 )
+
+trait LayerContainer {
+  def select(layer: ModeLayer): Unit
+  def pop(): Unit
+}
+
+trait Stack extends LayerContainer
+trait Carousel extends LayerContainer
 
 object LayerStack {
   val layers: mutable.ArrayDeque[ModeLayer] = mutable.ArrayDeque.empty
