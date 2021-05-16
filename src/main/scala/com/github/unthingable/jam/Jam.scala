@@ -7,7 +7,7 @@ import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButto
 
 
 
-class Jam(val ext: MonsterJamExt) {
+class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   // wire stuff
   val j = new JamSurface(ext)
 
@@ -109,36 +109,38 @@ class Jam(val ext: MonsterJamExt) {
       track.color().addValueObserver((r,g,b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r,g,b)))
     }
 
-    // wire dpad
-    // this behavior ls always the same, can wire it here directly
-    Seq(
-      j.dpad.left -> trackBank.canScrollBackwards,
-      j.dpad.right -> trackBank.canScrollForwards,
-      j.dpad.up -> sceneBank.canScrollBackwards,
-      j.dpad.down -> sceneBank.canScrollForwards
-    ) foreach { case (b: JamOnOffButton, e: BooleanValue) =>
-      e.markInterested()
-      b.light.isOn.setValueSupplier(e)
+    // this behavior ls always the same, can wire it here directly without creating a mode layer
+    {
+      // wire dpad
+      Seq(
+        j.dpad.left -> trackBank.canScrollBackwards,
+        j.dpad.right -> trackBank.canScrollForwards,
+        j.dpad.up -> sceneBank.canScrollBackwards,
+        j.dpad.down -> sceneBank.canScrollForwards
+      ) foreach { case (b: JamOnOffButton, e: BooleanValue) =>
+        e.markInterested()
+        b.light.isOn.setValueSupplier(e)
+      }
+
+      def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
+        ext.host.createAction(() =>
+          (j.Modifiers.Shift, forward) match {
+            case (false, true) => target.scrollPageForwards()
+            case (false, false) => target.scrollPageBackwards()
+            case (true, true) => target.scrollForwards()
+            case (true, false) => target.scrollBackwards()
+          }, () => s"scroll_$forward")
+      }
+
+      j.dpad.left.button.pressedAction.setBinding(scroll(false, trackBank))
+      j.dpad.right.button.pressedAction.setBinding(scroll(true, trackBank))
+      j.dpad.up.button.pressedAction.setBinding(scroll(false, sceneBank))
+      j.dpad.down.button.pressedAction.setBinding(scroll(true, sceneBank))
+
+      // meters
+      masterTrack.addVuMeterObserver(128, 0, true, j.levelMeter.uL)
+      masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
     }
-
-    def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
-      ext.host.createAction(() =>
-        (j.Modifiers.Shift, forward) match {
-          case (false, true) => target.scrollPageForwards()
-          case (false, false) => target.scrollPageBackwards()
-          case (true, true) => target.scrollForwards()
-          case (true, false) => target.scrollBackwards()
-        }, () => s"scroll_$forward")
-    }
-
-    j.dpad.left.button.pressedAction.addBinding(scroll(false, trackBank))
-    j.dpad.right.button.pressedAction.addBinding(scroll(true, trackBank))
-    j.dpad.up.button.pressedAction.addBinding(scroll(false, sceneBank))
-    j.dpad.down.button.pressedAction.addBinding(scroll(true, sceneBank))
-
-    // meters
-    masterTrack.addVuMeterObserver(128, 0, true, j.levelMeter.uL)
-    masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
   // layer experiment
@@ -150,18 +152,30 @@ class Jam(val ext: MonsterJamExt) {
     //  enc.channel, enc.event.value, 127))
     //knob.setStepSize(1 / 127.0)
 
-    val navLayer = ModeLayer("navlayer", Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
+
+    // preloaded
+    val navLayer = new ModeLayer("position", Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
       ext.transport.fastForwardAction(),
       ext.transport.rewindAction())))
 
-    LayerStack.push(navLayer)
-
-    val swingLayer = ModeLayer("swinglayer", Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
-      ext.binding(() => ext.transport.increaseTempo(1,64*4), "inc tempo"),
-      ext.binding(() => ext.transport.increaseTempo(-1,64*4), "dec tempo"))))
+    val stack = new LayerStack(navLayer)
 
     val swing = j.swing
-    swing.button.pressedAction().addBinding(ext.binding(() => LayerStack.push(swingLayer), "push swing"))
-    swing.button.releasedAction().addBinding(ext.binding(() => LayerStack.pop(swingLayer), "pop swing"))
+    // preloaded
+    val swingLayer = new ModeLayer("swing",
+      Map(j.encoder.turn -> ext.host.createRelativeHardwareControlStepTarget(
+      ext.binding(() => ext.transport.increaseTempo(1,647), "inc tempo"),
+      ext.binding(() => ext.transport.increaseTempo(-1,647), "dec tempo"))),
+      InBindings(
+        activate = Seq(swing.button.pressedAction),
+        deactivate = Seq(swing.button.releasedAction)
+      )
+    )
+
+    stack.load(swingLayer)
+
+    //swing.button.pressedAction().addBinding(ext.binding(() => LayerStack.push(swingLayer), "push swing"))
+    //val b = swing.button.releasedAction().addBinding(ext.binding(() => stack.pop(swingLayer), "pop swing"))
+    //b.removeBinding()
   }
 }

@@ -43,7 +43,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       loadMap()
     )
 
-    new Jam(ext)
+    new Jam()(ext)
     //ext.midiIn.setSysexCallback { s: String => host.println(s) }
 
     host.showPopupNotification("MonsterJam Initialized")
