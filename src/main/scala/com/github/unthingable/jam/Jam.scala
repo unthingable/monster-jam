@@ -2,7 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback}
-import com.bitwig.extension.controller.api.{BooleanValue, HardwareAction, HardwareActionBindable, HardwareActionBinding, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
+import com.bitwig.extension.controller.api.{BooleanValue, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
@@ -30,14 +30,14 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     // wire scene buttons
   val sceneLayer = new ModeLayer("scene") {
-    override val modeBindings: Seq[Binding[_, _]] =
+    override val modeBindings: Seq[Binding[_, _, _]] =
       j.sceneButtons.indices.flatMap { i =>
         val btn: JamRgbButton = j.sceneButtons(i)
         val scene: Scene = sceneBank.getScene(i)
         scene.color.markInterested()
         scene.exists.markInterested()
         Seq(
-          SupColor(btn.light, scene.color()),
+          SupColorB(btn.light, scene.color()),
           HWB(btn.button.pressedAction(), scene.launchAction()))
       }
   }
@@ -77,16 +77,17 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     for (i <- j.stripBank.strips.indices) {
       val strip = j.stripBank.strips(i)
       val track = trackBank.getItemAt(i)
-      track.volume().markInterested()
+      val sliderParam: Parameter = track.volume()
+      sliderParam.markInterested()
       track.exists().markInterested()
-      strip.slider.setBindingWithRange(track.volume(), 0, 1)
+      strip.slider.setBindingWithRange(sliderParam, 0, 1)
 
       val touchP = ext.host.createAction(() => {
-        val current = track.volume().get
+        val current = sliderParam.get
         var startValue: Option[Double] = None
         strip.setOffsetCallback { v =>
           val offset = (v - startValue.getOrElse(v)) * 0.2
-          track.volume().set(current + offset)
+          sliderParam.set(current + offset)
           if (startValue.isEmpty) startValue = Some(v)
         }
       }, () => "shift")
@@ -102,12 +103,12 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         strip.clearOffsetCallback()
         strip.button.pressedAction().clearBindings()
         strip.button.releasedAction().clearBindings()
-        strip.slider.setBinding(track.volume())
+        strip.slider.setBinding(sliderParam)
       }
 
       track.exists().addValueObserver(j.stripBank.setActive(i, _))
-      track.volume().value().markInterested()
-      track.volume().value().addValueObserver(128, j.stripBank.setValue(i, _)) // move fader dot
+      sliderParam.value().markInterested()
+      sliderParam.value().addValueObserver(128, j.stripBank.setValue(i, _)) // move fader dot
 
       track.addVuMeterObserver(128, -1, true, strip.update)
 
@@ -236,7 +237,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         val sceneButton = j.sceneButtons(idx)
 
         Seq(
-          SupColor(sceneButton.light, () =>
+          SupColorB(sceneButton.light, () =>
             if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
           HWB(sceneButton.button.pressedAction(), action(s"grid $idx", () => {
             if (quant.get == enumValues(idx))

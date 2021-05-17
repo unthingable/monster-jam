@@ -174,7 +174,5 @@ class JamSurface(ext: MonsterJamExt) extends Util {
         ext.host.requestFlush()
       case x => ext.host.println(x)
     }
-
-    button
   }
 }

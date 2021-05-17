@@ -130,11 +130,11 @@ case class JamTouchStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo, l
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
   }
 
-  var offsetCallback: () => Option[Double => Unit] = () => None
-  def setOffsetCallback(f: Double => Unit): Unit = offsetCallback = () => Some(f)
-  def clearOffsetCallback(): Unit = offsetCallback = () => None
+  var offsetCallback: Double => Unit = _ => ()
+  def setOffsetCallback(f: Double => Unit): Unit = offsetCallback = f
+  def clearOffsetCallback(): Unit = offsetCallback = _ => ()
 
-  slider.value().addValueObserver(v => offsetCallback().foreach(f => f(v)))
+  slider.value().addValueObserver(offsetCallback(_))
 }
 
 case class StripBank(ext: MonsterJamExt) extends Util {
