@@ -21,7 +21,7 @@ case class MonsterJamExt(
   application: Application,
   xmlMap: XmlMap
 ) {
-  def binding(f: () => Unit, id: String): HardwareActionBindable = host.createAction(() => f(), () => id)
+  def action(f: () => Unit, id: String): HardwareActionBindable = host.createAction(() => f(), () => id)
 }
 
 class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {

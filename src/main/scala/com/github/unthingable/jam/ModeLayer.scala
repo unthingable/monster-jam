@@ -1,7 +1,7 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{HardwareAction, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, MultiStateHardwareLight}
+import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, MultiStateHardwareLight, SettableBooleanValue}
 import com.github.unthingable.MonsterJamExt
 
 import java.util.function.Supplier
@@ -49,7 +49,7 @@ case class HWB(source: HardwareBindingSource[_ <: HardwareBinding], target: Hard
   override def bind(): Unit = bindings.addAll(
     Seq(
       source.addBinding(target),
-      source.addBinding(operatedAction)
+      //source.addBinding(operatedAction)
     ))
 
   override def clear(): Unit = {
@@ -59,12 +59,26 @@ case class HWB(source: HardwareBindingSource[_ <: HardwareBinding], target: Hard
   }
 }
 
+object HWB extends ModeLayerDSL {
+  def apply(source: HardwareBindingSource[_ <: HardwareBinding], target: () => Unit)
+    (implicit ext: MonsterJamExt): HWB =
+    HWB(source, action("", target))
+}
+
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
   extends InBinding[Supplier[Color], MultiStateHardwareLight] {
   override def bind(): Unit = target.setColorSupplier(source)
 
   override def clear(): Unit = target.setColorSupplier(() => Color.nullColor())
 }
+
+case class SupBooleanB(target: BooleanHardwareProperty, source: SettableBooleanValue)
+  extends InBinding[SettableBooleanValue, BooleanHardwareProperty] {
+  override def bind(): Unit = target.setValueSupplier(source)
+
+  override def clear(): Unit = target.setValueSupplier(() => false)
+}
+
 
 case class ObserverB[S, T, A](source: S, target: T, binder: (S, A => Unit) => Unit, receiver: A => Unit)
   extends InBinding[S, T] {
@@ -79,9 +93,14 @@ case class ObserverB[S, T, A](source: S, target: T, binder: (S, A => Unit) => Un
   override def clear(): Unit = action = _ => ()
 }
 
+trait PolyAction {
+  def addBinding(h: HardwareActionBindable): Unit
+  def addBinding(f: () => Unit): Unit
+}
+
 case class LoadBindings(
-  activate: Seq[HardwareAction] = Seq.empty,
-  deactivate: Seq[HardwareAction] = Seq.empty,
+  activate: Seq[PolyAction] = Seq.empty,
+  deactivate: Seq[PolyAction] = Seq.empty,
   //load: Seq[_] = Seq.empty,
   //unload: Seq[_] = Seq.empty,
 )
@@ -120,16 +139,22 @@ class ModeLayer(
   def activate(): Unit = ()
   def deactivate(): Unit = ()
 
-  val loadAction: HardwareActionBindable = ext.binding(() => load(), s"$name load")
-  val unloadAction: HardwareActionBindable = ext.binding(() => unload(), s"$name unload")
-  val activateAction: HardwareActionBindable = ext.binding(() => activate(), s"$name activate")
-  val deactivateAction: HardwareActionBindable = ext.binding(() => deactivate(), s"$name deactivate")
+  val loadAction: HardwareActionBindable = ext.action(() => load(), s"$name load")
+  val unloadAction: HardwareActionBindable = ext.action(() => unload(), s"$name unload")
+  val activateAction: HardwareActionBindable = ext.action(() => activate(), s"$name activate")
+  val deactivateAction: HardwareActionBindable = ext.action(() => deactivate(), s"$name deactivate")
 
   val bindings: mutable.ArrayDeque[Binding[_,_,_]] = mutable.ArrayDeque.empty
 }
 
 trait ModeLayerDSL {
-  def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable = ext.binding(f, name)
+  def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable = ext.action(f, name)
+
+  implicit class PolyHWA(a: HardwareAction)(implicit ext: MonsterJamExt) extends PolyAction {
+    override def addBinding(h: HardwareActionBindable): Unit = a.addBinding(h)
+
+    override def addBinding(f: () => Unit): Unit = a.addBinding(action("", f))
+  }
 }
 
 trait LayerContainer {
@@ -152,12 +177,12 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) {
     layers.append(layer)
   }
 
-  def activateAction(layer: ModeLayer): HardwareActionBindable = ext.binding(() => {
+  def activateAction(layer: ModeLayer): HardwareActionBindable = ext.action(() => {
     activate(layer)
   },
     s"${layer.name} activate")
 
-  def deactivateAction(layer: ModeLayer): HardwareActionBindable = ext.binding(() => {
+  def deactivateAction(layer: ModeLayer): HardwareActionBindable = ext.action(() => {
     deactivate(layer)
   },
     s"${layer.name} deactivate")

@@ -15,10 +15,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   private def b(id: String) = JamOnOffButton(ext, ext.xmlMap.button(id))
 
   object Modifiers {
-    var Shift: Boolean = false
-    // wip
-    val shiftPressed: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
-    val shiftReleased: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
+    var Shift: FakeButton = FakeButton()
   }
 
   // Left side
@@ -161,12 +158,14 @@ class JamSurface(ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        Modifiers.Shift = true
-        Modifiers.shiftPressed.foreach(_())
+        Modifiers.Shift.pressedAction.invoke()
+        //Modifiers.Shift = true
+        //Modifiers.shiftPressed.foreach(_())
         ext.host.println("shift pressed")
       case ShiftReleaseCommand =>
-        Modifiers.Shift = false
-        Modifiers.shiftReleased.foreach(_())
+        Modifiers.Shift.releasedAction.invoke()
+        //Modifiers.Shift = false
+        //Modifiers.shiftReleased.foreach(_())
         ext.host.println("shift released")
       case ReturnFromHostCommand =>
         ext.host.println("return from host")

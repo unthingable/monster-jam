@@ -94,12 +94,12 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
       val touchR = ext.host.createAction(() => strip.clearOffsetCallback(), () => "shift")
 
-      j.Modifiers.shiftPressed.addOne { () =>
+      j.Modifiers.Shift.pressedAction.addBinding { () =>
         strip.slider.clearBindings()
         strip.button.pressedAction().setBinding(touchP)
         strip.button.releasedAction().setBinding(touchR)
       }
-      j.Modifiers.shiftReleased.addOne { () =>
+      j.Modifiers.Shift.releasedAction.addBinding { () =>
         strip.clearOffsetCallback()
         strip.button.pressedAction().clearBindings()
         strip.button.releasedAction().clearBindings()
@@ -131,7 +131,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
       def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
         ext.host.createAction(() =>
-          (j.Modifiers.Shift, forward) match {
+          (j.Modifiers.Shift.isPressed, forward) match {
             case (false, true) => target.scrollPageForwards()
             case (false, false) => target.scrollPageBackwards()
             case (true, true) => target.scrollForwards()
@@ -161,18 +161,20 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
 
     // preloaded
-    val navLayer = new ModeLayer("position", Seq(HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
-      ext.transport.fastForwardAction(),
-      ext.transport.rewindAction()))))
+    val navLayer = new ModeLayer("position",
+      Seq(HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+        ext.transport.fastForwardAction(),
+        ext.transport.rewindAction()))))
 
     val stack = new LayerStack(navLayer)
 
     val swing = j.swing
     // preloaded
     val swingLayer = new ModeLayer("swing",
-      Seq(HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
-      ext.binding(() => ext.transport.increaseTempo(1,647), "inc tempo"),
-      ext.binding(() => ext.transport.increaseTempo(-1,647), "dec tempo")))),
+      Seq(
+        HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+          ext.action(() => ext.transport.increaseTempo(1, 647), "inc tempo"),
+          ext.action(() => ext.transport.increaseTempo(-1, 647), "dec tempo")))),
       LoadBindings(
         activate = Seq(swing.button.pressedAction),
         deactivate = Seq(swing.button.releasedAction)
@@ -195,7 +197,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
         val isPlaying = ext.transport.isPlaying.getAsBoolean
         val t = ext.transport
-        (isPlaying, j.Modifiers.Shift) match {
+        (isPlaying, j.Modifiers.Shift.isPressed) match {
           // needs work
             // just play
           case (true, false) => t.play()
@@ -224,6 +226,21 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
     }
 
+    var loop = new ModeLayer("loop") {
+      val loop = ext.transport.isArrangerLoopEnabled
+      loop.markInterested()
+
+      override val loadBindings: LoadBindings = LoadBindings(
+        activate = Seq(j.Modifiers.Shift.pressedAction),
+        deactivate = Seq(j.Modifiers.Shift.releasedAction)
+      )
+
+      override val modeBindings = Seq(
+        HWB(j.right.button.pressedAction(), () => loop.toggle()),
+        SupBooleanB(j.right.light.isOn, loop)
+      )
+    }
+
     val performGrid = new ModeLayer("performGrid",
       loadBindings = LoadBindings(
         activate = Seq(j.grid.button.pressedAction),
@@ -250,5 +267,9 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     val mainStack = new LayerStack(play, sceneLayer)
     mainStack.load(performGrid)
+    mainStack.load(loop)
   }
+
+  // for now
+  ext.hw.invalidateHardwareOutputState()
 }

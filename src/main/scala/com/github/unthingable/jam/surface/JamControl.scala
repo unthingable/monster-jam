@@ -3,6 +3,7 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
+import com.github.unthingable.jam.PolyAction
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
@@ -177,4 +178,21 @@ case class StripBank(ext: MonsterJamExt) extends Util {
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
+}
+
+// because real hardwarebuttons are not pressable programmatically
+case class FakeAction(protected val invokeCallback:() => Unit) extends PolyAction {
+  val callbacks: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
+  def invoke(): Unit = {
+    invokeCallback()
+    callbacks.foreach(_())
+  }
+  def addBinding(f: () => Unit): Unit = callbacks.addOne(f)
+  def addBinding(h: HardwareActionBindable): Unit = addBinding(() => h.invoke())
+  def clearBindings(): Unit = callbacks.clear()
+}
+case class FakeButton() {
+  var isPressed: Boolean = false
+  val pressedAction: FakeAction = FakeAction(() => isPressed = true)
+  val releasedAction: FakeAction = FakeAction(() => isPressed = false)
 }
