@@ -4,7 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, MultiStateHardwareLight, SettableBooleanValue}
 import com.github.unthingable.MonsterJamExt
 
-import java.util.function.Supplier
+import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 
 trait Modifier
@@ -82,8 +82,8 @@ case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
   override def clear(): Unit = target.setColorSupplier(() => Color.nullColor())
 }
 
-case class SupBooleanB(target: BooleanHardwareProperty, source: SettableBooleanValue)
-  extends InBinding[SettableBooleanValue, BooleanHardwareProperty] {
+case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
+  extends InBinding[BooleanSupplier, BooleanHardwareProperty] {
   override def bind(): Unit = target.setValueSupplier(source)
 
   override def clear(): Unit = target.setValueSupplier(() => false)
@@ -167,8 +167,18 @@ trait ModeLayerDSL {
   implicit class PolyHWA(a: HardwareAction)(implicit ext: MonsterJamExt) extends PolyAction {
     override def addBinding(h: HardwareActionBindable): Unit = a.addBinding(h)
 
-    override def addBinding(f: () => Unit): Unit = a.addBinding(action("", f))
+    override def addBinding(f: () => Unit): Unit = a.addBinding(action("", () => f()))
   }
+
+  // just a little bit of convenience?
+  def asB(t: (BooleanHardwareProperty, SettableBooleanValue)): SupBooleanB =
+    SupBooleanB.tupled(t)
+  def asB(t: (MultiStateHardwareLight, Supplier[Color])): SupColorB =
+    SupColorB.tupled(t)
+  //def asB[A <: HardwareBindable: ClassTag](t: (HardwareBindingSource[_ <: HardwareBinding], A))(implicit ext: MonsterJamExt): HWB =
+  //  HWB(t._1, t._2)
+  //def asB[A <: Runnable](t: (HardwareBindingSource[_ <: HardwareBinding], A))(implicit ext: MonsterJamExt): HWB =
+  //  HWB(t._1, t._2)
 }
 
 trait LayerContainer {

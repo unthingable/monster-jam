@@ -168,32 +168,35 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     val stack = new LayerStack(navLayer)
 
-    val swing = j.swing
     // preloaded
-    val swingLayer = new ModeLayer("swing",
-      Seq(
+    val tempoLayer = new ModeLayer("tempo",
+      loadBindings = LoadBindings(
+        activate = Seq(j.tempo.button.pressedAction),
+        deactivate = Seq(j.tempo.button.releasedAction)
+      )
+    ) {
+      var isOn = false
+      override val modeBindings: Seq[Binding[_, _, _]] = Seq(
         HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
           action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
-          action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))),
-      LoadBindings(
-        activate = Seq(swing.button.pressedAction),
-        deactivate = Seq(swing.button.releasedAction)
-      )
-    )
+          action("dec tempo", () => ext.transport.increaseTempo(-1, 647)))),
+        SupBooleanB(j.tempo.light.isOn, () => isOn))
 
-    stack.load(swingLayer)
+      override def activate(): Unit = isOn = true
 
-    //swing.button.pressedAction().addBinding(ext.binding(() => LayerStack.push(swingLayer), "push swing"))
-    //val b = swing.button.releasedAction().addBinding(ext.binding(() => stack.pop(swingLayer), "pop swing"))
-    //b.removeBinding()
+      override def deactivate(): Unit = isOn = false
+    }
 
-    /*
-    play button light <- is playing
-    play press -> start/stop
-    play shift-press -> stop/rewind
-     */
+    stack.load(tempoLayer)
+
     val play = new ModeLayer("play") {
+      ext.transport.isPlaying.markInterested()
 
+      /*
+      play button light <- is playing
+      play press -> start/stop
+      play shift-press -> stop/rewind
+       */
       val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
         val isPlaying = ext.transport.isPlaying.getAsBoolean
         val t = ext.transport
@@ -209,11 +212,6 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         }
       })
 
-      ext.transport.isPlaying.markInterested()
-      j.play.light.isOn.setValueSupplier(ext.transport.isPlaying)
-
-      override val modeBindings = Seq(HWB(j.play.button.pressedAction, playPressAction))
-
       def restart(): Unit = {
         val h = ext.host
         h.scheduleTask(() => {
@@ -224,6 +222,11 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
           }, 1)
         }, 1)
       }
+
+      override val modeBindings = Seq(
+        HWB(j.play.button.pressedAction, playPressAction),
+        asB(j.play.light.isOn -> ext.transport.isPlaying),
+      )
     }
 
     var loop = new ModeLayer("loop") {
@@ -264,6 +267,8 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
           })))
       }
     }
+
+
 
     val mainStack = new LayerStack(play, sceneLayer)
     mainStack.load(performGrid)
