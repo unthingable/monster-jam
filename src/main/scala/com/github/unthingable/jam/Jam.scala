@@ -173,8 +173,8 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     val swingLayer = new ModeLayer("swing",
       Seq(
         HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
-          ext.action(() => ext.transport.increaseTempo(1, 647), "inc tempo"),
-          ext.action(() => ext.transport.increaseTempo(-1, 647), "dec tempo")))),
+          action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
+          action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))),
       LoadBindings(
         activate = Seq(swing.button.pressedAction),
         deactivate = Seq(swing.button.releasedAction)
@@ -271,5 +271,5 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   }
 
   // for now
-  ext.hw.invalidateHardwareOutputState()
+  ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 20)
 }
