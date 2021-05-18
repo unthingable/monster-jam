@@ -4,6 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback}
 import com.bitwig.extension.controller.api.{BooleanValue, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.jam.Graph.ModeDGraph
 import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
 import java.util.function.Supplier
@@ -166,7 +167,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         ext.transport.fastForwardAction(),
         ext.transport.rewindAction()))))
 
-    val stack = new LayerStack(navLayer)
+    //val stack = new LayerStack(navLayer)
 
     // preloaded
     val tempoLayer = new ModeButtonLayer("tempo",
@@ -176,7 +177,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
           action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
           action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
 
-    stack.load(tempoLayer)
+    //stack.load(tempoLayer)
 
     val play = new SimpleModeLayer("play") {
       ext.transport.isPlaying.markInterested()
@@ -256,12 +257,22 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     }
 
 
+    //
+    //val mainStack = new LayerStack(play, sceneLayer)
+    //mainStack.load(performGrid)
+    //mainStack.load(loop)
 
-    val mainStack = new LayerStack(play, sceneLayer)
-    mainStack.load(performGrid)
-    mainStack.load(loop)
+    val top = new SimpleModeLayer("dummy top")
+    val bottom = new SimpleModeLayer("dummy bottom")
+    new ModeDGraph(
+      play -> top,
+      navLayer -> tempoLayer,
+      sceneLayer -> top,
+      bottom -> performGrid,
+      bottom -> loop,
+    )
   }
 
   // for now
-  ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 20)
+  ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 200)
 }

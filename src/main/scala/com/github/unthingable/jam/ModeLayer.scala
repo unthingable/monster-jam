@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAct
 import com.github.unthingable.MonsterJamExt
 
 import java.util.function.{BooleanSupplier, Supplier}
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import ModeLayerDSL._
 import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
 
@@ -175,7 +175,7 @@ trait ModeLayer {
 }
 
 trait SelfActivatedLayer {
-  // layer calls when it wants to activate/deactivate
+  // layer calls this when it wants to activate/deactivate
   val activateAction: HBS
   val deactivateAction: HBS
   // all bindings when layer is ready
@@ -336,21 +336,94 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
     sourceMap.remove(b.surfaceElem)
   }
 
-  //private def loadBindings(layer: ModeLayer) = {
-  //  case l: ModeActionLayer => Seq(l.loadActions.activate)
-  //  case l: ModeButtonLayer =>
-  //}
-  //
-  //def pop(layer: ModeLayer): Unit = {
-  //  if (layers.nonEmpty) {
-  //    if (layers.last != layer) throw new Exception("Cannot pop not self")
-  //    layers.removeLast()
-  //    layer.outBindings.keys.foreach(_.clearBindings())
-  //  }
-  //  // rebind last
-  //  if (layers.nonEmpty) {
-  //    val layer = layers.removeLast()
-  //    push(layer)
-  //  }
-  //}
+}
+
+object Graph {
+  case class ModeNode(
+    layer: ModeLayer,
+    protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
+    protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
+    protected[Graph] val layerBindings: mutable.Set[Binding[_,_,_]] = mutable.Set.empty,
+    protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
+  ) {
+    //override def hashCode(): Int = layer.name.hashCode()
+  }
+
+  class ModeDGraph(edges: (ModeLayer, ModeLayer)*)(implicit ext: MonsterJamExt) {
+
+    private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
+    // All source elements currently bound
+    private val sourceMap: mutable.HashMap[Any, Iterable[(Binding[_, _, _], ModeNode)]] = mutable.HashMap.empty
+
+
+    // Assemble graph
+    edges foreach { case (a, b) =>
+      val child = layerMap.getOrElseUpdate(b, ModeNode(b))
+      val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
+      child.parents.add(parent)
+      parent.children.add(child)
+    }
+
+    // Synthesize layer bindings
+    layerMap.values.foreach { node =>
+      node.layerBindings.addAll(node.layer.modeBindings ++ node.children.flatMap { child =>
+        child.layer match {
+          case l: SelfActivatedLayer => l.loadBindings ++ Seq(
+            HB(l.activateAction, activateAction(child)),
+            HB(l.deactivateAction, deactivateAction(child)),
+          )
+          case _ => Seq()
+        }
+      })
+    }
+
+    lazy val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parents.isEmpty)
+    lazy val exitNodes: Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
+
+    // activate entry nodes
+    entryNodes.foreach(activate)
+
+    def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} activate", () => {
+      activate(node)
+    })
+
+    def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} deactivate", () => {
+      deactivate(node)
+    })
+
+    def activate(node: ModeNode): Unit = {
+      ext.host.println(s"activating node ${node.layer.name}")
+      node.layer.activate()
+
+      val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.layerBindings
+        .flatMap(b => sourceMap.get(b.surfaceElem)).flatten
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.map(_._2)
+
+      if (bumpNodes.nonEmpty)
+        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")
+
+      // remember for deactivation
+      node.nodesToRestore.addAll(bumpNodes)
+
+      // bindings within a layer are allowed to combine non-destructively, so unbind first
+      bumpBindings.foreach(_._1.clear())
+      node.layerBindings.foreach(_.bind())
+
+      // one layer overrides element bindings of another, so total replacement is ok
+      sourceMap.addAll(node.layerBindings.map((_, node)).groupBy(_._1.surfaceElem))
+    }
+
+    def deactivate(node: ModeNode): Unit = {
+      ext.host.println(s"deactivating node ${node.layer.name}")
+      node.layer.deactivate()
+      node.layerBindings.foreach { b =>
+        b.clear()
+        sourceMap.remove(b.surfaceElem)
+      }
+      // restore base
+      node.nodesToRestore.foreach(activate)
+      //entryNodes.foreach(activate)
+      node.nodesToRestore.clear()
+    }
+  }
 }
