@@ -29,7 +29,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     //sceneBank.setIndication(true)
 
     // wire scene buttons
-  val sceneLayer = new ModeLayer("scene") {
+  val sceneLayer = new SimpleModeLayer("scene") {
     override val modeBindings: Seq[Binding[_, _, _]] =
       j.sceneButtons.indices.flatMap { i =>
         val btn: JamRgbButton = j.sceneButtons(i)
@@ -38,7 +38,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         scene.exists.markInterested()
         Seq(
           SupColorB(btn.light, scene.color()),
-          HWB(btn.button.pressedAction(), scene.launchAction()))
+          HB(btn.button.pressedAction(), scene.launchAction()))
       }
   }
 
@@ -161,23 +161,20 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
 
     // preloaded
-    val navLayer = new ModeLayer("position",
-      Seq(HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+    val navLayer = new SimpleModeLayer("position",
+      Seq(HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
         ext.transport.fastForwardAction(),
         ext.transport.rewindAction()))))
 
     val stack = new LayerStack(navLayer)
 
     // preloaded
-    val tempoLayer = new ModeLayer("tempo",
-      loadBindings = LoadBindings(
-        activate = Seq(j.tempo.button.pressedAction),
-        deactivate = Seq(j.tempo.button.releasedAction)
-      )
+    val tempoLayer = new ModeButtonLayer("tempo",
+      j.tempo.button
     ) {
       var isOn = false
       override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-        HWB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+        HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
           action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
           action("dec tempo", () => ext.transport.increaseTempo(-1, 647)))),
         SupBooleanB(j.tempo.light.isOn, () => isOn))
@@ -189,7 +186,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     stack.load(tempoLayer)
 
-    val play = new ModeLayer("play") {
+    val play = new SimpleModeLayer("play") {
       ext.transport.isPlaying.markInterested()
 
       /*
@@ -224,30 +221,28 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
 
       override val modeBindings = Seq(
-        HWB(j.play.button.pressedAction, playPressAction),
+        HB(j.play.button.pressedAction, playPressAction),
         asB(j.play.light.isOn -> ext.transport.isPlaying),
       )
     }
 
-    var loop = new ModeLayer("loop") {
+    var loop = new ModeActionLayer("loop", loadActions = LoadActions(
+      activate = j.Modifiers.Shift.pressedAction,
+      deactivate = j.Modifiers.Shift.releasedAction
+    )) {
       val loop = ext.transport.isArrangerLoopEnabled
       loop.markInterested()
 
-      override val loadBindings: LoadBindings = LoadBindings(
-        activate = Seq(j.Modifiers.Shift.pressedAction),
-        deactivate = Seq(j.Modifiers.Shift.releasedAction)
-      )
-
       override val modeBindings = Seq(
-        HWB(j.right.button.pressedAction(), () => loop.toggle()),
+        HB(j.right.button.pressedAction(), () => loop.toggle()),
         SupBooleanB(j.right.light.isOn, loop)
       )
     }
 
-    val performGrid = new ModeLayer("performGrid",
-      loadBindings = LoadBindings(
-        activate = Seq(j.grid.button.pressedAction),
-        deactivate = Seq(j.grid.button.releasedAction)
+    val performGrid = new ModeActionLayer("performGrid",
+      loadActions = LoadActions(
+        activate = j.grid.button.pressedAction,
+        deactivate = j.grid.button.releasedAction
       )
     ) {
       val quant = ext.transport.defaultLaunchQuantization()
@@ -259,7 +254,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         Seq(
           SupColorB(sceneButton.light, () =>
             if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-          HWB(sceneButton.button.pressedAction(), action(s"grid $idx", () => {
+          HB(sceneButton.button.pressedAction(), action(s"grid $idx", () => {
             if (quant.get == enumValues(idx))
               quant.set("none")
             else

@@ -3,7 +3,6 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.jam.PolyAction
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
@@ -181,15 +180,38 @@ case class StripBank(ext: MonsterJamExt) extends Util {
 }
 
 // because real hardwarebuttons are not pressable programmatically
-case class FakeAction(protected val invokeCallback:() => Unit) extends PolyAction {
-  val callbacks: mutable.ArrayDeque[() => Unit] = mutable.ArrayDeque.empty
+case class FakeAction(protected val invokeCallback:() => Unit = () => ())
+  extends HardwareBindingSource[HardwareActionBinding] {
+  val callbacks: mutable.HashSet[Runnable] = mutable.HashSet.empty
   def invoke(): Unit = {
     invokeCallback()
-    callbacks.foreach(_())
+    callbacks.foreach(_.run())
   }
-  def addBinding(f: () => Unit): Unit = callbacks.addOne(f)
-  def addBinding(h: HardwareActionBindable): Unit = addBinding(() => h.invoke())
+  def addBinding(f: Runnable): HardwareActionBinding = {
+    callbacks.addOne(f)
+    () => callbacks.remove(f)
+  }
+  def setBinding(f: Runnable): HardwareActionBinding = {
+    callbacks.clear()
+    addBinding(f)
+  }
   def clearBindings(): Unit = callbacks.clear()
+
+  override def canBindTo(o: Any): Boolean = o match {
+    case _: Runnable => true
+    case _: HardwareActionBindable => true
+    case _ => false
+  }
+
+  override def addBinding(h: HardwareBindable): HardwareActionBinding = h match {
+    case hab: HardwareActionBindable => addBinding(() => hab.invoke())
+    case _ => ??? // better be never
+  }
+
+  override def setBinding(h: HardwareBindable): HardwareActionBinding = h match {
+    case hab: HardwareActionBindable => setBinding(() => hab.invoke())
+    case _ => ???
+  }
 }
 case class FakeButton() {
   var isPressed: Boolean = false

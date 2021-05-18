@@ -1,14 +1,16 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, MultiStateHardwareLight, SettableBooleanValue}
+import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareActionBinding, HardwareBindable, HardwareBinding, HardwareBindingSource, HardwareButton, MultiStateHardwareLight, SettableBooleanValue}
 import com.github.unthingable.MonsterJamExt
 
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
+import ModeLayerDSL._
+import com.github.unthingable.jam.surface.FakeAction
 
 trait Modifier
-case class ModLayer(modifier: Modifier, layer: ModeLayer)
+case class ModLayer(modifier: Modifier, layer: ModeActionLayer)
 
 trait HasModLayers { def modLayers: Seq[ModLayer] }
 
@@ -40,9 +42,10 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with ModeLayerDSL {
   var wasOperated: Boolean = false
 }
 
-case class HWB(source: HardwareBindingSource[_ <: HardwareBinding], target: HardwareBindable)
+
+case class HB(source: HBS, target: HardwareBindable)
   (implicit val ext: MonsterJamExt)
-  extends OutBinding[HardwareBindingSource[_ <: HardwareBinding], HardwareBindable] {
+  extends OutBinding[HBS, HardwareBindable] {
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
   override def bind(): Unit = bindings.addAll(
     Seq(
@@ -58,7 +61,7 @@ case class HWB(source: HardwareBindingSource[_ <: HardwareBinding], target: Hard
 
   private val operatedActions = Seq(
     action(s"", () => {wasOperated = true}),
-    action(s"", () => {wasOperated = true}),
+    action(s"", _ => {wasOperated = true}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
   )
 
@@ -69,10 +72,10 @@ case class HWB(source: HardwareBindingSource[_ <: HardwareBinding], target: Hard
   }
 }
 
-object HWB extends ModeLayerDSL {
-  def apply(source: HardwareBindingSource[_ <: HardwareBinding], target: () => Unit)
-    (implicit ext: MonsterJamExt): HWB =
-    HWB(source, action("", target))
+object HB extends ModeLayerDSL {
+  def apply(source: HBS, target: () => Unit)
+    (implicit ext: MonsterJamExt): HB =
+    HB(source, action("", target))
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -103,14 +106,14 @@ case class ObserverB[S, T, A](source: S, target: T, binder: (S, A => Unit) => Un
   override def clear(): Unit = action = _ => ()
 }
 
-trait PolyAction {
-  def addBinding(h: HardwareActionBindable): Unit
-  def addBinding(f: () => Unit): Unit
-}
+//trait PolyAction {
+//  def addBinding(h: HardwareActionBindable): Unit
+//  def addBinding(f: () => Unit): Unit
+//}
 
-case class LoadBindings(
-  activate: Seq[PolyAction] = Seq.empty,
-  deactivate: Seq[PolyAction] = Seq.empty,
+case class LoadActions(
+  activate: HBS,
+  deactivate: HBS,
   //load: Seq[_] = Seq.empty,
   //unload: Seq[_] = Seq.empty,
 )
@@ -134,27 +137,72 @@ Panel: a group of layers for a specific area of Jam
  */
 
 /**
- * A group of control bindings to specific host/app functions that plays well with other layers
- * @param modeBindings
+ * A group of control bindings to specific host/app functions that plays well with other layers.
+ *
+ * A mode has two non-dormant states:
+ * - ready: not active, but bindings are in place to activate
+ * - active: mode layer is on
+ *
+ * Similarly, there are two sets of bindings:
+ * - load bindings: activated when mode is placed in the ready state
+ * - active bindings
+ *
+ * Bindings activation is managed externally by layer container.
+ * @param modeBindings active bindings for this mode
  */
-class ModeLayer(
-  val name: String,
-  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
-  val loadBindings: LoadBindings = LoadBindings() //Seq[InBinding[_,_]] = Seq.empty,
-)(implicit ext: MonsterJamExt) extends ModeLayerDSL {
-  // called on layer load
-  def load(): Unit = ()
-  def unload(): Unit = ()
-  // called on layer activate
+
+trait ModeLayer {
+  val name: String
+  val modeBindings: Seq[Binding[_,_,_]]
+  implicit val ext: MonsterJamExt
+
   def activate(): Unit = ()
   def deactivate(): Unit = ()
 
-  val loadAction: HardwareActionBindable = action(s"$name load", () => load())
-  val unloadAction: HardwareActionBindable = action(s"$name unload", () => unload())
-  val activateAction: HardwareActionBindable = action(s"$name activate", () => activate())
-  val deactivateAction: HardwareActionBindable = action(s"$name deactivate", () => deactivate())
 
-  //val bindings: mutable.ArrayDeque[Binding[_,_,_]] = mutable.ArrayDeque.empty
+  // called on layer load
+  //def load(): Unit = ()
+  //def unload(): Unit = ()
+  // called on layer activate
+  //val loadAction: HardwareActionBindable = action(s"$name load", () => load())
+  //val unloadAction: HardwareActionBindable = action(s"$name unload", () => unload())
+  //val activateAction: HardwareActionBindable = action(s"$name activate", () => activate())
+  //val deactivateAction: HardwareActionBindable = action(s"$name deactivate", () => deactivate())
+}
+
+trait SelfActivatedLayer {
+  val activateAction: HBS
+  val deactivateAction: HBS
+}
+
+// does not self-activate
+class SimpleModeLayer(
+  val name: String,
+  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
+)(implicit val ext: MonsterJamExt) extends ModeLayer
+
+
+// layer activated and deactivated by distinct actions
+class ModeActionLayer(
+  val name: String,
+  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
+  val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
+)(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer {
+  override val activateAction: HBS = loadActions.activate
+
+  override val deactivateAction: HBS = loadActions.deactivate
+}
+
+class ModeButtonLayer(
+  val name: String,
+  val modeButton: HardwareButton,
+  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
+)(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
+  var isPinned = false
+
+  override val activateAction: HBS = FakeAction()
+
+  override val deactivateAction: HBS = FakeAction()
 }
 
 trait ModeLayerDSL {
@@ -164,10 +212,8 @@ trait ModeLayerDSL {
   def action(name: String, f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(f(_), () => name)
 
-  implicit class PolyHWA(a: HardwareAction)(implicit ext: MonsterJamExt) extends PolyAction {
-    override def addBinding(h: HardwareActionBindable): Unit = a.addBinding(h)
-
-    override def addBinding(f: () => Unit): Unit = a.addBinding(action("", () => f()))
+  implicit class PolyAction(a: HardwareAction)(implicit ext: MonsterJamExt) {
+    def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
   }
 
   // just a little bit of convenience?
@@ -179,10 +225,14 @@ trait ModeLayerDSL {
   //  HWB(t._1, t._2)
   //def asB[A <: Runnable](t: (HardwareBindingSource[_ <: HardwareBinding], A))(implicit ext: MonsterJamExt): HWB =
   //  HWB(t._1, t._2)
+
+  type HBS = HardwareBindingSource[_ <: HardwareBinding]
 }
 
+object ModeLayerDSL extends ModeLayerDSL
+
 trait LayerContainer {
-  def select(layer: ModeLayer): Unit
+  def select(layer: ModeActionLayer): Unit
   def pop(): Unit
 }
 
@@ -191,6 +241,7 @@ trait Carousel extends LayerContainer
 
 class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   val layers: mutable.ArrayDeque[ModeLayer] = mutable.ArrayDeque.empty
+  // all source elements currently bound
   private val sourceMap: mutable.HashMap[Any, Binding[_,_,_]] = mutable.HashMap.empty
 
   //val layerMap: mutable.Map[String, ModeLayer] = mutable.Map.empty
@@ -198,8 +249,15 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
 
   def load(layer: ModeLayer): Unit = {
     if (layers.contains(layer)) throw new Exception(s"Layer ${layer.name} already loaded")
-    layer.loadBindings.activate foreach(_.addBinding(activateAction(layer)))
-    layer.loadBindings.deactivate foreach(_.addBinding(deactivateAction(layer)))
+    layer match {
+      case l: SelfActivatedLayer =>
+        activate(Seq(
+          HB(l.activateAction, activateAction(layer)),
+          HB(l.deactivateAction, deactivateAction(layer)),
+        ))
+        // TODO also need to be unloaded
+      case _ => ()
+    }
     layers.append(layer)
   }
 
@@ -213,12 +271,9 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
 
   def activate(layer: ModeLayer): Unit = {
     layer.activate()
-    layer.modeBindings.foreach { b =>
-      sourceMap.get(b.surfaceElem).foreach(_.clear())
-      b.bind()
-      sourceMap.put(b.surfaceElem, b)
-    }
+    activate(layer.modeBindings)
   }
+
 
   def activateBase(): Unit = {
     base.foreach(activate)
@@ -226,13 +281,26 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
 
   def deactivate(layer: ModeLayer): Unit = {
     layer.deactivate()
-    layer.modeBindings.foreach { b =>
-      b.clear()
-      sourceMap.remove(b.surfaceElem)
-    }
+    deactivate(layer.modeBindings)
     // restore base
     activateBase()
   }
+
+  private def activate(bb: Iterable[Binding[_,_,_]]): Unit = bb.foreach { b =>
+    sourceMap.get(b.surfaceElem).foreach(_.clear())
+    b.bind()
+    sourceMap.put(b.surfaceElem, b)
+  }
+
+  private def deactivate(bb: Iterable[Binding[_,_,_]]): Unit = bb.foreach { b =>
+    b.clear()
+    sourceMap.remove(b.surfaceElem)
+  }
+
+  //private def loadBindings(layer: ModeLayer) = {
+  //  case l: ModeActionLayer => Seq(l.loadActions.activate)
+  //  case l: ModeButtonLayer =>
+  //}
   //
   //def pop(layer: ModeLayer): Unit = {
   //  if (layers.nonEmpty) {
