@@ -242,7 +242,7 @@ trait Carousel extends LayerContainer
 class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   val layers: mutable.ArrayDeque[ModeLayer] = mutable.ArrayDeque.empty
   // all source elements currently bound
-  private val sourceMap: mutable.HashMap[Any, Binding[_,_,_]] = mutable.HashMap.empty
+  private val sourceMap: mutable.HashMap[Any, Iterable[Binding[_,_,_]]] = mutable.HashMap.empty
 
   //val layerMap: mutable.Map[String, ModeLayer] = mutable.Map.empty
   activateBase()
@@ -286,10 +286,12 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
     activateBase()
   }
 
-  private def activate(bb: Iterable[Binding[_,_,_]]): Unit = bb.foreach { b =>
-    sourceMap.get(b.surfaceElem).foreach(_.clear())
-    b.bind()
-    sourceMap.put(b.surfaceElem, b)
+  private def activate(bb: Iterable[Binding[_,_,_]]): Unit = {
+    // bindings within a layer are allowed to combine non-destructively, so unbind first
+    bb.flatMap(b => sourceMap.get(b.surfaceElem)).foreach(_.foreach(_.clear()))
+    bb.foreach(_.bind())
+    // one layer overrides element bindings of another, so total replacement is ok
+    sourceMap.addAll(bb.groupBy(_.surfaceElem))
   }
 
   private def deactivate(bb: Iterable[Binding[_,_,_]]): Unit = bb.foreach { b =>
