@@ -83,13 +83,13 @@ case class JamOnOffLight(ext: MonsterJamExt, info: MidiInfo) {
   light.onUpdateHardware { () =>
     info.event match {
       case CC(cc) =>
-        ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
+        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
         ext.midiOut.sendMidi(
           ShortMidiMessage.CONTROL_CHANGE + info.channel,
           cc,
           if (light.isOn.currentValue) 127 else 0)
       case Note(note) =>
-        ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
+        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
         ext.midiOut.sendMidi(
           ShortMidiMessage.NOTE_ON + info.channel,
           note,

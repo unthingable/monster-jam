@@ -7,7 +7,7 @@ import com.github.unthingable.MonsterJamExt
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 import ModeLayerDSL._
-import com.github.unthingable.jam.surface.FakeAction
+import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
 
 trait Modifier
 case class ModLayer(modifier: Modifier, layer: ModeActionLayer)
@@ -153,9 +153,11 @@ Panel: a group of layers for a specific area of Jam
 
 trait ModeLayer {
   val name: String
+  // all bindings when layer is active
   val modeBindings: Seq[Binding[_,_,_]]
   implicit val ext: MonsterJamExt
 
+  // called when layer is activated/deactivated by the container
   def activate(): Unit = ()
   def deactivate(): Unit = ()
 
@@ -171,8 +173,11 @@ trait ModeLayer {
 }
 
 trait SelfActivatedLayer {
+  // layer calls when it wants to activate/deactivate
   val activateAction: HBS
   val deactivateAction: HBS
+  // all bindings when layer is ready
+  val loadBindings: Seq[Binding[_,_,_]]
 }
 
 // does not self-activate
@@ -189,20 +194,41 @@ class ModeActionLayer(
   val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer {
   override val activateAction: HBS = loadActions.activate
-
   override val deactivateAction: HBS = loadActions.deactivate
+
+  // activation actions invoked externally, no additional bindings to manage
+  override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
 }
 
 class ModeButtonLayer(
   val name: String,
-  val modeButton: HardwareButton,
+  val modeButton: JamOnOffButton,
   val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
   var isPinned = false
+  var isOn = false
 
-  override val activateAction: HBS = FakeAction()
+  override val activateAction: FakeAction = FakeAction(() => isOn = true)
+  override val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
-  override val deactivateAction: HBS = FakeAction()
+  override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq(
+    SupBooleanB(modeButton.light.isOn, () => isOn),
+    HB(modeButton.button.pressedAction(), () => {
+      //ext.host.println(s"$name button pressed")
+      (isPinned, isOn) match {
+        case (_, false) => activateAction.invoke()
+        case (true, true) => deactivateAction.invoke()
+        case _ => ()
+      }
+    }),
+    HB(modeButton.button.releasedAction(), () => {
+      //ext.host.println(s"$name button released")
+      (isPinned, isOn) match {
+        case (false, true) => deactivateAction.invoke()
+        case _ => ()
+      }
+    })
+  )
 }
 
 trait ModeLayerDSL {
@@ -251,7 +277,8 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
     if (layers.contains(layer)) throw new Exception(s"Layer ${layer.name} already loaded")
     layer match {
       case l: SelfActivatedLayer =>
-        activate(Seq(
+        ext.host.println(s"loading ${layer.name}")
+        activate(l.loadBindings ++ Seq(
           HB(l.activateAction, activateAction(layer)),
           HB(l.deactivateAction, deactivateAction(layer)),
         ))
@@ -270,6 +297,7 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
     })
 
   def activate(layer: ModeLayer): Unit = {
+    ext.host.println(s"activating ${layer.name}")
     layer.activate()
     activate(layer.modeBindings)
   }

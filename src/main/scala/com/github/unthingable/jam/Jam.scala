@@ -170,19 +170,11 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     // preloaded
     val tempoLayer = new ModeButtonLayer("tempo",
-      j.tempo.button
-    ) {
-      var isOn = false
-      override val modeBindings: Seq[Binding[_, _, _]] = Seq(
+      j.tempo,
+      Seq(
         HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
           action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
-          action("dec tempo", () => ext.transport.increaseTempo(-1, 647)))),
-        SupBooleanB(j.tempo.light.isOn, () => isOn))
-
-      override def activate(): Unit = isOn = true
-
-      override def deactivate(): Unit = isOn = false
-    }
+          action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
 
     stack.load(tempoLayer)
 
