@@ -9,6 +9,8 @@ import scala.collection.mutable
 import ModeLayerDSL._
 import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
 
+import java.time.{Duration, Instant}
+
 trait Modifier
 case class ModLayer(modifier: Modifier, layer: ModeActionLayer)
 
@@ -205,8 +207,9 @@ class ModeButtonLayer(
   val modeButton: JamOnOffButton,
   val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
-  var isPinned = false
+  var isPinned = true
   var isOn = false
+  private var pressedOn: Instant = null
 
   override val activateAction: FakeAction = FakeAction(() => isOn = true)
   override val deactivateAction: FakeAction = FakeAction(() => isOn = false)
@@ -214,17 +217,23 @@ class ModeButtonLayer(
   override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
+      pressedOn = Instant.now()
       //ext.host.println(s"$name button pressed")
       (isPinned, isOn) match {
         case (_, false) => activateAction.invoke()
-        case (true, true) => deactivateAction.invoke()
+        case (_, true) => deactivateAction.invoke()
         case _ => ()
       }
     }),
     HB(modeButton.button.releasedAction(), () => {
       //ext.host.println(s"$name button released")
-      (isPinned, isOn) match {
-        case (false, true) => deactivateAction.invoke()
+      val operated = modeBindings.partitionMap {
+        case b: HB => Left(b)
+        case b => Right(b)
+      }._1.exists(_.wasOperated)
+      val elapsed = Instant.now().isAfter(pressedOn.plus(Duration.ofSeconds(1)))
+      (isPinned, operated || elapsed, isOn) match {
+        case (_, true, true) => deactivateAction.invoke()
         case _ => ()
       }
     })
