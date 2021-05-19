@@ -1,13 +1,13 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareActionBinding, HardwareBindable, HardwareBinding, HardwareBindingSource, HardwareButton, MultiStateHardwareLight, SettableBooleanValue}
+import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareActionBinding, HardwareBindable, HardwareBinding, HardwareBindingSource, HardwareButton, InternalHardwareLightState, MultiStateHardwareLight, ObjectHardwareProperty, SettableBooleanValue}
 import com.github.unthingable.MonsterJamExt
 
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.{immutable, mutable}
+import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton, JamRgbButton}
 import ModeLayerDSL._
-import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
 
 import java.time.{Duration, Instant}
 
@@ -87,6 +87,14 @@ case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
   override def clear(): Unit = target.setColorSupplier(() => Color.nullColor())
 }
 
+case class SupColorStateB[A <: InternalHardwareLightState](
+  target: MultiStateHardwareLight, source: Supplier[A], empty: A)
+  extends InBinding[Supplier[A], MultiStateHardwareLight] {
+  override def bind(): Unit = target.state.setValueSupplier(source)
+
+  override def clear(): Unit = target.state.setValueSupplier(() => empty)
+}
+
 case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
   extends InBinding[BooleanSupplier, BooleanHardwareProperty] {
   override def bind(): Unit = target.setValueSupplier(source)
@@ -107,11 +115,6 @@ case class ObserverB[S, T, A](source: S, target: T, binder: (S, A => Unit) => Un
 
   override def clear(): Unit = action = _ => ()
 }
-
-//trait PolyAction {
-//  def addBinding(h: HardwareActionBindable): Unit
-//  def addBinding(f: () => Unit): Unit
-//}
 
 case class LoadActions(
   activate: HBS,
@@ -209,7 +212,7 @@ class ModeButtonLayer(
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
   var isPinned = true
   var isOn = false
-  private var pressedOn: Instant = null
+  private var pressedAt: Instant = null
 
   override val activateAction: FakeAction = FakeAction(() => isOn = true)
   override val deactivateAction: FakeAction = FakeAction(() => isOn = false)
@@ -217,7 +220,7 @@ class ModeButtonLayer(
   override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
-      pressedOn = Instant.now()
+      pressedAt = Instant.now()
       //ext.host.println(s"$name button pressed")
       (isPinned, isOn) match {
         case (_, false) => activateAction.invoke()
@@ -231,7 +234,7 @@ class ModeButtonLayer(
         case b: HB => Left(b)
         case b => Right(b)
       }._1.exists(_.wasOperated)
-      val elapsed = Instant.now().isAfter(pressedOn.plus(Duration.ofSeconds(1)))
+      val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
       (isPinned, operated || elapsed, isOn) match {
         case (_, true, true) => deactivateAction.invoke()
         case _ => ()
@@ -239,6 +242,18 @@ class ModeButtonLayer(
     })
   )
 }
+
+//class ModeBooleanRgbLayer(
+//  val name: String,
+//  val modeButton: JamRgbButton,
+//  val color: Color,
+//  val value: SettableBooleanValue,
+//)(implicit val ext: MonsterJamExt) extends ModeLayer {
+//  override val modeBindings: Seq[Binding[_, _, _]] = Seq(
+//    HB(modeButton.button.pressedAction(), value.toggleAction()),
+//    SupColorB(modeButton.light, )
+//  )
+//}
 
 trait ModeLayerDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
@@ -343,13 +358,13 @@ object Graph {
     layer: ModeLayer,
     protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
     protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
-    protected[Graph] val layerBindings: mutable.Set[Binding[_,_,_]] = mutable.Set.empty,
+    protected[Graph] val modeBindings: mutable.Set[Binding[_,_,_]] = mutable.Set.empty,
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
   ) {
     //override def hashCode(): Int = layer.name.hashCode()
   }
 
-  class ModeDGraph(edges: (ModeLayer, ModeLayer)*)(implicit ext: MonsterJamExt) {
+  class ModeDGraph(edges: (ModeLayer, Iterable[ModeLayer])*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
     // All source elements currently bound
@@ -357,16 +372,18 @@ object Graph {
 
 
     // Assemble graph
-    edges foreach { case (a, b) =>
-      val child = layerMap.getOrElseUpdate(b, ModeNode(b))
-      val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
-      child.parents.add(parent)
-      parent.children.add(child)
+    edges foreach { case (a, bb) =>
+      bb foreach { b =>
+        val child = layerMap.getOrElseUpdate(b, ModeNode(b))
+        val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
+        child.parents.add(parent)
+        parent.children.add(child)
+      }
     }
 
     // Synthesize layer bindings
     layerMap.values.foreach { node =>
-      node.layerBindings.addAll(node.layer.modeBindings ++ node.children.flatMap { child =>
+      node.modeBindings.addAll(node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
           case l: SelfActivatedLayer => l.loadBindings ++ Seq(
             HB(l.activateAction, activateAction(child)),
@@ -395,7 +412,7 @@ object Graph {
       ext.host.println(s"activating node ${node.layer.name}")
       node.layer.activate()
 
-      val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.layerBindings
+      val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.modeBindings
         .flatMap(b => sourceMap.get(b.surfaceElem)).flatten
       val bumpNodes: Iterable[ModeNode] = bumpBindings.map(_._2)
 
@@ -407,16 +424,16 @@ object Graph {
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
       bumpBindings.foreach(_._1.clear())
-      node.layerBindings.foreach(_.bind())
+      node.modeBindings.foreach(_.bind())
 
       // one layer overrides element bindings of another, so total replacement is ok
-      sourceMap.addAll(node.layerBindings.map((_, node)).groupBy(_._1.surfaceElem))
+      sourceMap.addAll(node.modeBindings.map((_, node)).groupBy(_._1.surfaceElem))
     }
 
     def deactivate(node: ModeNode): Unit = {
       ext.host.println(s"deactivating node ${node.layer.name}")
       node.layer.deactivate()
-      node.layerBindings.foreach { b =>
+      node.modeBindings.foreach { b =>
         b.clear()
         sourceMap.remove(b.surfaceElem)
       }

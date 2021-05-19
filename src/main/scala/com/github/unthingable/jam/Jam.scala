@@ -2,9 +2,10 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback}
-import com.bitwig.extension.controller.api.{BooleanValue, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
-import com.github.unthingable.MonsterJamExt
+import com.bitwig.extension.controller.api.{BooleanValue, Channel, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.ModeDGraph
+import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
 import java.util.function.Supplier
@@ -219,7 +220,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       )
     }
 
-    var loop = new ModeActionLayer("loop", loadActions = LoadActions(
+    val loop = new ModeActionLayer("loop", loadActions = LoadActions(
       activate = j.Modifiers.Shift.pressedAction,
       deactivate = j.Modifiers.Shift.releasedAction
     )) {
@@ -241,7 +242,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       val quant = ext.transport.defaultLaunchQuantization()
       quant.markInterested()
       val enumValues = Vector("8", "4", "2", "1", "1/2", "1/4", "1/8", "1/16")
-      override val modeBindings = (0 to 7).flatMap { idx =>
+      override val modeBindings = j.sceneButtons.indices.flatMap { idx =>
         val sceneButton = j.sceneButtons(idx)
 
         Seq(
@@ -256,20 +257,51 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
     }
 
+    def buttonGroupChannelMode(
+      name: String,
+      modeButton: JamOnOffButton,
+      group: Seq[JamRgbButton],
+      prop: Channel => SettableBooleanValue,
+      color: Int // Jam's color index
+    ): ModeButtonLayer = new ModeButtonLayer(name, modeButton) {
+      override val modeBindings: Seq[Binding[_, _, _]] = group.indices.flatMap { idx =>
+        import surface.JamRgbLight.{JamColorState, toColorIndex}
+        val track = trackBank.getItemAt(idx)
+        val propValue = prop(track)
+        val existsValue = track.exists()
+        propValue.markInterested()
+        existsValue.markInterested()
+        val gButton = group(idx)
+        Seq(
+          HB(gButton.button.pressedAction(), () => propValue.toggle()),
+          SupColorStateB(gButton.light, () => {
+            (existsValue.get(), propValue.get()) match {
+              case (false, _) => JamColorState.empty
+              case (_, false) => JamColorState(color * 4, 0)
+              case (_, true) => JamColorState(color * 4, 3)
+            }
+          }, JamColorState.empty)
+        )
+      }
+    }
+
+    val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JAMColorBase.YELLOW)
+    val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JAMColorBase.ORANGE)
+
+    //def muteOne(idx: Int) = new ModeButtonLayer(s"mute $idx", j.groupButtons(idx))
 
     //
     //val mainStack = new LayerStack(play, sceneLayer)
     //mainStack.load(performGrid)
     //mainStack.load(loop)
 
-    val top = new SimpleModeLayer("dummy top")
+    val top = Seq(new SimpleModeLayer("dummy top"))
     val bottom = new SimpleModeLayer("dummy bottom")
     new ModeDGraph(
       play -> top,
-      navLayer -> tempoLayer,
+      navLayer -> Seq(tempoLayer),
       sceneLayer -> top,
-      bottom -> performGrid,
-      bottom -> loop,
+      bottom -> Seq(performGrid, loop, solo, mute),
     )
   }
 

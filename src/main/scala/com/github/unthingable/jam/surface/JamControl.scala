@@ -43,6 +43,7 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 
 
 case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
+  import JamRgbLight._
   val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
   var updatedColorState: JamColorState = JamColorState.empty
 
@@ -53,6 +54,21 @@ case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
   }
   light.state().setValue(JamColorState.empty)
 
+  def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
+
+  def sendColor(color: JamColorState): Unit = {
+    info.event match {
+      case CC(cc) =>
+        ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
+        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color.value)
+      case Note(note) =>
+        ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
+        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color.value)
+    }
+  }
+}
+
+object JamRgbLight {
   case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
     override def getVisualState: HardwareLightVisualState = null
     val value: Int = color + brightness
@@ -61,21 +77,9 @@ case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
     val empty: JamColorState = JamColorState(0, 0)
   }
 
-  def sendColor(color: JamColorState): Unit = {
-    info.event match {
-      case CC(cc) =>
-        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${state.color}")
-        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color.value)
-      case Note(note) =>
-        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${state.color}")
-        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color.value)
-    }
-  }
-
-  def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
-
   def toColorIndex(color: Color): Int =
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
+
 }
 
 case class JamOnOffLight(ext: MonsterJamExt, info: MidiInfo) {

@@ -1,5 +1,6 @@
 package com.github.unthingable
 
+import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{ControllerHost, HardwareActionBindable}
 
 trait Util {
@@ -9,4 +10,7 @@ trait Util {
       seq
     }
   }
+
+  def toColor(color: java.awt.Color): Color =
+    Color.fromRGBA(color.getRed, color.getGreen, color.getBlue, color.getAlpha)
 }

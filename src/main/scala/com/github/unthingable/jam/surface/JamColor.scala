@@ -233,25 +233,25 @@ object JamColor {
     WHITE:30
   };
 */
-  object JAMColorBase extends Enumeration {
-    val OFF = Value(0)
-    val RED = Value(1)
-    val ORANGE = Value(2)
-    val LIGHT_ORANGE = Value(3)
-    val WARM_YELLOW = Value(4)
-    val YELLOW = Value(5)
-    val LIME = Value(6)
-    val GREEN = Value(7)
-    val MINT = Value(8)
-    val CYAN = Value(9)
-    val TURQUOISE = Value(10)
-    val BLUE = Value(11)
-    val PLUM = Value(12)
-    val VIOLET = Value(13)
-    val PURPLE = Value(14)
-    val MAGENTA = Value(15)
-    val FUCHSIA = Value(16)
-    val WHITE = Value(17)
+  object JAMColorBase {
+    val OFF = 0
+    val RED = 1
+    val ORANGE = 2
+    val LIGHT_ORANGE = 3
+    val WARM_YELLOW = 4
+    val YELLOW = 5
+    val LIME = 6
+    val GREEN = 7
+    val MINT = 8
+    val CYAN = 9
+    val TURQUOISE = 10
+    val BLUE = 11
+    val PLUM = 12
+    val VIOLET = 13
+    val PURPLE = 14
+    val MAGENTA = 15
+    val FUCHSIA = 16
+    val WHITE = 17
   }
 
   object JAMColorState extends Enumeration {
