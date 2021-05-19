@@ -103,17 +103,15 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 }
 
 
-case class ObserverB[S, T, A](source: S, target: T, binder: (S, A => Unit) => Unit, receiver: A => Unit)
+case class ObserverB[S, T, C](source: S, target: T, binder: (S, C) => Unit, receiver: C, empty: C)
   extends InBinding[S, T] {
   // observers are not removable, so
-  private var action: A => Unit = _ => ()
+  private var action: C = empty
+  binder(source, action)
 
-  override def bind(): Unit = {
-    action = receiver
-    binder(source, receiver)
-  }
+  override def bind(): Unit = action = receiver
 
-  override def clear(): Unit = action = _ => ()
+  override def clear(): Unit = action = empty
 }
 
 case class LoadActions(
@@ -221,7 +219,7 @@ class ModeButtonLayer(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
       pressedAt = Instant.now()
-      //ext.host.println(s"$name button pressed")
+      ext.host.println(s"$name button pressed")
       (isPinned, isOn) match {
         case (_, false) => activateAction.invoke()
         case (_, true) => deactivateAction.invoke()
@@ -229,7 +227,7 @@ class ModeButtonLayer(
       }
     }),
     HB(modeButton.button.releasedAction(), () => {
-      //ext.host.println(s"$name button released")
+      ext.host.println(s"$name button released")
       val operated = modeBindings.partitionMap {
         case b: HB => Left(b)
         case b => Right(b)
@@ -419,7 +417,11 @@ object Graph {
     })
 
     def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} deactivate", () => {
-      deactivate(node)
+      ext.host.println(s">> deactivate action ${node.layer.name}")
+
+      // why is it sometimes being fired twice? no idea, but let's protect:
+      if (node.isActive)
+        deactivate(node)
     })
 
     private def activate(node: ModeNode): Unit = {
@@ -437,7 +439,7 @@ object Graph {
 
       val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.modeBindings
         .flatMap(b => sourceMap.get(b.surfaceElem)).flatten
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.map(_._2)
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.map(_._2).filter(_ != node)
 
       if (bumpNodes.nonEmpty)
         ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")

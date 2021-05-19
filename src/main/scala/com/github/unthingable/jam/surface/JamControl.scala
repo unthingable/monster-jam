@@ -43,7 +43,7 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 
 
 case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
-  import JamRgbLight._
+  import JamColorState._
   val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
   var updatedColorState: JamColorState = JamColorState.empty
 
@@ -68,18 +68,16 @@ case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
   }
 }
 
-object JamRgbLight {
-  case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
-    override def getVisualState: HardwareLightVisualState = null
-    val value: Int = color + brightness
-  }
-  object JamColorState {
-    val empty: JamColorState = JamColorState(0, 0)
-  }
+case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
+  override def getVisualState: HardwareLightVisualState = null
+  val value: Int = color + brightness
+}
+
+object JamColorState {
+  val empty: JamColorState = JamColorState(0, 0)
 
   def toColorIndex(color: Color): Int =
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
-
 }
 
 case class JamOnOffLight(ext: MonsterJamExt, info: MidiInfo) {
