@@ -2,11 +2,11 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback}
-import com.bitwig.extension.controller.api.{BooleanValue, Channel, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
+import com.bitwig.extension.controller.api.{BooleanValue, Channel, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, Track, TrackBank}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
-import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
+import com.github.unthingable.jam.surface.{JamColor, JamColorState, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
 import java.util.function.Supplier
 
@@ -18,7 +18,9 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
   // wire buttons
 
-    val trackBank: TrackBank = ext.host.createMainTrackBank(8,8,8)
+    //val trackBank: TrackBank = ext.host.createMainTrackBank(8,8,8)
+  val trackBank = ext.trackBank
+  //trackBank.followCursorTrack(ext.cursorTrack)
     val sceneBank: SceneBank = trackBank.sceneBank()
     val masterTrack = ext.host.createMasterTrack(8)
 
@@ -52,16 +54,16 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
       track.color().markInterested()
       track.exists().markInterested()
-      btn.light.setColorSupplier(track.color())
-
-      track.addIsSelectedInEditorObserver { v =>
-        btn.jamLight.updatedColorState = btn.jamLight.updatedColorState.copy(brightness = if (v) 2 else 0)
-      }
-
-      track.playingNotes().markInterested()
-      track.playingNotes().addValueObserver { notes =>
-        btn.jamLight.sendColor(btn.jamLight.updatedColorState.copy(brightness = if (notes.nonEmpty) 2 else btn.jamLight.updatedColorState.brightness))
-      }
+      //btn.light.setColorSupplier(track.color())
+      //
+      //track.addIsSelectedInEditorObserver { v =>
+      //  btn.jamLight.updatedColorState = btn.jamLight.updatedColorState.copy(brightness = if (v) 2 else 0)
+      //}
+      //
+      //track.playingNotes().markInterested()
+      //track.playingNotes().addValueObserver { notes =>
+      //  btn.jamLight.sendColor(btn.jamLight.updatedColorState.copy(brightness = if (notes.nonEmpty) 2 else btn.jamLight.updatedColorState.brightness))
+      //}
 
       // wire clips to matrix
       val clips = track.clipLauncherSlotBank()
@@ -265,7 +267,6 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       color: Int // Jam's color index
     ): ModeButtonLayer = new ModeButtonLayer(name, modeButton) {
       override val modeBindings: Seq[Binding[_, _, _]] = group.indices.flatMap { idx =>
-        import surface.JamRgbLight.{JamColorState, toColorIndex}
         val track = trackBank.getItemAt(idx)
         val propValue = prop(track)
         val existsValue = track.exists()
@@ -287,6 +288,48 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JAMColorBase.YELLOW)
     val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JAMColorBase.ORANGE)
+    val trackGroup = new SimpleModeLayer("trackGroup") {
+      override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
+        val btn = j.groupButtons(idx)
+        val track = trackBank.getItemAt(idx)
+        val color = track.color()
+        val cursorIndex = trackBank.cursorIndex()
+
+        val playingNotes = track.playingNotes()
+        //object isSelected { var value = false }
+
+        color.markInterested()
+        playingNotes.markInterested()
+        cursorIndex.markInterested()
+        track.exists().markInterested()
+        //btn.light.setColorSupplier(track.color())
+
+        //track.addIsSelectedInEditorObserver { v =>
+        //  btn.jamLight.updatedColorState = btn.jamLight.updatedColorState.copy(brightness = if (v) 2 else 0)
+        //}
+
+        //track.playingNotes().markInterested()
+        //track.playingNotes().addValueObserver { notes =>
+        //  btn.jamLight.sendColor(btn.jamLight.updatedColorState.copy(brightness = if (notes.nonEmpty) 2 else btn.jamLight.updatedColorState.brightness))
+        //}
+        Seq(
+          //ObserverB[Track, Any, BooleanValueChangedCallback](
+          //  track, isSelected,
+          //  _.addIsSelectedInEditorObserver(_),
+          //  isSelected.value = _, _ => ()),
+          SupColorStateB(btn.light, () => JamColorState(
+            JamColorState.toColorIndex(color.get()),
+            brightness = (playingNotes.get().length > 0, cursorIndex.get() == idx) match {
+              case (_, true) => 3
+              case (true, _) => 2
+              case (false, _) => 0
+            }
+          ), JamColorState.empty),
+          //HB(btn.button.pressedAction(), () => trackBank.cursorIndex().set(idx))
+          HB(btn.button.pressedAction(), () => track.selectInMixer())
+        )
+      }
+    }
 
     //def muteOne(idx: Int) = new ModeButtonLayer(s"mute $idx", j.groupButtons(idx))
 
@@ -302,7 +345,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,
       bottom -> Coexist(performGrid, loop),
-      bottom -> Exclusive(solo, mute),
+      trackGroup -> Exclusive(solo, mute),
     )
   }
 
