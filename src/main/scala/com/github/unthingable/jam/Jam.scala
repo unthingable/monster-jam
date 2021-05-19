@@ -40,6 +40,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         val scene: Scene = sceneBank.getScene(i)
         scene.color.markInterested()
         scene.exists.markInterested()
+
         Seq(
           SupColorB(btn.light, scene.color()),
           HB(btn.button.pressedAction(), scene.launchAction()))
@@ -188,23 +189,23 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
           // needs work
             // just play
           case (true, false) => t.play()
-            // restart
-          case (true, true) => restart()
+            // restart (and stop)
+          case (true, true) => restart(false)
             // resume
           case (false, false) => t.continuePlayback()
           case (false, true) => t.restart()
         }
       })
 
-      def restart(): Unit = {
+      def restart(go: Boolean): Unit = {
         val h = ext.host
         h.scheduleTask(() => {
           ext.transport.stop()
           h.scheduleTask(() => {
             ext.transport.stop()
-            h.scheduleTask(() => ext.transport.play(), 1)
-          }, 1)
-        }, 1)
+            if (go) h.scheduleTask(() => ext.transport.play(), 10)
+          }, 10)
+        }, 10)
       }
 
       override val modeBindings = Seq(
@@ -296,7 +297,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
         Seq(
           SupColorStateB(btn.light, () => JamColorState(
-            JamColorState.toColorIndex(color.get()),
+            color.get(),
             brightness = (playingNotes.get().length > 0, cursorIndex.get() == idx) match {
               case (_, true) => 3
               case (true, _) => 2
@@ -328,7 +329,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
           Seq(
             SupColorStateB(btn.light, () => JamColorState(
-              JamColorState.toColorIndex(clip.color().get()),
+              clip.color().get(),
               brightness = {
                 if (clip.isPlaying.get())
                   if (track.isQueuedForStop.get()) 3 - j.Modifiers.blink

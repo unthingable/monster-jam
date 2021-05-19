@@ -76,6 +76,8 @@ case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLi
 object JamColorState {
   val empty: JamColorState = JamColorState(0, 0)
 
+  def apply(color: Color, brightness: Int): JamColorState = JamColorState(toColorIndex(color), brightness)
+
   def toColorIndex(color: Color): Int =
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
 }

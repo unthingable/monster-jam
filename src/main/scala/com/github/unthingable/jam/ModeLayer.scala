@@ -22,7 +22,6 @@ trait Clearable {
 }
 
 sealed trait Binding[S, T, I] extends Clearable {
-  //def isBound: Boolean
   def bind(): Unit
   def source: S
   def target: T
@@ -117,27 +116,7 @@ case class ObserverB[S, T, C](source: S, target: T, binder: (S, C) => Unit, rece
 case class LoadActions(
   activate: HBS,
   deactivate: HBS,
-  //load: Seq[_] = Seq.empty,
-  //unload: Seq[_] = Seq.empty,
 )
-
-/*
-Layer behavior modification strategies:
-1 inherent behavior defined by layer's own bindings
-2 poll: layer proactively observes modifiers value
-3 push: modifier notifications are pushed to layer (redundant because can be done with 1)
-4 subscribe: layer observers other modifiers value, possibly overriding modifier's behavior? (example: SOLO mode pin by SONG)
-
-Layers and modifiers can interact in complex ways.
-
-Layer combinator types:
-- carousel: only one layer (of several) can be active at a time
-- stackable: active layers can be added to and removed from the top of the stack, overriding bindings
-
-A layer container controls how its layers combine
-
-Panel: a group of layers for a specific area of Jam
- */
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -163,16 +142,6 @@ trait ModeLayer {
   // called when layer is activated/deactivated by the container
   def activate(): Unit = ()
   def deactivate(): Unit = ()
-
-
-  // called on layer load
-  //def load(): Unit = ()
-  //def unload(): Unit = ()
-  // called on layer activate
-  //val loadAction: HardwareActionBindable = action(s"$name load", () => load())
-  //val unloadAction: HardwareActionBindable = action(s"$name unload", () => unload())
-  //val activateAction: HardwareActionBindable = action(s"$name activate", () => activate())
-  //val deactivateAction: HardwareActionBindable = action(s"$name deactivate", () => deactivate())
 }
 
 trait SelfActivatedLayer {
@@ -241,18 +210,6 @@ class ModeButtonLayer(
   )
 }
 
-//class ModeBooleanRgbLayer(
-//  val name: String,
-//  val modeButton: JamRgbButton,
-//  val color: Color,
-//  val value: SettableBooleanValue,
-//)(implicit val ext: MonsterJamExt) extends ModeLayer {
-//  override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-//    HB(modeButton.button.pressedAction(), value.toggleAction()),
-//    SupColorB(modeButton.light, )
-//  )
-//}
-
 trait ModeLayerDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => f(), () => name)
@@ -279,78 +236,6 @@ trait ModeLayerDSL {
 
 object ModeLayerDSL extends ModeLayerDSL
 
-trait LayerContainer {
-  def select(layer: ModeActionLayer): Unit
-  def pop(): Unit
-}
-
-trait Stack extends LayerContainer
-trait Carousel extends LayerContainer
-
-class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLayerDSL {
-  val layers: mutable.ArrayDeque[ModeLayer] = mutable.ArrayDeque.empty
-  // all source elements currently bound
-  private val sourceMap: mutable.HashMap[Any, Iterable[Binding[_,_,_]]] = mutable.HashMap.empty
-
-  //val layerMap: mutable.Map[String, ModeLayer] = mutable.Map.empty
-  activateBase()
-
-  def load(layer: ModeLayer): Unit = {
-    if (layers.contains(layer)) throw new Exception(s"Layer ${layer.name} already loaded")
-    layer match {
-      case l: SelfActivatedLayer =>
-        ext.host.println(s"loading ${layer.name}")
-        activate(l.loadBindings ++ Seq(
-          HB(l.activateAction, activateAction(layer)),
-          HB(l.deactivateAction, deactivateAction(layer)),
-        ))
-        // TODO also need to be unloaded
-      case _ => ()
-    }
-    layers.append(layer)
-  }
-
-  def activateAction(layer: ModeLayer): HardwareActionBindable = action(s"${layer.name} activate", () => {
-      activate(layer)
-    })
-
-  def deactivateAction(layer: ModeLayer): HardwareActionBindable = action(s"${layer.name} deactivate", () => {
-      deactivate(layer)
-    })
-
-  def activate(layer: ModeLayer): Unit = {
-    ext.host.println(s"activating ${layer.name}")
-    layer.activate()
-    activate(layer.modeBindings)
-  }
-
-
-  def activateBase(): Unit = {
-    base.foreach(activate)
-  }
-
-  def deactivate(layer: ModeLayer): Unit = {
-    layer.deactivate()
-    deactivate(layer.modeBindings)
-    // restore base
-    activateBase()
-  }
-
-  private def activate(bb: Iterable[Binding[_,_,_]]): Unit = {
-    // bindings within a layer are allowed to combine non-destructively, so unbind first
-    bb.flatMap(b => sourceMap.get(b.surfaceElem)).foreach(_.foreach(_.clear()))
-    bb.foreach(_.bind())
-    // one layer overrides element bindings of another, so total replacement is ok
-    sourceMap.addAll(bb.groupBy(_.surfaceElem))
-  }
-
-  private def deactivate(bb: Iterable[Binding[_,_,_]]): Unit = bb.foreach { b =>
-    b.clear()
-    sourceMap.remove(b.surfaceElem)
-  }
-
-}
-
 object Graph {
   case class ModeNode(layer: ModeLayer) {
     protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty
@@ -358,9 +243,6 @@ object Graph {
     protected[Graph] val modeBindings: mutable.Set[Binding[_, _, _]] = mutable.Set.empty
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
     protected[Graph] var isActive = false
-    //// invoke these to (de)activate nodes, do not call activate() directly
-    //protected[Graph] var activateAction: HardwareActionBindable = null
-    //protected[Graph] var deactivateAction: HardwareActionBindable = null
     //override def hashCode(): Int = layer.name.hashCode()
   }
 
@@ -407,8 +289,8 @@ object Graph {
       })
     }
 
-    lazy val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parents.isEmpty)
-    lazy val exitNodes: Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
+    val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parents.isEmpty)
+    val exitNodes: Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
 
     // activate entry nodes
     entryNodes.foreach(activate)
