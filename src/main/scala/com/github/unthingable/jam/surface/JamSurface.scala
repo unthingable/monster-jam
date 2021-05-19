@@ -16,7 +16,15 @@ class JamSurface(ext: MonsterJamExt) extends Util {
 
   object Modifiers {
     var Shift: FakeButton = FakeButton()
+    var blink: Int = 0
+
+    private def goblink(): Unit = {
+      blink = (blink + 1) % 4
+      ext.host.scheduleTask(() => goblink(), 100)
+    }
+    ext.host.scheduleTask(() => goblink(), 100)
   }
+
 
   // Left side
   val song: JamOnOffButton = b("BtnArrange")

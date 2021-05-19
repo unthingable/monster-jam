@@ -200,7 +200,7 @@ class ModeActionLayer(
   override val deactivateAction: HBS = loadActions.deactivate
 
   // activation actions invoked externally, no additional bindings to manage
-  override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
+  override val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
 }
 
 class ModeButtonLayer(
@@ -215,15 +215,15 @@ class ModeButtonLayer(
   override val activateAction: FakeAction = FakeAction(() => isOn = true)
   override val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
-  override lazy val loadBindings: Seq[Binding[_, _, _]] = Seq(
+  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
       pressedAt = Instant.now()
       ext.host.println(s"$name button pressed")
       (isPinned, isOn) match {
         case (_, false) => activateAction.invoke()
-        case (_, true) => deactivateAction.invoke()
-        case _ => ()
+        case (_, true)  => deactivateAction.invoke()
+        case _          => ()
       }
     }),
     HB(modeButton.button.releasedAction(), () => {
@@ -235,7 +235,7 @@ class ModeButtonLayer(
       val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
       (isPinned, operated || elapsed, isOn) match {
         case (_, true, true) => deactivateAction.invoke()
-        case _ => ()
+        case _               => ()
       }
     })
   )
@@ -367,6 +367,7 @@ object Graph {
   sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
   case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
+  //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
   class ModeDGraph(edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 

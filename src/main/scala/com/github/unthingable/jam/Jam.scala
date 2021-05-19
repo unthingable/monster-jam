@@ -20,7 +20,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     //val trackBank: TrackBank = ext.host.createMainTrackBank(8,8,8)
   val trackBank = ext.trackBank
-  //trackBank.followCursorTrack(ext.cursorTrack)
+  trackBank.followCursorTrack(ext.cursorTrack)
     val sceneBank: SceneBank = trackBank.sceneBank()
     val masterTrack = ext.host.createMasterTrack(8)
 
@@ -136,10 +136,10 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
         ext.host.createAction(() =>
           (j.Modifiers.Shift.isPressed, forward) match {
-            case (false, true) => target.scrollPageForwards()
+            case (false, true)  => target.scrollPageForwards()
             case (false, false) => target.scrollPageBackwards()
-            case (true, true) => target.scrollForwards()
-            case (true, false) => target.scrollBackwards()
+            case (true, true)   => target.scrollForwards()
+            case (true, false)  => target.scrollBackwards()
           }, () => s"scroll_$forward")
       }
 
@@ -154,16 +154,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     }
   }
 
-  // layer experiment
   {
-    //val enc: MidiInfo = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
-    //val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
-    //
-    //knob.setAdjustValueMatcher(ext.midiIn.createRelative2sComplementCCValueMatcher(
-    //  enc.channel, enc.event.value, 127))
-    //knob.setStepSize(1 / 127.0)
-
-
     // preloaded
     val navLayer = new SimpleModeLayer("position",
       Seq(HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
@@ -273,6 +264,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         propValue.markInterested()
         existsValue.markInterested()
         val gButton = group(idx)
+
         Seq(
           HB(gButton.button.pressedAction(), () => propValue.toggle()),
           SupColorStateB(gButton.light, () => {
@@ -291,32 +283,18 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     val trackGroup = new SimpleModeLayer("trackGroup") {
       override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
         val btn = j.groupButtons(idx)
+
         val track = trackBank.getItemAt(idx)
         val color = track.color()
         val cursorIndex = trackBank.cursorIndex()
-
         val playingNotes = track.playingNotes()
-        //object isSelected { var value = false }
 
         color.markInterested()
         playingNotes.markInterested()
         cursorIndex.markInterested()
         track.exists().markInterested()
-        //btn.light.setColorSupplier(track.color())
 
-        //track.addIsSelectedInEditorObserver { v =>
-        //  btn.jamLight.updatedColorState = btn.jamLight.updatedColorState.copy(brightness = if (v) 2 else 0)
-        //}
-
-        //track.playingNotes().markInterested()
-        //track.playingNotes().addValueObserver { notes =>
-        //  btn.jamLight.sendColor(btn.jamLight.updatedColorState.copy(brightness = if (notes.nonEmpty) 2 else btn.jamLight.updatedColorState.brightness))
-        //}
         Seq(
-          //ObserverB[Track, Any, BooleanValueChangedCallback](
-          //  track, isSelected,
-          //  _.addIsSelectedInEditorObserver(_),
-          //  isSelected.value = _, _ => ()),
           SupColorStateB(btn.light, () => JamColorState(
             JamColorState.toColorIndex(color.get()),
             brightness = (playingNotes.get().length > 0, cursorIndex.get() == idx) match {
@@ -331,12 +309,42 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
     }
 
-    //def muteOne(idx: Int) = new ModeButtonLayer(s"mute $idx", j.groupButtons(idx))
+    val clipMatrix = new SimpleModeLayer("clipMatrix") {
+      override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
+        val track = trackBank.getItemAt(col)
+        track.clipLauncherSlotBank().setIndication(true)
+        track.isQueuedForStop.markInterested()
 
-    //
-    //val mainStack = new LayerStack(play, sceneLayer)
-    //mainStack.load(performGrid)
-    //mainStack.load(loop)
+        val clips = track.clipLauncherSlotBank()
+        (0 to 7).flatMap { row =>
+          val btn  = j.matrix(row)(col)
+          val clip = clips.getItemAt(row)
+          clip.color().markInterested()
+          clip.isPlaying.markInterested()
+          clip.isSelected.markInterested()
+          clip.isPlaybackQueued.markInterested()
+          clip.isStopQueued.markInterested()
+          clips.exists().markInterested()
+
+          Seq(
+            SupColorStateB(btn.light, () => JamColorState(
+              JamColorState.toColorIndex(clip.color().get()),
+              brightness = {
+                if (clip.isPlaying.get())
+                  if (track.isQueuedForStop.get()) 3 - j.Modifiers.blink
+                  else 3
+                else if (clip.isPlaybackQueued.get()) j.Modifiers.blink
+                else 0
+              }
+            ), JamColorState.empty),
+            HB(btn.button.pressedAction(), () =>
+              if (clip.isPlaying.get()) clips.stop()
+              else clip.launch()
+            ),
+          )
+        }
+      }
+    }
 
     val top = Coexist(new SimpleModeLayer("-^-"))
     val bottom = new SimpleModeLayer("_|_")
@@ -346,6 +354,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       sceneLayer -> top,
       bottom -> Coexist(performGrid, loop),
       trackGroup -> Exclusive(solo, mute),
+      clipMatrix -> top,
     )
   }
 
