@@ -59,10 +59,10 @@ case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
   def sendColor(color: JamColorState): Unit = {
     info.event match {
       case CC(cc) =>
-        ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
+        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
         ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color.value)
       case Note(note) =>
-        ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
+        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
         ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color.value)
     }
   }

@@ -354,31 +354,45 @@ class LayerStack(base: ModeLayer*)(implicit ext: MonsterJamExt) extends ModeLaye
 }
 
 object Graph {
-  case class ModeNode(
-    layer: ModeLayer,
-    protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
-    protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty,
-    protected[Graph] val modeBindings: mutable.Set[Binding[_,_,_]] = mutable.Set.empty,
+  case class ModeNode(layer: ModeLayer) {
+    protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty
+    protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty
+    protected[Graph] val modeBindings: mutable.Set[Binding[_, _, _]] = mutable.Set.empty
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
-  ) {
+    protected[Graph] var isActive = false
+    //// invoke these to (de)activate nodes, do not call activate() directly
+    //protected[Graph] var activateAction: HardwareActionBindable = null
+    //protected[Graph] var deactivateAction: HardwareActionBindable = null
     //override def hashCode(): Int = layer.name.hashCode()
   }
 
-  class ModeDGraph(edges: (ModeLayer, Iterable[ModeLayer])*)(implicit ext: MonsterJamExt) {
+  sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
+  case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
+  case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
+
+  class ModeDGraph(edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
     // All source elements currently bound
-    private val sourceMap: mutable.HashMap[Any, Iterable[(Binding[_, _, _], ModeNode)]] = mutable.HashMap.empty
+    private val sourceMap: mutable.HashMap[Any, Map[Binding[_, _, _], ModeNode]] = mutable.HashMap.empty
 
 
     // Assemble graph
     edges foreach { case (a, bb) =>
-      bb foreach { b =>
+      bb.layers foreach { b =>
         val child = layerMap.getOrElseUpdate(b, ModeNode(b))
         val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
         child.parents.add(parent)
         parent.children.add(child)
       }
+    }
+
+    // Build exclusive groups
+    private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
+      edges.map(_._2).partitionMap {
+        case l: Exclusive => Left(l.layers.flatMap(layerMap.get).toSet)
+        case _ => Right(())
+      }._1.flatMap(s => s.map(_ -> s)).toMap
     }
 
     // Synthesize layer bindings
@@ -408,8 +422,17 @@ object Graph {
       deactivate(node)
     })
 
-    def activate(node: ModeNode): Unit = {
+    private def activate(node: ModeNode): Unit = {
       ext.host.println(s"activating node ${node.layer.name}")
+      // Deactivate exclusive
+      exclusiveGroups.get(node).foreach(_.filter(_.isActive).foreach {n =>
+        ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
+        n.layer match {
+          case s:ModeButtonLayer => s.deactivateAction.invoke()
+          case _ => deactivate(node)
+        }
+      })
+
       node.layer.activate()
 
       val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.modeBindings
@@ -427,10 +450,15 @@ object Graph {
       node.modeBindings.foreach(_.bind())
 
       // one layer overrides element bindings of another, so total replacement is ok
-      sourceMap.addAll(node.modeBindings.map((_, node)).groupBy(_._1.surfaceElem))
+      sourceMap.addAll(node.modeBindings
+        .map((_, node))
+        .groupBy(_._1.surfaceElem)
+        .view.mapValues(_.toMap)
+      )
+      node.isActive = true
     }
 
-    def deactivate(node: ModeNode): Unit = {
+    private def deactivate(node: ModeNode): Unit = {
       ext.host.println(s"deactivating node ${node.layer.name}")
       node.layer.deactivate()
       node.modeBindings.foreach { b =>
@@ -441,6 +469,7 @@ object Graph {
       node.nodesToRestore.foreach(activate)
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
+      node.isActive = false
     }
   }
 }

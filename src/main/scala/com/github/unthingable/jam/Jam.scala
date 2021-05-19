@@ -4,7 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback}
 import com.bitwig.extension.controller.api.{BooleanValue, Channel, HardwareAction, HardwareActionBindable, HardwareActionBinding, Parameter, Scene, SceneBank, Scrollable, SettableBooleanValue, SettableColorValue, TrackBank}
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.Graph.ModeDGraph
+import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColor, JamOnOffButton, JamRgbButton, JamSurface, NIColorUtil}
 
@@ -295,13 +295,14 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     //mainStack.load(performGrid)
     //mainStack.load(loop)
 
-    val top = Seq(new SimpleModeLayer("dummy top"))
-    val bottom = new SimpleModeLayer("dummy bottom")
+    val top = Coexist(new SimpleModeLayer("-^-"))
+    val bottom = new SimpleModeLayer("_|_")
     new ModeDGraph(
       play -> top,
-      navLayer -> Seq(tempoLayer),
+      navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,
-      bottom -> Seq(performGrid, loop, solo, mute),
+      bottom -> Coexist(performGrid, loop),
+      bottom -> Exclusive(solo, mute),
     )
   }
 
