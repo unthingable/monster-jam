@@ -1,13 +1,10 @@
 package com.github.unthingable
 
-import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Application, ControllerHost, CursorTrack, DocumentState, HardwareActionBindable, HardwareSurface, MidiIn, MidiOut, SettableColorValue, TrackBank, Transport}
 import com.bitwig.extension.controller.ControllerExtension
+import com.bitwig.extension.controller.api._
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
-
-import java.util.function.Supplier
 
 case class MonsterJamExt(
   host: ControllerHost,
@@ -43,12 +40,9 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     new Jam()(ext)
-    //ext.midiIn.setSysexCallback { s: String => host.println(s) }
 
     host.showPopupNotification("MonsterJam Initialized")
   }
-
-
 
   override def exit(): Unit = { // TODO: Perform any cleanup once the driver exits
     // For now just show a popup notification for verification that it is no longer running.

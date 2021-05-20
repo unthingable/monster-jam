@@ -6,27 +6,27 @@ import com.bitwig.extension.controller.api.{HardwareButton, RelativeHardwareKnob
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface
 
-import scala.collection.mutable
 
-// Surface model All the controls, wired to MIDI
+/* Surface model with all the controls, wired to MIDI */
+
 class JamSurface(ext: MonsterJamExt) extends Util {
-  //val ext: MonsterJamExt
 
   private def b(id: String) = JamOnOffButton(ext, ext.xmlMap.button(id))
 
   object Modifiers {
     var Shift: FakeButton = FakeButton()
-    var blink: Int = 0
+    var blink: Boolean = false
 
     private def goblink(): Unit = {
-      blink = (blink + 1) % 4
-      ext.host.scheduleTask(() => goblink(), 100)
+      blink = !blink
+      ext.host.scheduleTask(() => goblink(), 200)
     }
     ext.host.scheduleTask(() => goblink(), 100)
   }
 
 
-  // Left side
+  /* Left side */
+
   val song: JamOnOffButton = b("BtnArrange")
 
   val step = b("BtnStep")
@@ -70,7 +70,8 @@ class JamSurface(ext: MonsterJamExt) extends Util {
     val right: JamOnOffButton = button(2)
   }
 
-  // Meat side
+  /* Main section */
+
   val sceneButtons: Vector[JamRgbButton] = (1 to 8).map { idx =>
     val btn = ext.xmlMap.button(s"BtnScene${idx}")
     val btnLed = ext.xmlMap.led(s"BtnScene${idx}IDX")
@@ -102,6 +103,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   // Touchstrips
   val stripBank = StripBank(ext)
 
+  // Main level meters are special
   object levelMeter {
     val left = ext.xmlMap.knob("MetLevel1", ext.xmlMap.masterElems)
     val right = ext.xmlMap.knob("MetLevel2", ext.xmlMap.masterElems)
@@ -113,7 +115,8 @@ class JamSurface(ext: MonsterJamExt) extends Util {
     val uR: IntegerValueChangedCallback = update(right) _
   }
 
-  // Right side
+  /* Right side */
+
   val master = b("BtnMst")
   val group = b("BtnGrp")
   val in1 = b("BtnIn1")
@@ -137,49 +140,20 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   val solo = b("BtnSolo")
   val mute = b("BtnMute")
 
-  val shift = {
-    // TODO
-    val button = ext.hw.createHardwareButton("SHIFT")
-    //ext.midiIn.createActionMatcher()
-    //val (on, off) = info.event match {
-    //  case CC(cc) => (
-    //    ext.midiIn.createCCActionMatcher(info.channel, cc, 127),
-    //    ext.midiIn.createCCActionMatcher(info.channel, cc, 0)
-    //  )
-    //  case Note(note) => (
-    //    ext.midiIn.createNoteOnActionMatcher(info.channel, note),
-    //    ext.midiIn.createNoteOffActionMatcher(info.channel, note)
-    //  )
-    //}
-    //button.pressedAction.setActionMatcher(on)
-    //button.releasedAction.setActionMatcher(off)
-
-    //def handlePressed(id: String): Runnable = () => ext.host.println(s"$id pressed")
-    //
-    //def handleReleased(id: String): Runnable = () => ext.host.println(s"$id released")
-    //
-    //button.pressedAction.setBinding(ext.host.createAction(handlePressed("SHIFT"), () => "Handle button pressed"))
-    //button.releasedAction.setBinding(ext.host.createAction(handleReleased("SHIFT"), () => "Handle button released"))
-
+  {
     // wire sysex
     import com.github.unthingable.jam.surface.BlackSysexMagic._
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
         Modifiers.Shift.pressedAction.invoke()
-        //Modifiers.Shift = true
-        //Modifiers.shiftPressed.foreach(_())
-        ext.host.println("shift pressed")
       case ShiftReleaseCommand =>
         Modifiers.Shift.releasedAction.invoke()
-        //Modifiers.Shift = false
-        //Modifiers.shiftReleased.foreach(_())
-        ext.host.println("shift released")
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()
         ext.host.requestFlush()
-      case x => ext.host.println(x)
+      case x => "Unhandled sysex from controller: " + ext.host.println(x)
     }
   }
 }

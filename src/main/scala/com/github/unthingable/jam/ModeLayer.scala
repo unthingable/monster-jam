@@ -1,20 +1,15 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareAction, HardwareActionBindable, HardwareActionBinding, HardwareBindable, HardwareBinding, HardwareBindingSource, HardwareButton, InternalHardwareLightState, MultiStateHardwareLight, ObjectHardwareProperty, SettableBooleanValue}
+import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
+import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
-
-import java.util.function.{BooleanSupplier, Supplier}
-import scala.collection.{immutable, mutable}
-import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton, JamRgbButton}
-import ModeLayerDSL._
+import com.github.unthingable.jam.ModeLayerDSL._
+import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
 
 import java.time.{Duration, Instant}
-
-trait Modifier
-case class ModLayer(modifier: Modifier, layer: ModeActionLayer)
-
-trait HasModLayers { def modLayers: Seq[ModLayer] }
+import java.util.function.{BooleanSupplier, Supplier}
+import scala.collection.mutable
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -102,7 +97,7 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 }
 
 
-case class ObserverB[S, T, C](source: S, target: T, binder: (S, C) => Unit, receiver: C, empty: C)
+class ObserverB[S, T, C](val source: S, val target: T, binder: (S, C) => Unit, receiver: C, empty: C)
   extends InBinding[S, T] {
   // observers are not removable, so
   private var action: C = empty
@@ -112,6 +107,11 @@ case class ObserverB[S, T, C](source: S, target: T, binder: (S, C) => Unit, rece
 
   override def clear(): Unit = action = empty
 }
+
+// not working?
+case class ValObserverB[A <: ValueChangedCallback, T](value: Value[A], receiver: A, override val target: T)
+  (implicit emp: EmptyCB[A])
+extends ObserverB[Value[A], T, A](value, target, _.addValueObserver(_), receiver, emp.empty)
 
 case class LoadActions(
   activate: HBS,
@@ -127,7 +127,7 @@ case class LoadActions(
  *
  * Similarly, there are two sets of bindings:
  * - load bindings: activated when mode is placed in the ready state
- * - active bindings
+ * - active (mode) bindings
  *
  * Bindings activation is managed externally by layer container.
  * @param modeBindings active bindings for this mode
@@ -221,17 +221,17 @@ trait ModeLayerDSL {
     def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
   }
 
-  // just a little bit of convenience?
-  def asB(t: (BooleanHardwareProperty, SettableBooleanValue)): SupBooleanB =
-    SupBooleanB.tupled(t)
-  def asB(t: (MultiStateHardwareLight, Supplier[Color])): SupColorB =
-    SupColorB.tupled(t)
-  //def asB[A <: HardwareBindable: ClassTag](t: (HardwareBindingSource[_ <: HardwareBinding], A))(implicit ext: MonsterJamExt): HWB =
-  //  HWB(t._1, t._2)
-  //def asB[A <: Runnable](t: (HardwareBindingSource[_ <: HardwareBinding], A))(implicit ext: MonsterJamExt): HWB =
-  //  HWB(t._1, t._2)
-
   type HBS = HardwareBindingSource[_ <: HardwareBinding]
+
+  trait EmptyCB[A <: ValueChangedCallback] { def empty: A}
+
+  implicit object emptyBool extends EmptyCB[BooleanValueChangedCallback] {
+    override def empty: BooleanValueChangedCallback = _ => ()
+  }
+
+  implicit object emptyColor extends EmptyCB[ColorValueChangedCallback] {
+    override def empty: ColorValueChangedCallback = (_,_,_) => ()
+  }
 }
 
 object ModeLayerDSL extends ModeLayerDSL
@@ -261,7 +261,7 @@ object Graph {
     // Assemble graph
     edges foreach { case (a, bb) =>
       bb.layers foreach { b =>
-        val child = layerMap.getOrElseUpdate(b, ModeNode(b))
+        val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
         val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
         child.parents.add(parent)
         parent.children.add(child)
@@ -272,7 +272,7 @@ object Graph {
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
       edges.map(_._2).partitionMap {
         case l: Exclusive => Left(l.layers.flatMap(layerMap.get).toSet)
-        case _ => Right(())
+        case _            => Right(())
       }._1.flatMap(s => s.map(_ -> s)).toMap
     }
 
@@ -290,7 +290,7 @@ object Graph {
     }
 
     val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parents.isEmpty)
-    val exitNodes: Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
+    val exitNodes : Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
 
     // activate entry nodes
     entryNodes.foreach(activate)
@@ -310,7 +310,9 @@ object Graph {
     private def activate(node: ModeNode): Unit = {
       ext.host.println(s"activating node ${node.layer.name}")
       // Deactivate exclusive
-      exclusiveGroups.get(node).foreach(_.filter(_.isActive).foreach {n =>
+      exclusiveGroups.get(node)
+        .map(_ ++ node.parents) // also deactivate parents
+        .foreach(_.filter(_.isActive).foreach {n =>
         ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
         n.layer match {
           case s:ModeButtonLayer => s.deactivateAction.invoke()
@@ -350,8 +352,10 @@ object Graph {
         b.clear()
         sourceMap.remove(b.surfaceElem)
       }
+
       // restore base
       node.nodesToRestore.foreach(activate)
+
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
       node.isActive = false

@@ -12,8 +12,9 @@ case class Note(value: Int) extends MidiEvent
 //case class Poly(value: Int) extends MidiEvent
 case class MidiInfo(id: String, channel: Int, event: MidiEvent)
 
-/**
- * Convenience parser for NI JAM controller mapping
+/*
+ * Convenience parser for NI JAM controller mapping, because why define them again
+ * if we can get them from the same mapping.
  */
 case class XmlMap(e: Elem) {
   /*

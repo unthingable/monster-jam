@@ -8,7 +8,9 @@ import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createComman
 
 import scala.collection.mutable
 
-// Create hardware controls and wire them to MIDI
+/*
+Jam controls, self-wired to midi
+ */
 
 sealed trait JamControl
 
@@ -33,12 +35,6 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 
   button.pressedAction.setActionMatcher(on)
   button.releasedAction.setActionMatcher(off)
-  //button.pressedAction.setBinding(ext.host.createAction(handlePressed(info.id), () => "Handle button pressed"))
-  //button.releasedAction.setBinding(ext.host.createAction(handleReleased(info.id), () => "Handle button released"))
-  //
-  //def handlePressed(id: String): Runnable = () => ext.host.println(s"$id pressed")
-  //
-  //def handleReleased(id: String): Runnable = () => ext.host.println(s"$id released")
 }
 
 
@@ -56,21 +52,23 @@ case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
 
   def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
 
-  def sendColor(color: JamColorState): Unit = {
+  def sendColor(color: JamColorState): Unit = sendColor(color.value)
+
+  def sendColor(color: Int): Unit = {
     info.event match {
       case CC(cc) =>
         //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
-        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color.value)
+        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
       case Note(note) =>
         //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
-        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color.value)
+        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
     }
   }
 }
 
 case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
   override def getVisualState: HardwareLightVisualState = null
-  val value: Int = color + brightness
+  val value: Int = if (brightness >= 0) color + brightness else 0
 }
 
 object JamColorState {
@@ -176,14 +174,12 @@ case class StripBank(ext: MonsterJamExt) extends Util {
   def flushValues(): Unit = {
     //clear()
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
-    //ext.host.println(active.toString())
-    //ext.host.println(values.toString())
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
 }
 
-// because real hardwarebuttons are not pressable programmatically
+// because real HardwareButtons are not pressable programmatically
 case class FakeAction(protected val invokeCallback:() => Unit = () => ())
   extends HardwareBindingSource[HardwareActionBinding] {
   val callbacks: mutable.HashSet[Runnable] = mutable.HashSet.empty

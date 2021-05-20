@@ -14,9 +14,9 @@ object MonsterJamExtensionDefinition {
 class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
   override def getName = "MonsterJam"
 
-  override def getAuthor = "minortom"
+  override def getAuthor = "unthingable"
 
-  override def getVersion = "1.0"
+  override def getVersion = "0.1"
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 
@@ -30,16 +30,11 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
 
   override def getNumMidiOutPorts = 1
 
-  override def listAutoDetectionMidiPortNames(list: AutoDetectionMidiPortNamesList, platformType: PlatformType): Unit = {
-    list.add(Array[String]("Maschine Jam - 1"), Array[String]("Maschine Jam - 1"))
-    list.add(Array[String]("Maschine Jam - 2"), Array[String]("Maschine Jam - 2"))
-    list.add(Array[String]("Maschine Jam - 3"), Array[String]("Maschine Jam - 3"))
-    list.add(Array[String]("Maschine Jam - 4"), Array[String]("Maschine Jam - 4"))
-    list.add(Array[String]("Maschine Jam - 1 Input"), Array[String]("Maschine Jam - 1 Output"))
-    list.add(Array[String]("Maschine Jam - 2 Input"), Array[String]("Maschine Jam - 2 Output"))
-    list.add(Array[String]("Maschine Jam - 3 Input"), Array[String]("Maschine Jam - 3 Output"))
-    list.add(Array[String]("Maschine Jam - 4 Input"), Array[String]("Maschine Jam - 4 Output"))
-  }
+  override def listAutoDetectionMidiPortNames(list: AutoDetectionMidiPortNamesList, platformType: PlatformType): Unit =
+    (1 to 4).foreach { n =>
+      list.add(Array[String](s"Maschine Jam - $n"), Array[String](s"Maschine Jam - $n"))
+      list.add(Array[String](s"Maschine Jam - $n Input"), Array[String](s"Maschine Jam - $n Output"))
+    }
 
   override def createInstance(host: ControllerHost) = new MonsterJamExtension(this, host)
 }
