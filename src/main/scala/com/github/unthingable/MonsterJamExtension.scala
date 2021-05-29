@@ -36,7 +36,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createTransport(),
       host.getDocumentState,
       host.createApplication(),
-      loadMap()
+      loadMap(host)
     )
 
     new Jam()(ext)

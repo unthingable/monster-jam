@@ -1,7 +1,11 @@
 package com.github.unthingable.jam.surface
 
+import com.bitwig.extension.api.PlatformType
+import com.bitwig.extension.controller.api.ControllerHost
+import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.XmlMap.controlInfo
 
+import java.io.File
 import scala.io.Source
 import scala.util.Try
 import scala.xml.{Elem, Node, NodeSeq, XML}
@@ -13,19 +17,19 @@ case class Note(value: Int) extends MidiEvent
 case class MidiInfo(id: String, channel: Int, event: MidiEvent)
 
 /*
- * Convenience parser for NI JAM controller mapping, because why define them again
- * if we can get them from the same mapping.
+ * Crude but effective convenience parser for NI JAM controller mapping,
+ * because why define them again if we can get them from the same mapping.
  */
 case class XmlMap(e: Elem) {
-  /*
-    Page indexes look random in the original mapping, no idea why but it is what it is.
-    This works with the bundled JAM mapping.
-   */
-  lazy val mainElems = e \\ "controls"
-  lazy val matrixElems = (e \\ "scene").filter(_ \@ "name" == "Matrix Button Page 3")
-  lazy val masterElems = (e \\ "iolevelPages" \ "page").filter(_ \@ "name" == "Master")
-  lazy val touchElems = (e \\ "touchstripPages" \ "page").filter(_ \@ "name" == "Touchstrip Page H")
-  lazy val allElems = mainElems ++ matrixElems ++ masterElems ++ touchElems
+  val sceneIndex: String = (e \\ "scenePages" \ "current_index").text
+  val ioIndex   : String = (e \\ "iolevelPages" \ "current_index").text
+  val touchIndex: String = (e \\ "touchstripPages" \ "current_index").text
+
+  lazy val mainElems  : NodeSeq = e \\ "controls"
+  lazy val matrixElems: Node    = (e \\ "scenePages" \\ "scene") (sceneIndex.toInt)
+  lazy val masterElems: Node    = (e \\ "iolevelPages" \\ "page") (ioIndex.toInt)
+  lazy val touchElems : Node    = (e \\ "touchstripPages" \\ "page") (touchIndex.toInt)
+  lazy val allElems   : NodeSeq = mainElems ++ matrixElems ++ masterElems ++ touchElems
 
   def find(id: String, etype: String, elem: NodeSeq = e): Option[Node] =
     (elem \\ etype).find(_ \@ "id" == id)
@@ -42,11 +46,34 @@ case class XmlMap(e: Elem) {
 object XmlMap {
   val file = "Bitwig Studio ext.ncmj"
 
-  def loadMap(): XmlMap = {
-    val xml = Try(
-      XML.load(getClass.getClassLoader.getResourceAsStream(file)))
-      .orElse(
-        Try(XML.load(Source.fromResource(file).reader())))
+  def loadMap(host: ControllerHost): XmlMap = {
+    val extDir = host.getPlatformType match {
+      case PlatformType.WINDOWS =>
+        val userProfile = System.getenv("USERPROFILE").replace("\\", "/")
+        userProfile + "/Documents/Bitwig Studio/Extensions/"
+      case PlatformType.MAC     =>
+        System.getProperty("user.home") + "/Documents/Bitwig Studio/Extensions/"
+      case _                    =>
+        throw new IllegalArgumentException("Unknown/unsupported platform")
+    }
+
+    val foundFiles: Option[File] = (new File(extDir)).listFiles((_, name) => name.endsWith(".ncmj")).headOption
+
+    val source = Seq(
+      // bring your own
+      Try {
+        val f = foundFiles.get
+        val ret = XML.loadFile(f)
+        host.println(s"Loaded file ${f.getName}")
+        ret
+      },
+      // bundled mapping file
+      Try(XML.load(getClass.getClassLoader.getResourceAsStream(file))),
+      // file from resources (development)
+      Try(XML.load(Source.fromResource(file).reader())),
+    )
+
+    val xml = source.find(_.isSuccess).head
     XmlMap(xml.get)
   }
 
