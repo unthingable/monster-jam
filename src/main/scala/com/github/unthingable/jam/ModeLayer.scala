@@ -45,9 +45,12 @@ case class HB(source: HBS, target: HardwareBindable)
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
   override def bind(): Unit = bindings.addAll(
     Seq(
-      source.addBinding(target),
-      bindOperated()
-    ))
+      source.addBinding(target)
+    )
+    ++ operatedActions
+      .find(source.canBindTo)
+      .map(source.addBinding)
+  )
 
   override def clear(): Unit = {
     bindings.foreach(_.removeBinding())
@@ -60,12 +63,6 @@ case class HB(source: HBS, target: HardwareBindable)
     action(s"", _ => {wasOperated = true}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
   )
-
-  private def bindOperated()(implicit ext: MonsterJamExt): HardwareBinding = {
-    operatedActions
-      .find(source.canBindTo(_))
-      .map(source.addBinding).get
-  }
 }
 
 object HB extends ModeLayerDSL {
@@ -153,38 +150,56 @@ trait SelfActivatedLayer {
 }
 
 // does not self-activate
-class SimpleModeLayer(
-  val name: String,
-  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
-)(implicit val ext: MonsterJamExt) extends ModeLayer
+abstract class SimpleModeLayer(
+  val name: String
+)(implicit val ext: MonsterJamExt) extends ModeLayer {}
+
+object SimpleModeLayer {
+  def apply(name: String, modeBindings: Seq[Binding[_, _, _]])
+    (implicit ext: MonsterJamExt): SimpleModeLayer = {
+    val x = modeBindings
+    new SimpleModeLayer(name) {
+      override val modeBindings: Seq[Binding[_, _, _]] = x
+    }
+  }
+}
 
 
 // layer activated and deactivated by distinct actions
-class ModeActionLayer(
+abstract class ModeActionLayer(
   val name: String,
-  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
   val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer {
   override val activateAction: HBS = loadActions.activate
   override val deactivateAction: HBS = loadActions.deactivate
 
   // activation actions invoked externally, no additional bindings to manage
-  override val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
+  override final val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
 }
 
-class ModeButtonLayer(
+//object ModeActionLayer {
+//  def apply(name: String, modeBindings: Seq[Binding[_, _, _]], loadActions: LoadActions)
+//    (implicit ext: MonsterJamExt): ModeActionLayer = {
+//    val x = modeBindings
+//    new ModeActionLayer(name, loadActions) {
+//      override val modeBindings: Seq[Binding[_, _, _]] = x
+//    }
+//  }
+//}
+
+
+abstract class ModeButtonLayer(
   val name: String,
   val modeButton: JamOnOffButton,
-  val modeBindings: Seq[Binding[_,_,_]] = Seq.empty,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
   var isPinned = true
   var isOn = false
   private var pressedAt: Instant = null
 
-  override val activateAction: FakeAction = FakeAction(() => isOn = true)
-  override val deactivateAction: FakeAction = FakeAction(() => isOn = false)
+  override final val activateAction: FakeAction = FakeAction(() => isOn = true)
+  override final val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
-  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
+  override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
       pressedAt = Instant.now()
@@ -199,7 +214,7 @@ class ModeButtonLayer(
       ext.host.println(s"$name button released")
       val operated = modeBindings.partitionMap {
         case b: HB => Left(b)
-        case b => Right(b)
+        case b     => Right(b)
       }._1.exists(_.wasOperated)
       val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
       (isPinned, operated || elapsed, isOn) match {
@@ -210,6 +225,16 @@ class ModeButtonLayer(
   )
 }
 
+object ModeButtonLayer {
+  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]])
+    (implicit ext: MonsterJamExt): ModeButtonLayer = {
+    val x = modeBindings
+    new ModeButtonLayer(name, modeButton) {
+      override val modeBindings: Seq[Binding[_, _, _]] = x
+    }
+  }
+}
+
 trait ModeLayerDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => f(), () => name)
@@ -217,9 +242,9 @@ trait ModeLayerDSL {
   def action(name: String, f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(f(_), () => name)
 
-  implicit class PolyAction(a: HardwareAction)(implicit ext: MonsterJamExt) {
-    def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
-  }
+  //implicit class PolyAction(a: HardwareAction)(implicit ext: MonsterJamExt) {
+  //  def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
+  //}
 
   type HBS = HardwareBindingSource[_ <: HardwareBinding]
 
@@ -247,10 +272,15 @@ object Graph {
   }
 
   sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
+  // Layers activate and deactivate as they please
   case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
+  // A layer deactivates all others
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
+  // Repeated activation cycles layers (?)
+  case class Cycle(override val layers: ModeLayer*) extends LayerGroup(layers)
   //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
+  // Graph manages all the bindings
   class ModeDGraph(edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
@@ -309,9 +339,10 @@ object Graph {
 
     private def activate(node: ModeNode): Unit = {
       ext.host.println(s"activating node ${node.layer.name}")
+
       // Deactivate exclusive
       exclusiveGroups.get(node)
-        .map(_ ++ node.parents) // also deactivate parents
+        //.map(_ ++ node.parents) // also deactivate parents (greedy Exclusive)
         .foreach(_.filter(_.isActive).foreach {n =>
         ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
         n.layer match {
