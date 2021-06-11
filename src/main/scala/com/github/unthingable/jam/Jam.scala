@@ -319,23 +319,35 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         }
       }
 
+      private var source: ClipLauncherSlot = null
+
       def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
         if (GlobalMode.Clear.isOn) clip.deleteObject()
+        else if (GlobalMode.Duplicate.isOn) {
+          if (source == null) source = clip
+          else {
+            val point: InsertionPoint = clip.replaceInsertionPoint()
+            point.copySlotsOrScenes(source)
+            source = null
+          }
+        }
         else if (clip.isPlaying.get()) clips.stop()
         else clip.launch()
       }
 
       private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
-        JamColorState(
-          clip.color().get(),
-          brightness = {
-            if (clip.isPlaying.get())
-              if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
-              else 3
-            else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
-                 else 0
-          }
-        )
+        if (clip == source) JamColorState(JAMColorBase.WHITE * 4, 3)
+        else
+          JamColorState(
+            clip.color().get(),
+            brightness = {
+              if (clip.isPlaying.get())
+                if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
+                else 3
+              else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
+                   else 0
+            }
+          )
       }
     }
 
