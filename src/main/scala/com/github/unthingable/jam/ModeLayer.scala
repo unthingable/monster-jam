@@ -187,49 +187,58 @@ abstract class ModeActionLayer(
 //  }
 //}
 
+sealed trait GateMode
+object GateMode {
+  case object Gate extends GateMode
+  case object Toggle extends GateMode
+  case object Auto extends GateMode
+}
 
 abstract class ModeButtonLayer(
   val name: String,
   val modeButton: JamOnOffButton,
+  val gateMode: GateMode = GateMode.Auto
 )(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
-  var isPinned = true
   var isOn = false
   private var pressedAt: Instant = null
 
   override final val activateAction: FakeAction = FakeAction(() => isOn = true)
   override final val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
+  private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
+    case b: HB => Left(b)
+    case b     => Right(b)
+  }._1
+
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction(), () => {
       pressedAt = Instant.now()
-      ext.host.println(s"$name button pressed")
-      (isPinned, isOn) match {
-        case (_, false) => activateAction.invoke()
-        case (_, true)  => deactivateAction.invoke()
-        case _          => ()
-      }
+      if (isOn) {
+        // this press is only captured when the mode is still active
+        deactivateAction.invoke()
+      } else
+        activateAction.invoke()
     }),
-    HB(modeButton.button.releasedAction(), () => {
-      ext.host.println(s"$name button released")
-      val operated = modeBindings.partitionMap {
-        case b: HB => Left(b)
-        case b     => Right(b)
-      }._1.exists(_.wasOperated)
-      val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
-      (isPinned, operated || elapsed, isOn) match {
-        case (_, true, true) => deactivateAction.invoke()
-        case _               => ()
-      }
+    HB(modeButton.button.releasedAction(), () => gateMode match {
+      case GateMode.Gate   => if (isOn) deactivateAction.invoke()
+      case GateMode.Toggle => ()
+      case GateMode.Auto   =>
+        if (isOn) {
+          val operated = hBindings.exists(_.wasOperated)
+          val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
+          if (operated || elapsed)
+            deactivateAction.invoke()
+        }
     })
   )
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]])
+  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]], gateMode: GateMode = GateMode.Auto)
     (implicit ext: MonsterJamExt): ModeButtonLayer = {
     val x = modeBindings
-    new ModeButtonLayer(name, modeButton) {
+    new ModeButtonLayer(name, modeButton, gateMode) {
       override val modeBindings: Seq[Binding[_, _, _]] = x
     }
   }

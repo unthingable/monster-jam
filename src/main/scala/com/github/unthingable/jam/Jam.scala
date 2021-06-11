@@ -19,6 +19,12 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
   val j = new JamSurface(ext)
 
+  object GlobalMode {
+    // These only set their isOn flags and nothing else
+    val Clear    : ModeButtonLayer = ModeButtonLayer("clear", j.clear, modeBindings = Seq.empty, GateMode.Gate)
+    val Duplicate: ModeButtonLayer = ModeButtonLayer("duplicate", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
+  }
+
   // wire buttons
 
   val trackBank = ext.trackBank
@@ -124,6 +130,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
 
   // Mode layers
+
   {
     // wire scene buttons
     val sceneLayer = SimpleModeLayer("scene",
@@ -287,8 +294,9 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     /**
      * Default clip matrix with clip launchers
      */
-    val clipMatrix = SimpleModeLayer("clipMatrix",
-      modeBindings = j.matrix.indices.flatMap { col =>
+    val clipMatrix = new SimpleModeLayer("clipMatrix") {
+
+      override val modeBindings = j.matrix.indices.flatMap { col =>
         val track = trackBank.getItemAt(col)
         track.clipLauncherSlotBank().setIndication(true)
         track.isQueuedForStop.markInterested()
@@ -305,24 +313,31 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
           clips.exists().markInterested()
 
           Seq(
-            SupColorStateB(btn.light, () => JamColorState(
-              clip.color().get(),
-              brightness = {
-                if (clip.isPlaying.get())
-                  if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
-                  else 3
-                else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
-                     else 0
-              }
-            ), JamColorState.empty),
-            HB(btn.button.pressedAction(), () =>
-              if (clip.isPlaying.get()) clips.stop()
-              else clip.launch()
-            ),
+            SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
+            HB(btn.button.pressedAction(), () => handleClipPress(clip, clips)),
           )
         }
       }
-    )
+
+      def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
+        if (GlobalMode.Clear.isOn) clip.deleteObject()
+        else if (clip.isPlaying.get()) clips.stop()
+        else clip.launch()
+      }
+
+      private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
+        JamColorState(
+          clip.color().get(),
+          brightness = {
+            if (clip.isPlaying.get())
+              if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
+              else 3
+            else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
+                 else 0
+          }
+        )
+      }
+    }
 
     /**
      * Shift matrix row (like Moss)
@@ -359,6 +374,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,
       bottom -> Coexist(globalQuant, loop, shiftMatrix),
+      bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
     )
