@@ -3,7 +3,7 @@ package com.github.unthingable.jam
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.ColorValueChangedCallback
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
@@ -49,6 +49,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   val sliderParams: ArrayBuffer[Parameter] = mutable.ArrayBuffer.from(
     j.stripBank.strips.indices.map(trackBank.getItemAt(_).volume())
   )
+  var trackTrackColor: Boolean = true
   for (i <- j.stripBank.strips.indices) {
     val strip = j.stripBank.strips(i)
     val track = trackBank.getItemAt(i)
@@ -89,15 +90,59 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     track.addVuMeterObserver(128, -1, true, strip.update)
 
     track.color().markInterested()
-    track.color().addValueObserver((r, g, b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r, g, b)))
+    track.color().addValueObserver((r, g, b) =>
+      if (trackTrackColor) j.stripBank.setColor(i, NIColorUtil.convertColor(r, g, b)))
 
-    ValObserverB[ColorValueChangedCallback, JamTouchStrip](
-      track.color(),
-      (r, g, b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r, g, b)),
-      strip)
+    //ValObserverB[ColorValueChangedCallback, JamTouchStrip](
+    //  track.color(),
+    //  (r, g, b) => j.stripBank.setColor(i, NIColorUtil.convertColor(r, g, b)),
+    //  strip)
   }
 
-  //val levelLayer = new ModeButtonLayer("strips level", j.level) // TODO
+  //def stripLayer(name: String, button: JamOnOffButton) = new ModeButtonLayer(name, button) {
+  //  override val modeBindings: Seq[Binding[_, _, _]] = Seq.empty
+  //
+  //
+  //}
+
+  val levelLayer = new ModeButtonLayer("strips level", j.level, gateMode = GateMode.OneWay) {
+    override val modeBindings: Seq[Binding[_, _, _]] = Seq.empty
+      //j.stripBank.strips.zipWithIndex.map { case (strip, idx) =>
+      //  val track = trackBank.getItemAt(idx)
+      //  ValObserverB[ColorValueChangedCallback, JamTouchStrip](
+      //    track.color(),
+      //    (r, g, b) => j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)),
+      //    strip)
+      //}
+
+    override def activate(): Unit = {
+      super.activate()
+      trackTrackColor = true
+      ext.host.println("+++ activated")
+    }
+
+    override def deactivate(): Unit = {
+      trackTrackColor = false
+      super.deactivate()
+    }
+  }
+
+  val auxLayer = new ModeButtonLayer("strips aux", j.aux, gateMode = GateMode.OneWay) with Util {
+    override val modeBindings: Seq[Binding[_, _, _]] = Seq.empty
+      //j.stripBank.strips.zipWithIndex.map { case (strip, idx) =>
+      //  ValObserverB[ColorValueChangedCallback, JamTouchStrip](
+      //    () => toColor(Color.WHITE),
+      //    (r, g, b) => j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)),
+      //    strip)
+      //}
+
+    override def activate(): Unit = {
+      super.activate()
+      j.stripBank.strips.forindex { case (_, idx) =>
+        j.stripBank.setColor(idx, JamColorState.toColorIndex(toColor(java.awt.Color.WHITE)))
+      }
+    }
+  }
 
   // this behavior ls always the same, can wire it here directly without creating a mode layer
   {
@@ -428,6 +473,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))
     val bottom = SimpleModeLayer("_|_", modeBindings = Seq.empty)
     new ModeDGraph(
+      init = Seq(levelLayer),
       play -> top,
       navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,

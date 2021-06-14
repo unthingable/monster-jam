@@ -157,8 +157,8 @@ trait ModeLayer {
   implicit val ext: MonsterJamExt
 
   // called when layer is activated/deactivated by the container
-  //def activate(): Unit = ()
-  //def deactivate(): Unit = ()
+  def activate(): Unit = ()
+  def deactivate(): Unit = ()
 }
 
 /**
@@ -227,6 +227,7 @@ object GateMode {
   case object Gate extends GateMode
   case object Toggle extends GateMode
   case object Auto extends GateMode
+  case object OneWay extends GateMode
 }
 
 abstract class ModeButtonLayer(
@@ -241,6 +242,13 @@ abstract class ModeButtonLayer(
   override final val activateAction: FakeAction = FakeAction(() => isOn = true)
   override final val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
+  //override final val activateAction: FakeAction = FakeAction()
+  //override final val deactivateAction: FakeAction = FakeAction()
+  //
+  //override def activate(): Unit = isOn = true
+  //
+  //override def deactivate(): Unit = isOn = false
+
   private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
     case b: HB => Left(b)
     case b     => Right(b)
@@ -252,15 +260,16 @@ abstract class ModeButtonLayer(
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
-        deactivateAction.invoke()
+        if (gateMode != GateMode.OneWay)
+          deactivateAction.invoke()
       } else
         activateAction.invoke()
     },
       tracked = false),
     HB(modeButton.button.releasedAction, s"$name: mode button released", () => gateMode match {
-      case GateMode.Gate   => if (isOn) deactivateAction.invoke()
-      case GateMode.Toggle => ()
-      case GateMode.Auto   =>
+      case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
+      case GateMode.Toggle | GateMode.OneWay => ()
+      case GateMode.Auto                     =>
         if (isOn) {
           val operated = hBindings.exists(_.wasOperated)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
@@ -340,7 +349,7 @@ object Graph {
   //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
   // Graph manages all the bindings
-  class ModeDGraph(edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
+  class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
     // All source elements currently bound by us
@@ -406,6 +415,8 @@ object Graph {
 
     // activate entry nodes
     entryNodes.foreach(activate)
+    // activate init layers
+    init.flatMap(layerMap.get).foreach(activate)
 
     def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} activate", () => {
       activate(node)
@@ -436,7 +447,7 @@ object Graph {
             }
       })
 
-      //node.layer.activate()
+      node.layer.activate()
 
       val bumpBindings: Iterable[Binding[_, _, _]] = node.nodeBindings
         .flatMap(b => sourceMap.get(b.surfaceElem)).flatten //.filter(_.node.get != node)
@@ -470,7 +481,7 @@ object Graph {
 
     private def deactivate(node: ModeNode): Unit = {
       ext.host.println(s"deactivating node ${node.layer.name}")
-      //node.layer.deactivate()
+      node.layer.deactivate()
       node.nodeBindings.foreach(unbind)
 
       // restore base
