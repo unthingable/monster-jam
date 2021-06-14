@@ -135,18 +135,24 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
   {
     // wire scene buttons
-    val sceneLayer = SimpleModeLayer("scene",
-        j.sceneButtons.indices.flatMap { i =>
-          val btn  : JamRgbButton = j.sceneButtons(i)
-          val scene: Scene        = sceneBank.getScene(i)
-          scene.color.markInterested()
-          scene.exists.markInterested()
+    val sceneLayer = new SimpleModeLayer("scene") {
+      override val modeBindings: Seq[Binding[_, _, _]] = j.sceneButtons.indices.flatMap { i =>
+        val btn  : JamRgbButton = j.sceneButtons(i)
+        val scene: Scene        = sceneBank.getScene(i)
+        scene.color.markInterested()
+        scene.exists.markInterested()
 
-          Seq(
-            SupColorB(btn.light, scene.color()),
-            HB(btn.button.pressedAction(), scene.launchAction()))
-        }
-    )
+        Seq(
+          SupColorB(btn.light, scene.color()),
+          HB(btn.button.pressedAction, s"scene $i press", () => handlePress(scene)))
+      }
+
+      private def handlePress(scene: Scene): Unit = {
+        if (GlobalMode.Clear.isOn) scene.deleteObject()
+        else if (GlobalMode.Duplicate.isOn) scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
+             else scene.launchAction().invoke()
+      }
+    }
 
     val navLayer = SimpleModeLayer("position",
       Seq(HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
@@ -289,8 +295,13 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
             }
           ), JamColorState.empty),
           //HB(btn.button.pressedAction(), () => trackBank.cursorIndex().set(idx))
-          HB(btn.button.pressedAction(), s"group $idx pressed: select in mixer", () => track.selectInMixer())
+          HB(btn.button.pressedAction(), s"group $idx pressed: select in mixer", () => handlePress(track))
         )
+      }
+      private def handlePress(track: Track): Unit = {
+        if (GlobalMode.Clear.isOn) track.deleteObject()
+        else if (GlobalMode.Duplicate.isOn) track.duplicate()
+        else track.selectInMixer()
       }
     }
 
@@ -298,9 +309,6 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
      * Default clip matrix with clip launchers
      */
     val clipMatrix = new SimpleModeLayer("clipMatrix") {
-
-      // for duplication
-      private var source: ClipLauncherSlot = null
 
       override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
         val track = trackBank.getItemAt(col)
@@ -323,12 +331,15 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
             HB(btn.button.pressedAction(), "clipPress", () => handleClipPress(clip, clips)),
           )
         }
-      } :+ HB(GlobalMode.Duplicate.deactivateAction, "clear source", () => {
+      } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
         //ext.host.println("boom")
         source = null
       }, tracked = false, managed = false)
 
-      def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
+      // for duplication
+      private var source: ClipLauncherSlot = null
+
+      private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
         if (GlobalMode.Clear.isOn) clip.deleteObject()
         else if (GlobalMode.Duplicate.isOn) {
           if (source == null) source = clip
