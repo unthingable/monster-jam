@@ -80,7 +80,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
     )
-  }.toVector.forIndex(_.button.setIndexInGroup(_))
+  }.toVector.forindex(_.button.setIndexInGroup(_))
 
   val matrix: Vector[Vector[JamRgbButton]] = (1 to 8).map { row =>
     ('A' to 'H').map { col =>
@@ -98,7 +98,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
     )
-  }.toVector.forIndex(_.button.setIndexInGroup(_))
+  }.toVector.forindex(_.button.setIndexInGroup(_))
 
   // Touchstrips
   val stripBank = StripBank(ext)

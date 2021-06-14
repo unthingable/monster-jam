@@ -7,6 +7,7 @@ import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
 import scala.collection.mutable
+import scala.util.Try
 
 /*
 Jam controls, self-wired to midi
@@ -147,8 +148,8 @@ case class StripBank(ext: MonsterJamExt) extends Util {
       led = ext.xmlMap.led(s"Tst${idx}IDX", ext.xmlMap.touchElems))
 
   }.toVector
-    .forIndex(_.button.setIndexInGroup(_))
-    .forIndex(_.slider.setIndexInGroup(_))
+    .forindex(_.button.setIndexInGroup(_))
+    .forindex(_.slider.setIndexInGroup(_))
 
   var barMode: BarMode = BarMode.DUAL
   private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
@@ -181,35 +182,38 @@ case class StripBank(ext: MonsterJamExt) extends Util {
 
 // because real HardwareButtons are not pressable programmatically
 case class FakeAction(protected val invokeCallback:() => Unit = () => ())
-  extends HardwareBindingSource[HardwareActionBinding] {
-  val callbacks: mutable.HashSet[Runnable] = mutable.HashSet.empty
+  extends HardwareBindingSource[HardwareActionBinding] with Util {
+  val callbacks = mutable.LinkedHashSet.empty[HardwareActionBindable]
   def invoke(): Unit = {
     invokeCallback()
-    callbacks.foreach(_.run())
+    callbacks.zipWithIndex.foreach { case (f, idx) =>
+      Util.println(s"calling $idx of ${callbacks.size}")
+      f.invoke()
+    }
   }
-  def addBinding(f: Runnable): HardwareActionBinding = {
+  def addBinding(f: HardwareActionBindable): HardwareActionBinding = {
     callbacks.addOne(f)
     () => callbacks.remove(f)
   }
-  def setBinding(f: Runnable): HardwareActionBinding = {
+  def setBinding(f: HardwareActionBindable): HardwareActionBinding = {
     callbacks.clear()
     addBinding(f)
   }
   def clearBindings(): Unit = callbacks.clear()
 
   override def canBindTo(o: Any): Boolean = o match {
-    case _: Runnable => true
+    //case _: Runnable => true
     case _: HardwareActionBindable => true
     case _ => false
   }
 
   override def addBinding(h: HardwareBindable): HardwareActionBinding = h match {
-    case hab: HardwareActionBindable => addBinding(() => hab.invoke())
+    case hab: HardwareActionBindable => addBinding(hab)
     case _ => ??? // better be never
   }
 
   override def setBinding(h: HardwareBindable): HardwareActionBinding = h match {
-    case hab: HardwareActionBindable => setBinding(() => hab.invoke())
+    case hab: HardwareActionBindable => setBinding(hab)
     case _ => ???
   }
 }

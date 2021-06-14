@@ -40,6 +40,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     new Jam()(ext)
+    Util.println = host.println
 
     host.showPopupNotification("MonsterJam Initialized")
   }

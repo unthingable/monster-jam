@@ -22,6 +22,14 @@ sealed trait Binding[S, T, I] extends Clearable {
   def target: T
 
   def surfaceElem: I
+
+  var node: Option[Graph.ModeNode] = None // backreference to the node that owns this
+  def layerName: String = node.map(_.layer.name).getOrElse("")
+
+  /**
+   * Unmanaged/exclusive bindings are to be left alone when modes are removed
+   */
+  val managed: Boolean = true
 }
 
 // Controller <- Bitwig host
@@ -34,41 +42,53 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with ModeLayerDSL {
   def surfaceElem: C = source // might be weird with observer bindings
   implicit val ext: MonsterJamExt
 
-  // if a control was operated it's useful to know for momentary modes
+  // if a control was operated, it's useful to know for momentary modes
   var wasOperated: Boolean = false
 }
 
 
-case class HB(source: HBS, target: HardwareBindable)
+case class HB(source: HBS, target: HardwareBindable,
+  tracked: Boolean = true,
+  override val managed: Boolean = true)
   (implicit val ext: MonsterJamExt)
   extends OutBinding[HBS, HardwareBindable] {
+
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
+
   override def bind(): Unit = bindings.addAll(
     Seq(
       source.addBinding(target)
-    )
-    ++ operatedActions
-      .find(source.canBindTo)
-      .map(source.addBinding)
+    ) ++ (if (tracked)
+            operatedActions
+              .find(source.canBindTo)
+              .map(source.addBinding)
+          else Seq.empty)
   )
 
   override def clear(): Unit = {
     bindings.foreach(_.removeBinding())
     bindings.clear()
+    source.clearBindings() // one of these is probably unnecessary
     wasOperated = false
   }
 
   private val operatedActions = Seq(
-    action(s"", () => {wasOperated = true}),
-    action(s"", _ => {wasOperated = true}),
+    action(() => s"$layerName: HB: unit operated", () => {wasOperated = true}),
+    action(() => s"$layerName: HB: double operated", _ => {wasOperated = true}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
   )
 }
 
 object HB extends ModeLayerDSL {
-  def apply(source: HBS, target: () => Unit)
+  def apply(source: HBS, name: String, target: () => Unit)
     (implicit ext: MonsterJamExt): HB =
-    HB(source, action("", target))
+    HB(source, action(name, target))
+  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean)
+    (implicit ext: MonsterJamExt): HB =
+    HB(source, action(name, target), tracked = tracked)
+  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean, managed: Boolean)
+    (implicit ext: MonsterJamExt): HB =
+    HB(source, action(name, target), tracked = tracked, managed = managed)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -137,15 +157,30 @@ trait ModeLayer {
   implicit val ext: MonsterJamExt
 
   // called when layer is activated/deactivated by the container
-  def activate(): Unit = ()
-  def deactivate(): Unit = ()
+  //def activate(): Unit = ()
+  //def deactivate(): Unit = ()
 }
 
-trait SelfActivatedLayer {
-  // layer calls this when it wants to activate/deactivate
-  val activateAction: HBS
-  val deactivateAction: HBS
-  // all bindings when layer is ready
+/**
+ * Layer whose (de)activation is controlled by actions
+ */
+trait ActivatedLayer[+A <: HBS] {
+  val activateAction  : A
+  val deactivateAction: A
+}
+
+/**
+ * (De)activation is triggered by external actions
+ */
+trait ExtActivatedLayer extends ActivatedLayer[HBS]
+
+/**
+ * (De)activation is triggered by internal actions: must invoke them explicitly
+ */
+trait IntActivatedLayer extends ActivatedLayer[FakeAction]
+
+trait ListeningLayer {
+  // all bindings when layer is ready and listening
   val loadBindings: Seq[Binding[_,_,_]]
 }
 
@@ -165,16 +200,16 @@ object SimpleModeLayer {
 }
 
 
-// layer activated and deactivated by distinct actions
+// layer activated and deactivated by distinct externally invoked actions
 abstract class ModeActionLayer(
   val name: String,
   val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
-)(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer {
+)(implicit val ext: MonsterJamExt) extends ModeLayer with ExtActivatedLayer {
   override val activateAction: HBS = loadActions.activate
   override val deactivateAction: HBS = loadActions.deactivate
 
-  // activation actions invoked externally, no additional bindings to manage
-  override final val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
+  //// activation actions invoked externally, no additional bindings to manage
+  //override final val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
 }
 
 //object ModeActionLayer {
@@ -198,10 +233,11 @@ abstract class ModeButtonLayer(
   val name: String,
   val modeButton: JamOnOffButton,
   val gateMode: GateMode = GateMode.Auto
-)(implicit val ext: MonsterJamExt) extends ModeLayer with SelfActivatedLayer{
+)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   var isOn = false
   private var pressedAt: Instant = null
 
+  // For MBL (de)activateActions are internal, safe to call
   override final val activateAction: FakeAction = FakeAction(() => isOn = true)
   override final val deactivateAction: FakeAction = FakeAction(() => isOn = false)
 
@@ -212,15 +248,16 @@ abstract class ModeButtonLayer(
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
     SupBooleanB(modeButton.light.isOn, () => isOn),
-    HB(modeButton.button.pressedAction(), () => {
+    HB(modeButton.button.pressedAction, s"$name: mode button pressed", () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
         deactivateAction.invoke()
       } else
         activateAction.invoke()
-    }),
-    HB(modeButton.button.releasedAction(), () => gateMode match {
+    },
+      tracked = false),
+    HB(modeButton.button.releasedAction, s"$name: mode button released", () => gateMode match {
       case GateMode.Gate   => if (isOn) deactivateAction.invoke()
       case GateMode.Toggle => ()
       case GateMode.Auto   =>
@@ -230,7 +267,8 @@ abstract class ModeButtonLayer(
           if (operated || elapsed)
             deactivateAction.invoke()
         }
-    })
+    },
+      tracked = false)
   )
 }
 
@@ -246,10 +284,22 @@ object ModeButtonLayer {
 
 trait ModeLayerDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
-    ext.host.createAction(() => f(), () => name)
+    ext.host.createAction(() => {
+      ext.host.println(s"! $name")
+      f()
+    }, () => name)
+
+  def action(name: Supplier[String], f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
+    ext.host.createAction(() => {
+      ext.host.println(s"! ${name.get()}")
+      f()
+    }, name)
 
   def action(name: String, f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(f(_), () => name)
+
+  def action(name: Supplier[String], f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
+    ext.host.createAction(f(_), name)
 
   //implicit class PolyAction(a: HardwareAction)(implicit ext: MonsterJamExt) {
   //  def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
@@ -272,9 +322,9 @@ object ModeLayerDSL extends ModeLayerDSL
 
 object Graph {
   case class ModeNode(layer: ModeLayer) {
-    protected[Graph] val parents: mutable.HashSet[ModeNode] = mutable.HashSet.empty
+    protected[Graph] var parent: Option[ModeNode] = None
     protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty
-    protected[Graph] val modeBindings: mutable.Set[Binding[_, _, _]] = mutable.Set.empty
+    protected[Graph] val nodeBindings: mutable.Set[Binding[_, _, _]] = mutable.HashSet.empty
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
     protected[Graph] var isActive = false
     //override def hashCode(): Int = layer.name.hashCode()
@@ -293,8 +343,8 @@ object Graph {
   class ModeDGraph(edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
-    // All source elements currently bound
-    private val sourceMap: mutable.HashMap[Any, Map[Binding[_, _, _], ModeNode]] = mutable.HashMap.empty
+    // All source elements currently bound by us
+    private val sourceMap: mutable.HashMap[Any, mutable.HashSet[Binding[_, _, _]]] = mutable.HashMap.empty
 
 
     // Assemble graph
@@ -302,7 +352,12 @@ object Graph {
       bb.layers foreach { b =>
         val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
         val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
-        child.parents.add(parent)
+
+        child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
+        assert(child.parent.isEmpty || child.layer.name == "-^-")
+        child.parent = Some(parent)
+        //child.parents.add(parent)
+
         parent.children.add(child)
       }
     }
@@ -317,18 +372,30 @@ object Graph {
 
     // Synthesize layer bindings
     layerMap.values.foreach { node =>
-      node.modeBindings.addAll(node.layer.modeBindings ++ node.children.flatMap { child =>
+      val bindings = node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
-          case l: SelfActivatedLayer => l.loadBindings ++ Seq(
-            HB(l.activateAction, activateAction(child)),
-            HB(l.deactivateAction, deactivateAction(child)),
+          case l: ActivatedLayer[HBS] with ListeningLayer =>
+            ext.host.println("synthesizing load bindings for " + l.name)
+            l.loadBindings ++ Seq(
+              HB(l.activateAction, activateAction(child)),
+              HB(l.deactivateAction, deactivateAction(child)),
           )
-          case _ => Seq()
+          case _                     => Seq()
         }
-      })
+      }
+      val (managed, unmanaged) = bindings.partition(_.managed)
+
+      // bind unmanaged now
+      unmanaged.foreach(_.bind())
+
+      // bind managed later
+      node.nodeBindings.addAll(managed)
     }
 
-    val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parents.isEmpty)
+    // Establish ownership by propagating owner nodes to bindings
+    layerMap.values.foreach(node => node.nodeBindings.foreach(_.node = Some(node)))
+
+    val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parent.isEmpty)
     val exitNodes : Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
 
     // activate entry nodes
@@ -352,46 +419,53 @@ object Graph {
       // Deactivate exclusive
       exclusiveGroups.get(node)
         //.map(_ ++ node.parents) // also deactivate parents (greedy Exclusive)
-        .foreach(_.filter(_.isActive).foreach {n =>
-        ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
-        n.layer match {
-          case s:ModeButtonLayer => s.deactivateAction.invoke()
-          case _ => deactivate(node)
-        }
+        .foreach(_
+          .filter(_.isActive)
+          .filter(_ != node) // this really shouldn't happen unless the node didn't properly deactivate
+          .foreach { n =>
+            ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
+            n.layer match {
+              case s: IntActivatedLayer => s.deactivateAction.invoke()
+              case _                    => deactivate(n)
+            }
       })
 
-      node.layer.activate()
+      //node.layer.activate()
 
-      val bumpBindings: Iterable[(Binding[_, _, _], ModeNode)] = node.modeBindings
-        .flatMap(b => sourceMap.get(b.surfaceElem)).flatten
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.map(_._2).filter(_ != node)
+      val bumpBindings: Iterable[Binding[_, _, _]] = node.nodeBindings
+        .flatMap(b => sourceMap.get(b.surfaceElem)).flatten //.filter(_.node.get != node)
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.node).filter(_ != node)
 
       if (bumpNodes.nonEmpty)
         ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")
+
+      // node stays active?
+      //bumpNodes.foreach(deactivate)
 
       // remember for deactivation
       node.nodesToRestore.addAll(bumpNodes)
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
-      bumpBindings.foreach(_._1.clear())
-      node.modeBindings.foreach(_.bind())
+      bumpBindings.foreach({ b =>
+        //ext.host.println(s"${node.layer.name}: clearing binding for: ${b.layerName}")
+        //b.clear()
+        unbind(b)
+      })
+      node.nodeBindings.foreach(bind)
 
       // one layer overrides element bindings of another, so total replacement is ok
-      sourceMap.addAll(node.modeBindings
-        .map((_, node))
-        .groupBy(_._1.surfaceElem)
-        .view.mapValues(_.toMap)
+      sourceMap.addAll(node.nodeBindings
+        .groupBy(_.surfaceElem)
+        .view.mapValues(mutable.HashSet.from(_))
       )
       node.isActive = true
+      ext.host.println(s"-- activated ${node.layer.name} ---")
     }
 
     private def deactivate(node: ModeNode): Unit = {
       ext.host.println(s"deactivating node ${node.layer.name}")
-      node.layer.deactivate()
-      node.modeBindings.foreach { b =>
-        b.clear()
-        sourceMap.remove(b.surfaceElem)
-      }
+      //node.layer.deactivate()
+      node.nodeBindings.foreach(unbind)
 
       // restore base
       node.nodesToRestore.foreach(activate)
@@ -399,6 +473,18 @@ object Graph {
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
       node.isActive = false
+      ext.host.println(s"-- deactivated ${node.layer.name} ---")
+    }
+
+    def bind(binding: Binding[_,_,_]) = {
+      binding.bind()
+      sourceMap.getOrElseUpdate(binding.surfaceElem, mutable.HashSet.empty).add(binding)
+    }
+
+    def unbind(binding: Binding[_,_,_]) = {
+      //ext.host.println(s"unbinding for: ${binding.layerName}")
+      binding.clear()
+      sourceMap.get(binding.surfaceElem).foreach(_.remove(binding))
     }
   }
 }
