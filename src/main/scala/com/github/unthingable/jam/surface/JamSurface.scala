@@ -9,9 +9,9 @@ import com.github.unthingable.jam.surface
 
 /* Surface model with all the controls, wired to MIDI */
 
-class JamSurface(ext: MonsterJamExt) extends Util {
+class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
-  private def b(id: String) = JamOnOffButton(ext, ext.xmlMap.button(id))
+  private def b(id: String) = JamOnOffButton(ext.xmlMap.button(id))
 
   object Modifiers {
     var Shift: FakeButton = FakeButton()
@@ -43,8 +43,8 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   val auto = b("BtnAuto")
 
   object encoder {
-    val push: HardwareButton = JamButton(ext, ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems)).button
-    val touch: HardwareButton = JamButton(ext, ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems)).button
+    val push: HardwareButton = JamButton(ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems)).button
+    val touch: HardwareButton = JamButton(ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems)).button
     val turn: RelativeHardwareKnob = {
       val enc: MidiInfo = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
       val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
@@ -61,7 +61,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
 
     private def button(idx: Int) = {
       val info = dpadInfo(idx)
-      JamOnOffButton(ext, info)
+      JamOnOffButton(info)
     }
 
     val up: JamOnOffButton = button(1)
@@ -75,7 +75,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   val sceneButtons: Vector[JamRgbButton] = (1 to 8).map { idx =>
     val btn = ext.xmlMap.button(s"BtnScene${idx}")
     val btnLed = ext.xmlMap.led(s"BtnScene${idx}IDX")
-    surface.JamRgbButton(ext,
+    surface.JamRgbButton(
       infoB = btn,
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
@@ -86,14 +86,14 @@ class JamSurface(ext: MonsterJamExt) extends Util {
     ('A' to 'H').map { col =>
       val btnInfo = ext.xmlMap.button(s"Btn$col$row", ext.xmlMap.matrixElems)
       val ledInfo = ext.xmlMap.led(s"Btn$col${row}IDX", ext.xmlMap.matrixElems)
-      surface.JamRgbButton(ext, btnInfo, ledInfo)
+      surface.JamRgbButton(btnInfo, ledInfo)
     }.toVector
   }.toVector
 
   val groupButtons: Vector[JamRgbButton] = ('A' to 'H').map { idx =>
     val btn = ext.xmlMap.button(s"BtnGroup${idx}")
     val btnLed = ext.xmlMap.led(s"BtnGroup${idx}IDX")
-    surface.JamRgbButton(ext,
+    surface.JamRgbButton(
       infoB = btn,
       // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
       infoL = btnLed.copy(channel = btn.channel)
@@ -101,7 +101,7 @@ class JamSurface(ext: MonsterJamExt) extends Util {
   }.toVector.forindex(_.button.setIndexInGroup(_))
 
   // Touchstrips
-  val stripBank = StripBank(ext)
+  val stripBank = StripBank()(ext)
 
   // Main level meters are special
   object levelMeter {

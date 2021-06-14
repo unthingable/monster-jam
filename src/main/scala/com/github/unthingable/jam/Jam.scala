@@ -18,7 +18,7 @@ Behavior definition for surface controls
 
 class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
-  val j = new JamSurface(ext)
+  val j = new JamSurface()(ext)
 
   object GlobalMode {
     // These only set their isOn flags and nothing else
@@ -435,6 +435,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
+      bottom -> Exclusive(levelLayer, auxLayer),
     )
   }
 

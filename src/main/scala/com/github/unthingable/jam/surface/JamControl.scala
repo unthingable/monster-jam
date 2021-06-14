@@ -20,7 +20,7 @@ trait Light[L <: HardwareLight] { val light: L }
 trait RgbLight extends Light[MultiStateHardwareLight]
 trait OnOffLight extends Light[OnOffHardwareLight]
 
-case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
+case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
   val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
   val (on, off) = info.event match {
@@ -39,7 +39,7 @@ case class JamButton(ext: MonsterJamExt, info: MidiInfo) extends Button {
 }
 
 
-case class JamRgbLight(ext: MonsterJamExt, info: MidiInfo) extends RgbLight {
+case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight {
   import JamColorState._
   val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
   var updatedColorState: JamColorState = JamColorState.empty
@@ -81,7 +81,7 @@ object JamColorState {
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
 }
 
-case class JamOnOffLight(ext: MonsterJamExt, info: MidiInfo) {
+case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) {
   val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
   light.onUpdateHardware { () =>
     info.event match {
@@ -102,26 +102,26 @@ case class JamOnOffLight(ext: MonsterJamExt, info: MidiInfo) {
   light.isOn.setValue(false)
 }
 
-case class JamRgbButton(ext: MonsterJamExt, infoB: MidiInfo, infoL: MidiInfo) extends Button with RgbLight {
-  val jamButton: JamButton = JamButton(ext, infoB)
-  val jamLight: JamRgbLight = JamRgbLight(ext, infoL)
+case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJamExt) extends Button with RgbLight {
+  val jamButton: JamButton = JamButton(infoB)
+  val jamLight: JamRgbLight = JamRgbLight(infoL)
 
   val button: HardwareButton = jamButton.button
   val light: MultiStateHardwareLight = jamLight.light
   button.setBackgroundLight(light)
 }
 
-case class JamOnOffButton(ext: MonsterJamExt, info: MidiInfo) extends Button with OnOffLight {
-  val jamButton: JamButton = JamButton(ext, info)
-  val jamLight: JamOnOffLight = JamOnOffLight(ext, info)
+case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button with OnOffLight {
+  val jamButton: JamButton = JamButton(info)
+  val jamLight: JamOnOffLight = JamOnOffLight(info)
 
   val button: HardwareButton = jamButton.button
   val light: OnOffHardwareLight = jamLight.light
   button.setBackgroundLight(light)
 }
 
-case class JamTouchStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo, led: MidiInfo) extends Button {
-  val button: HardwareButton = JamButton(ext, touch).button
+case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
+  val button: HardwareButton = JamButton(touch).button
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
 
   // assume it's always CC
@@ -138,11 +138,14 @@ case class JamTouchStrip(ext: MonsterJamExt, touch: MidiInfo, slide: MidiInfo, l
   def clearOffsetCallback(): Unit = offsetCallback = _ => ()
 
   slider.value().addValueObserver(offsetCallback(_))
+
+  // such speedup
+  override def hashCode(): Int = touch.event.value
 }
 
-case class StripBank(ext: MonsterJamExt) extends Util {
+case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   val strips: Vector[JamTouchStrip] = ('A' to 'H').map { idx =>
-    JamTouchStrip(ext,
+    JamTouchStrip(
       touch = ext.xmlMap.button(s"CapTst$idx", ext.xmlMap.touchElems),
       slide = ext.xmlMap.knob(s"Tst$idx", ext.xmlMap.touchElems),
       led = ext.xmlMap.led(s"Tst${idx}IDX", ext.xmlMap.touchElems))
