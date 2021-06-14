@@ -8,6 +8,7 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
 
+import java.time.{Duration, Instant}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -23,6 +24,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     // These only set their isOn flags and nothing else
     val Clear    : ModeButtonLayer = ModeButtonLayer("clear", j.clear, modeBindings = Seq.empty, GateMode.Gate)
     val Duplicate: ModeButtonLayer = ModeButtonLayer("duplicate", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
+    val Select   : ModeButtonLayer = ModeButtonLayer("select", j.select, modeBindings = Seq.empty, GateMode.Gate)
   }
 
   // wire buttons
@@ -328,35 +330,52 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
           Seq(
             SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-            HB(btn.button.pressedAction(), "clipPress", () => handleClipPress(clip, clips)),
+            HB(btn.button.pressedAction(), s"clipPress $row:$col", () => handleClipPress(clip, clips)),
+            HB(btn.button.releasedAction(), s"clipRelease $row:$col", () => handleClipRelease(clip, clips)),
           )
         }
       } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
         //ext.host.println("boom")
-        source = null
+        source = None
       }, tracked = false, managed = false)
 
       // for duplication
-      private var source: ClipLauncherSlot = null
+      private var source   : Option[ClipLauncherSlot] = None
+      private var pressed  : Option[ClipLauncherSlot] = None
+      private var pressedAt: Instant = Instant.now() // initial value doesn't matter
 
       private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
-        if (GlobalMode.Clear.isOn) clip.deleteObject()
+        if (GlobalMode.Select.isOn) clip.select()
+        else if (GlobalMode.Clear.isOn) clip.deleteObject()
         else if (GlobalMode.Duplicate.isOn) {
-          if (source == null) source = clip
+          if (source.isEmpty) source = Some(clip)
           else {
-            if (clip != source) {
-              val point: InsertionPoint = clip.replaceInsertionPoint()
-              point.copySlotsOrScenes(source)
-            }
-            source = null
+            source.foreach(s => if (s != clip) clip.replaceInsertionPoint().copySlotsOrScenes(s))
+            source = None
           }
         }
-        else if (clip.isPlaying.get()) clips.stop()
-        else clip.launch()
+         else {
+          pressed = Some(clip)
+          pressedAt = Instant.now()
+        }
+      }
+
+      private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
+        if (pressed.isDefined) {
+          val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
+          if (elapsed)
+            clip.select()
+          else if (clip.isPlaying.get()) clips.stop()
+               else clip.launch()
+        }
+        pressed = None
       }
 
       private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
-        if (clip == source) JamColorState(JAMColorBase.WHITE * 4, if (j.Modifiers.blink) 3 else 1)
+        if (GlobalMode.Select.isOn && clip.isSelected.get())
+          JamColorState(JAMColorBase.WHITE * 4, 3)
+        else if (!GlobalMode.Select.isOn && source.contains(clip))
+          JamColorState(JAMColorBase.WHITE * 4, if (j.Modifiers.blink) 3 else 1)
         else
           JamColorState(
             clip.color().get(),
@@ -413,7 +432,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,
       bottom -> Coexist(globalQuant, loop, shiftMatrix, globalShift),
-      bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate),
+      bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
     )
