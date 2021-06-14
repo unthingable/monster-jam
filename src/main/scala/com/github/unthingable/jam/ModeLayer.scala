@@ -380,6 +380,12 @@ object Graph {
               HB(l.activateAction, activateAction(child)),
               HB(l.deactivateAction, deactivateAction(child)),
           )
+          case l: ActivatedLayer[HBS] =>
+            ext.host.println("synthesizing load bindings for " + l.name)
+            Seq(
+              HB(l.activateAction, activateAction(child)),
+              HB(l.deactivateAction, deactivateAction(child)),
+            )
           case _                     => Seq()
         }
       }

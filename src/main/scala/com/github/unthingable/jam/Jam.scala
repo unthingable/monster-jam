@@ -399,13 +399,20 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
     }
 
+    val globalShift = new ModeActionLayer("globalShift", loadActions = shiftLoadActions) {
+      val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
+      override val modeBindings: Seq[Binding[_, _, _]] = Seq(
+        HB(j.duplicate.button.pressedAction, "shift dup clip content", () => clip.duplicateContent())
+      )
+    }
+
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))
     val bottom = SimpleModeLayer("_|_", modeBindings = Seq.empty)
     new ModeDGraph(
       play -> top,
       navLayer -> Coexist(tempoLayer),
       sceneLayer -> top,
-      bottom -> Coexist(globalQuant, loop, shiftMatrix),
+      bottom -> Coexist(globalQuant, loop, shiftMatrix, globalShift),
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
