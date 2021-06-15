@@ -127,6 +127,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     }
   }
 
+  val panLayer = new ModeButtonLayer("strips pan", j.level, gateMode = GateMode.OneWay) {
+    override val modeBindings: Seq[Binding[_, _, _]] = Seq.empty
+  }
+
   val auxLayer = new ModeButtonLayer("strips aux", j.aux, gateMode = GateMode.OneWay) with Util {
     override val modeBindings: Seq[Binding[_, _, _]] = Seq.empty
       //j.stripBank.strips.zipWithIndex.map { case (strip, idx) =>
@@ -151,6 +155,22 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     GateMode.Gate,
     silent = true
   )
+
+  val levelCycle = new ModeCycleLayer("level", j.level, GateMode.OneWay) {
+    def ml(s: String)(implicit e: MonsterJamExt) = new ModeLayer with IntActivatedLayer {
+      override          val name            : String                = s
+      override          val modeBindings    : Seq[Binding[_, _, _]] = Seq()
+      override          val activateAction  : FakeAction            = FakeAction()
+      override          val deactivateAction: FakeAction            = FakeAction()
+      override implicit val ext             : MonsterJamExt         = e
+    }
+
+    override val subModes = Seq(
+      ml("foo"),
+      ml("bar"),
+      ml("baz")
+    )
+  }
 
   // this behavior ls always the same, can wire it here directly without creating a mode layer
   {
@@ -480,6 +500,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))
     val bottom = SimpleModeLayer("_|_", modeBindings = Seq.empty)
+    val unmanaged = SimpleModeLayer("_x_", modeBindings = Seq.empty)
     new ModeDGraph(
       init = Seq(levelLayer),
       play -> top,
@@ -489,8 +510,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
-      bottom -> Exclusive(levelLayer, auxLayer),
+      bottom -> Exclusive(levelCycle, auxLayer),
       bottom -> Coexist(auxGate),
+      //bottom -> Cycle(levelLayer, panLayer),
+      bottom -> Coexist(unmanaged),
     )
   }
 

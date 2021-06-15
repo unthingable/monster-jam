@@ -116,17 +116,8 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   // For MBL (de)activateActions are internal, safe to call
-  //override final val activateAction: FakeAction = FakeAction(() => isOn = true)
-  //override final val deactivateAction: FakeAction = FakeAction(() => isOn = false)
-
   override final val activateAction: FakeAction = FakeAction()
   override final val deactivateAction: FakeAction = FakeAction()
-
-  //override final val activateAction: FakeAction = FakeAction(()=>())
-  //override final val deactivateAction: FakeAction = FakeAction(()=>())
-
-  //override final val activateAction: FakeAction = FakeAction(() => activate()) // better be idempotent
-  //override final val deactivateAction: FakeAction = FakeAction(() => deactivate())
 
   override def activate(): Unit = {
     ext.host.println(s"$name: activating from inside!")
@@ -181,6 +172,54 @@ object ModeButtonLayer {
   }
 }
 
+abstract class ModeCycleLayer(
+  val name: String,
+  val modeButton: JamOnOffButton,
+  val gateMode: GateMode,
+)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
+
+  val subModes: Seq[ModeLayer with IntActivatedLayer]
+
+  var isOn: Boolean = false
+  var currentMode: Option[ModeLayer with IntActivatedLayer] = None
+
+  override final val activateAction  : FakeAction = FakeAction()
+  override final val deactivateAction: FakeAction = FakeAction()
+
+  override def activate(): Unit = {
+    super.activate()
+    isOn = true
+    currentMode.foreach(_.activateAction.invoke())
+  }
+
+  override def deactivate(): Unit = {
+    currentMode.foreach(_.deactivateAction.invoke())
+    isOn = false
+    super.deactivate()
+  }
+
+  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
+    HB(modeButton.button.pressedAction(), s"$name cycle load MB pressed", () => activateAction.invoke()),
+    SupBooleanB(modeButton.light.isOn, () => isOn)
+  )
+
+  override val modeBindings: Seq[Binding[_, _, _]] = Seq(
+    HB(modeButton.button.pressedAction(), s"$name cycle", () => cycle())
+  )
+
+  def cycle(): Unit = {
+    currentMode.foreach(_.deactivateAction.invoke())
+    currentMode = currentMode match {
+      case Some(l) =>
+        val idx = subModes.indexOf(l, 0)
+        Some(subModes((idx + 1) % subModes.length))
+      case None => subModes.headOption
+    }
+    ext.host.println(s"activating submode ${currentMode.get.name}")
+    currentMode.foreach(_.activateAction.invoke())
+  }
+}
+
 object Graph {
   case class ModeNode(layer: ModeLayer) {
     protected[Graph] var parent: Option[ModeNode] = None
@@ -197,7 +236,7 @@ object Graph {
   // A layer deactivates all others
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
   // Repeated activation cycles layers (?)
-  case class Cycle(override val layers: ModeLayer*) extends LayerGroup(layers)
+  //case class Cycle(override val layers: ModeLayer*) extends LayerGroup(layers)
   //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
   // Graph manages all the bindings
@@ -210,23 +249,43 @@ object Graph {
 
     // Assemble graph
     edges foreach { case (a, bb) =>
-      bb.layers foreach { b =>
-        val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
-        val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
+      //bb match {
+      //  case Cycle(layers@_*) if layers.length > 1 =>
+      //    val initParent = layerMap.getOrElseUpdate(a, ModeNode(a))
+      //    val first = layers.head
+      //    val initChild  = layerMap.getOrElseUpdate(first, ModeNode(first))
+      //    val lastChild = layers.foldLeft(initParent) { case (p, layer) =>
+      //      val layerNode = layerMap.getOrElseUpdate(layer, ModeNode(layer))
+      //      layerNode.parent = Some(p)
+      //      p.children.add(layerNode)
+      //      layerNode
+      //    }
+      //    lastChild.children.add(initChild)
+      //  case _                =>
+          bb.layers foreach { b =>
+            val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
+            val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
 
-        child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
-        assert(child.parent.isEmpty || child.layer.name == "-^-")
-        child.parent = Some(parent)
-        //child.parents.add(parent)
+            child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
+            assert(child.parent.isEmpty || child.layer.name == "-^-")
+            child.parent = Some(parent)
+            //child.parents.add(parent)
 
-        parent.children.add(child)
-      }
+            parent.children.add(child)
+          }
+
+    }
+
+    layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes).foreach { l =>
+      ext.host.println(s"adding submode ${l.name}")
+      layerMap.update(l, ModeNode(l))
     }
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
       edges.map(_._2).partitionMap {
         case l: Exclusive => Left(l.layers.flatMap(layerMap.get).toSet)
+        //case l: Cycle     => Left(l.layers.flatMap(layerMap.get).toSet)
         case _            => Right(())
       }._1.flatMap(s => s.map(_ -> s)).toMap
     }
@@ -249,7 +308,18 @@ object Graph {
             )
           case _                     => Seq()
         }
-      }
+      } ++ (node.layer match {
+        // ModeCycleLayer is its submodes' parent
+        case layer: ModeCycleLayer => layer.subModes.flatMap { sm =>
+          val smn = layerMap(sm)
+          ext.host.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
+          Seq(
+            HB(sm.activateAction, s"${node.layer.name}->${sm.name} syn act", activateAction(smn), tracked = false),
+            HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
+          )
+        }
+        case _                     => Seq()
+      })
       val (managed, unmanaged) = bindings.partition(_.managed)
 
       // bind unmanaged now
@@ -300,8 +370,6 @@ object Graph {
             //}
       })
 
-      node.layer.activate()
-
       case class Bumped(bumped: mutable.Set[Binding[_,_,_]], bumper: Binding[_,_,_])
       val bumpBindings: Iterable[Bumped] = node.nodeBindings.filter(b => isFakeAction(b.surfaceElem))
         .flatMap(b => sourceMap.get(b.surfaceElem).map(Bumped(_, b))) //.flatten //.filter(_.node.get != node)
@@ -327,7 +395,10 @@ object Graph {
         //b.clear()
         unbind(b)
       })
+
       node.nodeBindings.foreach(bind)
+
+      node.layer.activate()
 
       // one layer overrides element bindings of another, so total replacement is ok
       sourceMap.addAll(node.nodeBindings
