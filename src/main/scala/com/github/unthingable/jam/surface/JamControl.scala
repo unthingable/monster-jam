@@ -183,13 +183,22 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
 }
 
-// because real HardwareButtons are not pressable programmatically
-case class FakeAction(protected val invokeCallback:() => Unit = () => ())
+/**
+ * An explicitly invokable action/HardwareBindingSource. Use to construct hardware controls or as generic
+ * subscribable action.
+ *
+ * Being a HardwareBindingSource allows this to be used anywhere a real action is required.
+ *
+ * @param invokeCallback always called when action is invoked, never cleared
+ * @param masquerade true when representing a real button
+ */
+case class FakeAction(protected val invokeCallback:() => Unit = () => (), masquerade: Boolean = false)
   extends HardwareBindingSource[HardwareActionBinding] with Util {
   val callbacks = mutable.LinkedHashSet.empty[HardwareActionBindable]
   def invoke(): Unit = {
     invokeCallback()
     callbacks.zipWithIndex.foreach { case (f, idx) =>
+      assert(idx < callbacks.size)
       Util.println(s"calling $idx of ${callbacks.size}")
       f.invoke()
     }
@@ -222,6 +231,6 @@ case class FakeAction(protected val invokeCallback:() => Unit = () => ())
 }
 case class FakeButton() {
   var isPressed: Boolean = false
-  val pressedAction: FakeAction = FakeAction(() => isPressed = true)
-  val releasedAction: FakeAction = FakeAction(() => isPressed = false)
+  val pressedAction: FakeAction = FakeAction(() => isPressed = true, masquerade = true)
+  val releasedAction: FakeAction = FakeAction(() => isPressed = false, masquerade = true)
 }

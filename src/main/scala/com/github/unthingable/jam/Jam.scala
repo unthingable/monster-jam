@@ -16,7 +16,7 @@ import scala.collection.mutable.ArrayBuffer
 Behavior definition for surface controls
  */
 
-class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
+class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   val j = new JamSurface()(ext)
 
@@ -69,13 +69,13 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
 
     val touchR = ext.host.createAction(() => strip.clearOffsetCallback(), () => "shift")
 
-    j.Modifiers.Shift.pressedAction.addBinding(action("shit-strips pressed", { () =>
+    j.Modifiers.Shift.pressedAction.addBinding(action(s"shit-strips $i pressed", { () =>
       strip.slider.clearBindings()
       strip.button.pressedAction().setBinding(touchP)
       strip.button.releasedAction().setBinding(touchR)
       ()
     }))
-    j.Modifiers.Shift.releasedAction.addBinding(action("shift-strips released", { () =>
+    j.Modifiers.Shift.releasedAction.addBinding(action(s"shift-strips $i released", { () =>
       strip.clearOffsetCallback()
       strip.button.pressedAction().clearBindings()
       strip.button.releasedAction().clearBindings()
@@ -118,7 +118,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     override def activate(): Unit = {
       super.activate()
       trackTrackColor = true
-      ext.host.println("+++ activated")
+      //ext.host.println("+++ activated")
     }
 
     override def deactivate(): Unit = {
@@ -201,15 +201,15 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
     }
 
-    val navLayer = SimpleModeLayer("position",
-      Seq(HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+    val position = SimpleModeLayer("position",
+      Seq(HB(j.encoder.turn, "position turn", ext.host.createRelativeHardwareControlStepTarget(
         ext.transport.fastForwardAction(),
         ext.transport.rewindAction()))))
 
     val tempoLayer = ModeButtonLayer("tempo",
       j.tempo,
       Seq(
-        HB(j.encoder.turn, ext.host.createRelativeHardwareControlStepTarget(
+        HB(j.encoder.turn, "tempo turn", ext.host.createRelativeHardwareControlStepTarget(
           action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
           action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
 
@@ -244,7 +244,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
       }
 
       override val modeBindings = Seq(
-        HB(j.play.button.pressedAction, playPressAction, tracked = false),
+        HB(j.play.button.pressedAction, "play pressed", playPressAction, tracked = false),
         SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
       )
     }
@@ -279,7 +279,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
         Seq(
           SupColorB(sceneButton.light, () =>
             if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-          HB(sceneButton.button.pressedAction(), action(s"grid $idx", () => {
+          HB(sceneButton.button.pressedAction(), "global quant grid", action(s"grid $idx", () => {
             if (quant.get == enumValues(idx))
               quant.set("none")
             else
@@ -475,7 +475,7 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
     new ModeDGraph(
       init = Seq(levelLayer),
       play -> top,
-      navLayer -> Coexist(tempoLayer),
+      position -> Coexist(tempoLayer),
       sceneLayer -> top,
       bottom -> Coexist(globalQuant, loop, shiftMatrix, globalShift),
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
@@ -486,5 +486,5 @@ class Jam(implicit ext: MonsterJamExt) extends ModeLayerDSL {
   }
 
   // for now
-  ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 200)
+  //ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 200)
 }
