@@ -144,6 +144,14 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     }
   }
 
+  val auxGate = ModeButtonLayer("strip aux gate", j.aux,
+    j.groupButtons.zipWithIndex.map { case (btn, idx) =>
+      HB(btn.button.pressedAction(), s"aux select $idx", () => ())
+    },
+    GateMode.Gate,
+    silent = true
+  )
+
   // this behavior ls always the same, can wire it here directly without creating a mode layer
   {
     // wire dpad
@@ -482,6 +490,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
       bottom -> Exclusive(levelLayer, auxLayer),
+      bottom -> Coexist(auxGate),
     )
   }
 

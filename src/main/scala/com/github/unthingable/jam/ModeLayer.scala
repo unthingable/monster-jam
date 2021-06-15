@@ -109,7 +109,8 @@ object GateMode {
 abstract class ModeButtonLayer(
   val name: String,
   val modeButton: JamOnOffButton,
-  val gateMode: GateMode = GateMode.Auto
+  val gateMode: GateMode = GateMode.Auto,
+  val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   var isOn = false
   private var pressedAt: Instant = null
@@ -143,7 +144,6 @@ abstract class ModeButtonLayer(
   }._1
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    SupBooleanB(modeButton.light.isOn, () => isOn),
     HB(modeButton.button.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
@@ -166,14 +166,16 @@ abstract class ModeButtonLayer(
         }
     },
       tracked = false)
-  )
+  ) ++ (if (!silent) Seq(SupBooleanB(modeButton.light.isOn, () => isOn)) else Seq())
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]], gateMode: GateMode = GateMode.Auto)
+  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
+    gateMode: GateMode = GateMode.Auto,
+    silent: Boolean = false)
     (implicit ext: MonsterJamExt): ModeButtonLayer = {
     val x = modeBindings
-    new ModeButtonLayer(name, modeButton, gateMode) {
+    new ModeButtonLayer(name, modeButton, gateMode, silent) {
       override val modeBindings: Seq[Binding[_, _, _]] = x
     }
   }
