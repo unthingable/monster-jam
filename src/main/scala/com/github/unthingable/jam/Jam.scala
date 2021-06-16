@@ -269,12 +269,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
     }
 
-    val shiftLoadActions: LoadActions = LoadActions(
-      activate = j.Modifiers.Shift.pressedAction,
-      deactivate = j.Modifiers.Shift.releasedAction
-    )
-
-    val loop = new ModeActionLayer("loop", loadActions = shiftLoadActions) {
+    val loop = new ModeButtonLayer("loop", j.Modifiers.Shift, GateMode.Gate) {
       val loop = ext.transport.isArrangerLoopEnabled
       loop.markInterested()
 
@@ -284,11 +279,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
     }
 
-    val globalQuant = new ModeActionLayer("globalQuant",
-      loadActions = LoadActions(
-        activate = j.grid.pressedAction,
-        deactivate = j.grid.releasedAction
-      )
+    val globalQuant = new ModeButtonLayer("globalQuant",
+      modeButton = j.grid,
+      gateMode = GateMode.Gate
     ) {
       val quant = ext.transport.defaultLaunchQuantization()
       quant.markInterested()
@@ -458,7 +451,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     /**
      * Shift matrix row (like Moss)
      */
-    val shiftMatrix = new ModeActionLayer("shiftMatrix", loadActions = shiftLoadActions) {
+    val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Modifiers.Shift, GateMode.Gate) {
       val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
       override val modeBindings: Seq[Binding[_, _, _]] = Seq(
         (JAMColorBase.RED, () => ext.application.undo()),
@@ -482,7 +475,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
-    val globalShift = new ModeActionLayer("globalShift", loadActions = shiftLoadActions) {
+    val globalShift = new ModeButtonLayer("globalShift", j.Modifiers.Shift, GateMode.Gate) {
       val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
       override val modeBindings: Seq[Binding[_, _, _]] = Seq(
         HB(j.duplicate.pressedAction, "shift dup clip content", () => clip.duplicateContent())

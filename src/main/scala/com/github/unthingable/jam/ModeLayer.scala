@@ -77,29 +77,6 @@ object SimpleModeLayer {
   }
 }
 
-
-// layer activated and deactivated by distinct externally invoked actions
-abstract class ModeActionLayer(
-  val name: String,
-  val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
-)(implicit val ext: MonsterJamExt) extends ModeLayer with ExtActivatedLayer {
-  override val activateAction: HBS = loadActions.activate
-  override val deactivateAction: HBS = loadActions.deactivate
-
-  //// activation actions invoked externally, no additional bindings to manage
-  //override final val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
-}
-
-//object ModeActionLayer {
-//  def apply(name: String, modeBindings: Seq[Binding[_, _, _]], loadActions: LoadActions)
-//    (implicit ext: MonsterJamExt): ModeActionLayer = {
-//    val x = modeBindings
-//    new ModeActionLayer(name, loadActions) {
-//      override val modeBindings: Seq[Binding[_, _, _]] = x
-//    }
-//  }
-//}
-
 sealed trait GateMode
 object GateMode {
   case object Gate extends GateMode
