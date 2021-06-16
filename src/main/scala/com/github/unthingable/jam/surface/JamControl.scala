@@ -3,10 +3,13 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
+import com.github.unthingable.jam.HB
+import com.github.unthingable.jam.HB.HBS
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
 import scala.collection.mutable
+import scala.language.implicitConversions
 import scala.util.Try
 
 /*
@@ -15,13 +18,21 @@ Jam controls, self-wired to midi
 
 sealed trait JamControl
 
-trait Button extends JamControl { val button: HardwareButton }
+
+trait Button extends JamControl {
+  val pressedAction: HBS
+
+  val releasedAction: HBS
+
+  val isPressed: () => Boolean
+}
 trait Light[L <: HardwareLight] { val light: L }
 trait RgbLight extends Light[MultiStateHardwareLight]
 trait OnOffLight extends Light[OnOffHardwareLight]
+trait OnOffButton extends Button with OnOffLight
 
 case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
-  val button: HardwareButton = ext.hw.createHardwareButton(info.id)
+  protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
   val (on, off) = info.event match {
     case CC(cc) => (
@@ -36,6 +47,11 @@ case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button
 
   button.pressedAction.setActionMatcher(on)
   button.releasedAction.setActionMatcher(off)
+  button.isPressed.markInterested()
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
 
@@ -106,22 +122,30 @@ case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJ
   val jamButton: JamButton = JamButton(infoB)
   val jamLight: JamRgbLight = JamRgbLight(infoL)
 
-  val button: HardwareButton = jamButton.button
+  protected[surface] val button: HardwareButton = jamButton.button
   val light: MultiStateHardwareLight = jamLight.light
   button.setBackgroundLight(light)
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
-case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button with OnOffLight {
+case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends OnOffButton {
   val jamButton: JamButton = JamButton(info)
   val jamLight: JamOnOffLight = JamOnOffLight(info)
 
-  val button: HardwareButton = jamButton.button
+  protected[surface] val button: HardwareButton = jamButton.button
   val light: OnOffHardwareLight = jamLight.light
   button.setBackgroundLight(light)
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
 case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
-  val button: HardwareButton = JamButton(touch).button
+  protected[surface] val button: HardwareButton = JamButton(touch).button
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
 
   // assume it's always CC
@@ -138,6 +162,10 @@ case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implic
   def clearOffsetCallback(): Unit = offsetCallback = _ => ()
 
   slider.value().addValueObserver(offsetCallback(_))
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 
   // such speedup
   override def hashCode(): Int = touch.event.value
@@ -199,7 +227,7 @@ case class FakeAction(protected val invokeCallback:() => Unit = () => (), masque
     invokeCallback()
     callbacks.zipWithIndex.foreach { case (f, idx) =>
       assert(idx < callbacks.size)
-      Util.println(s"calling $idx of ${callbacks.size}")
+      //Util.println(s"calling $idx of ${callbacks.size}")
       f.invoke()
     }
   }

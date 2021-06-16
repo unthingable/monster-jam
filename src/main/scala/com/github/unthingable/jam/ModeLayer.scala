@@ -5,7 +5,7 @@ import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueCha
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.BindingDSL._
-import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
+import com.github.unthingable.jam.surface.{FakeAction, OnOffButton}
 
 import java.time.{Duration, Instant}
 import java.util.function.{BooleanSupplier, Supplier}
@@ -110,7 +110,7 @@ object GateMode {
 
 abstract class ModeButtonLayer(
   val name: String,
-  val modeButton: JamOnOffButton,
+  val modeButton: OnOffButton,
   val gateMode: GateMode = GateMode.Auto,
   val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
@@ -137,7 +137,7 @@ abstract class ModeButtonLayer(
   }._1
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
+    HB(modeButton.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -147,7 +147,7 @@ abstract class ModeButtonLayer(
         activateAction.invoke()
     },
       tracked = false),
-    HB(modeButton.button.releasedAction, s"$name: mode button released", () => gateMode match {
+    HB(modeButton.releasedAction, s"$name: mode button released", () => gateMode match {
       case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
@@ -163,7 +163,7 @@ abstract class ModeButtonLayer(
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
+  def apply(name: String, modeButton: OnOffButton, modeBindings: Seq[Binding[_, _, _]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false)
     (implicit ext: MonsterJamExt): ModeButtonLayer = {
@@ -186,7 +186,7 @@ class SubModeLayer(
 
 abstract class ModeCycleLayer(
   val name: String,
-  val modeButton: JamOnOffButton,
+  val modeButton: OnOffButton,
   val gateMode: GateMode, // maybe TODO
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
@@ -212,12 +212,12 @@ abstract class ModeCycleLayer(
   }
 
   override val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction(), s"$name cycle load MB pressed", () => activateAction.invoke()),
+    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => activateAction.invoke()),
     SupBooleanB(modeButton.light.isOn, () => isOn)
   )
 
   override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction(), s"$name cycle", () => cycle())
+    HB(modeButton.pressedAction, s"$name cycle", () => cycle())
   )
 
   def cycle(): Unit = {

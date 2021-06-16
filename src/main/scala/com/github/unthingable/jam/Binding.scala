@@ -21,7 +21,7 @@ trait Named {
 }
 
 sealed trait Binding[S, T, I] extends Clearable {
-  def bind(): Unit
+  def bind(): Unit // watch out for idempotence
   def source: S
   def target: T
 
@@ -58,22 +58,29 @@ case class HB(source: HBS, name: String, target: HardwareBindable,
   extends OutBinding[HBS, HardwareBindable] with Named {
 
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
+  var isActive = false
 
-  override def bind(): Unit = bindings.addAll(
-    Seq(
-      source.addBinding(target)
-    ) ++ (if (tracked)
-            operatedActions
-              .find(source.canBindTo)
-              .map(source.addBinding)
-          else Seq.empty)
-  )
+  override def bind(): Unit = {
+    //assert(!isActive)
+    if (!isActive)
+      bindings.addAll(
+        Seq(
+          source.addBinding(target)
+        ) ++ (if (tracked)
+                operatedActions
+                  .find(source.canBindTo)
+                  .map(source.addBinding)
+              else Seq.empty)
+      )
+    isActive = true
+  }
 
   override def clear(): Unit = {
     bindings.foreach(_.removeBinding())
     bindings.clear()
     //source.clearBindings() // one of these is probably unnecessary
     wasOperated = false
+    isActive = false
   }
 
   private val operatedActions = Seq(
