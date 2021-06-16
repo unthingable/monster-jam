@@ -175,7 +175,7 @@ object ModeButtonLayer {
 abstract class ModeCycleLayer(
   val name: String,
   val modeButton: JamOnOffButton,
-  val gateMode: GateMode,
+  val gateMode: GateMode, // maybe TODO
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
   val subModes: Seq[ModeLayer with IntActivatedLayer]

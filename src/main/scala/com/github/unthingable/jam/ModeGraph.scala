@@ -17,13 +17,10 @@ object Graph {
   }
 
   sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
-  // Layers activate and deactivate as they please
+  // Layers activate and deactivate as they please (the default container)
   case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
   // A layer deactivates all others
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
-  // Repeated activation cycles layers (?)
-  //case class Cycle(override val layers: ModeLayer*) extends LayerGroup(layers)
-  //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
   // Graph manages all the bindings
   class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
@@ -35,19 +32,6 @@ object Graph {
 
     // Assemble graph
     edges foreach { case (a, bb) =>
-      //bb match {
-      //  case Cycle(layers@_*) if layers.length > 1 =>
-      //    val initParent = layerMap.getOrElseUpdate(a, ModeNode(a))
-      //    val first = layers.head
-      //    val initChild  = layerMap.getOrElseUpdate(first, ModeNode(first))
-      //    val lastChild = layers.foldLeft(initParent) { case (p, layer) =>
-      //      val layerNode = layerMap.getOrElseUpdate(layer, ModeNode(layer))
-      //      layerNode.parent = Some(p)
-      //      p.children.add(layerNode)
-      //      layerNode
-      //    }
-      //    lastChild.children.add(initChild)
-      //  case _                =>
       bb.layers foreach { b =>
         val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
         val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
@@ -55,28 +39,25 @@ object Graph {
         child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
         assert(child.parent.isEmpty || child.layer.name == "-^-")
         child.parent = Some(parent)
-        //child.parents.add(parent)
-
         parent.children.add(child)
       }
-
     }
 
-    layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes).foreach { l =>
-      ext.host.println(s"adding submode ${l.name}")
-      layerMap.update(l, ModeNode(l))
-    }
+    (init ++ layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes))
+      .foreach { l =>
+        ext.host.println(s"adding submode ${l.name}")
+        layerMap.update(l, ModeNode(l))
+      }
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
       edges.map(_._2).partitionMap {
         case l: Exclusive => Left(l.layers.flatMap(layerMap.get).toSet)
-        //case l: Cycle     => Left(l.layers.flatMap(layerMap.get).toSet)
         case _            => Right(())
       }._1.flatMap(s => s.map(_ -> s)).toMap
     }
 
-    // Synthesize layer bindings
+    // Synthesize node bindings
     layerMap.values.foreach { node =>
       val bindings = node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
@@ -123,6 +104,7 @@ object Graph {
 
     // activate entry nodes
     entryNodes.foreach(activate)
+
     // activate init layers
     init.flatMap(layerMap.get).foreach(activate)
 
@@ -163,10 +145,6 @@ object Graph {
 
       if (bumpNodes.nonEmpty) {
         ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")
-        //bumpBindings.foreach { b =>
-        //  ext.host.println(s"bumper: ${b.bumper.toString}")
-        //  b.bumped.foreach(bb => ext.host.println(bb.toString))
-        //}
       }
 
       // node stays active?
@@ -176,11 +154,7 @@ object Graph {
       node.nodesToRestore.addAll(bumpNodes)
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
-      bumpBindings.flatMap(_.bumped).foreach({ b =>
-        //ext.host.println(s"${node.layer.name}: clearing binding for: ${b.layerName}")
-        //b.clear()
-        unbind(b)
-      })
+      bumpBindings.flatMap(_.bumped).foreach(unbind)
 
       node.nodeBindings.foreach(bind)
 
