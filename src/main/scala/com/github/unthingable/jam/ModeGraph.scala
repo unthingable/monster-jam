@@ -33,8 +33,8 @@ object Graph {
     // Assemble graph
     edges foreach { case (a, bb) =>
       bb.layers foreach { b =>
-        val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
-        val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
+        val child  = indexLayer(b)
+        val parent = indexLayer(a)
 
         child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
         assert(child.parent.isEmpty || child.layer.name == "-^-")
@@ -46,7 +46,7 @@ object Graph {
     (init ++ layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes))
       .foreach { l =>
         ext.host.println(s"adding submode ${l.name}")
-        layerMap.update(l, ModeNode(l))
+        indexLayer(l)
       }
 
     // Build exclusive groups
@@ -107,6 +107,12 @@ object Graph {
 
     // activate init layers
     init.flatMap(layerMap.get).foreach(activate)
+
+    def indexLayer(l: ModeLayer): ModeNode = {
+      // make sure we didn't reuse a layer name
+      assert(!layerMap.get(l).exists(_.layer.name != l.name), s"Layer name collision: ${l.name}")
+      layerMap.getOrElseUpdate(l, ModeNode(l))
+    }
 
     def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} activate", () => {
       activate(node)

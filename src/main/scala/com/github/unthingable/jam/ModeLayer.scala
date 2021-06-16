@@ -35,6 +35,8 @@ trait ModeLayer {
   // called when layer is activated/deactivated by the container
   def activate(): Unit = ()
   def deactivate(): Unit = ()
+
+  override def hashCode(): Int = name.hashCode
 }
 
 /**
@@ -172,16 +174,26 @@ object ModeButtonLayer {
   }
 }
 
+class SubModeLayer(
+  val name: String
+)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer {
+  override val modeBindings: Seq[Binding[_, _, _]] = Seq()
+
+  override final val activateAction  : FakeAction = FakeAction()
+  override final val deactivateAction: FakeAction = FakeAction()
+
+}
+
 abstract class ModeCycleLayer(
   val name: String,
   val modeButton: JamOnOffButton,
   val gateMode: GateMode, // maybe TODO
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
-  val subModes: Seq[ModeLayer with IntActivatedLayer]
+  val subModes: Seq[SubModeLayer]
 
   var isOn: Boolean = false
-  var currentMode: Option[ModeLayer with IntActivatedLayer] = None
+  var currentMode: Option[SubModeLayer] = None
 
   override final val activateAction  : FakeAction = FakeAction()
   override final val deactivateAction: FakeAction = FakeAction()

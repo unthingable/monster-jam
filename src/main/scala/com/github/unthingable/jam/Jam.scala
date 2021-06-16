@@ -157,18 +157,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   )
 
   val levelCycle = new ModeCycleLayer("level", j.level, GateMode.OneWay) {
-    def ml(s: String)(implicit e: MonsterJamExt) = new ModeLayer with IntActivatedLayer {
-      override          val name            : String                = s
-      override          val modeBindings    : Seq[Binding[_, _, _]] = Seq()
-      override          val activateAction  : FakeAction            = FakeAction()
-      override          val deactivateAction: FakeAction            = FakeAction()
-      override implicit val ext             : MonsterJamExt         = e
-    }
-
     override val subModes = Seq(
-      ml("foo"),
-      ml("bar"),
-      ml("baz")
+      new SubModeLayer("foo"),
+      new SubModeLayer("bar"),
+      new SubModeLayer("baz")
     )
   }
 
