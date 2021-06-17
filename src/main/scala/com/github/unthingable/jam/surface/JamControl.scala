@@ -187,17 +187,17 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
 
-  def setColor(idx: Int, color: Int): Unit = {
+  def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
     colors.update(idx, color)
-    flushColors()
+    if (flush) flushColors()
   }
-  def setValue(idx: Int, value: Int): Unit = {
+  def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {
     values.update(idx, value)
-    flushValues()
+    if (flush) flushValues()
   }
-  def setActive(idx: Int, value: Boolean): Unit = {
+  def setActive(idx: Int, value: Boolean, flush: Boolean = true): Unit = {
     active.update(idx, value)
-    flushColors()
+    if (flush) flushColors()
   }
 
   def flushColors(): Unit =

@@ -57,7 +57,10 @@ trait ExtActivatedLayer extends ActivatedLayer[HBS]
 /**
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
-trait IntActivatedLayer extends ActivatedLayer[FakeAction]
+trait IntActivatedLayer extends ActivatedLayer[FakeAction] {
+  override final val activateAction  : FakeAction = FakeAction()
+  override final val deactivateAction: FakeAction = FakeAction()
+}
 
 trait ListeningLayer {
   // all bindings when layer is ready and listening
@@ -94,10 +97,6 @@ abstract class ModeButtonLayer(
   val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   private var pressedAt: Instant = null
-
-  // For MBL (de)activateActions are internal, safe to call
-  override final val activateAction: FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
 
   private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
     case b: HB => Left(b)
@@ -146,10 +145,6 @@ class SubModeLayer(
   val name: String
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer {
   override val modeBindings: Seq[Binding[_, _, _]] = Seq()
-
-  override final val activateAction  : FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
-
 }
 
 abstract class ModeCycleLayer(
@@ -161,9 +156,6 @@ abstract class ModeCycleLayer(
   val subModes: Seq[SubModeLayer]
 
   var currentMode: Option[SubModeLayer] = None
-
-  override final val activateAction  : FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
 
   override def activate(): Unit = {
     super.activate()
@@ -177,7 +169,7 @@ abstract class ModeCycleLayer(
   }
 
   override val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => activateAction.invoke()),
+    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
     SupBooleanB(modeButton.light.isOn, () => isOn)
   )
 

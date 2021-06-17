@@ -5,6 +5,7 @@ import com.bitwig.extension.callback.ColorValueChangedCallback
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
 
@@ -46,9 +47,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   // wire strips, they are special
   j.stripBank.flushColors()
 
-  class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter) extends SubModeLayer(name) {
-    val sliderParams: Vector[Parameter] = j.stripBank.strips.indices.map(i => param(obj(i))).toVector
+  abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
+    extends SubModeLayer(name) with Util {
     val proxies     : Seq[P]            = j.stripBank.strips.indices.map(obj).toVector
+    val sliderParams: Vector[Parameter] = proxies.map(param).toVector
+    def barMode     : BarMode
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
       val strip: JamTouchStrip = j.stripBank.strips(idx)
@@ -100,7 +103,19 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
       sliderParams(idx).value().markInterested()
-      sliderParams(idx).value().addValueObserver(128, j.stripBank.setValue(idx, _)) // move fader dot
+      sliderParams(idx).value().addValueObserver(128, v =>
+        if (isOn)
+          if (barMode == BarMode.DUAL)
+            j.stripBank.setValue(idx, v) // move fader dot
+          else
+            strip.update(v))
+
+      proxy match {
+        case channel: Channel =>
+          channel.color().markInterested()
+          channel.color().addValueObserver((r, g, b) =>
+            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+      }
 
       Seq(
         HB(j.Modifiers.Shift.pressedAction, s"shift-strip $idx pressed", () => shiftOn(), tracked = false, BindingBehavior(exclusive = false)),
@@ -110,15 +125,32 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     override def activate(): Unit = {
       super.activate()
-      j.stripBank.strips.indices.foreach { idx =>
-        val strip: JamTouchStrip = j.stripBank.strips(idx)
-        strip.slider.setBindingWithRange(sliderParams(idx), 0, 1)
+      j.stripBank.clear()
+      ext.host.println(barMode.toString)
+      j.stripBank.barMode = barMode
+      j.stripBank.strips.forindex { case (strip, idx) =>
+        val proxy = proxies(idx)
+        if (proxy.exists().get) {
+          j.stripBank.setActive(idx, value = true, flush = false)
+          strip.slider.setBindingWithRange(sliderParams(idx), 0, 1)
+          // force update the value
+          if (barMode == BarMode.DUAL) {
+            strip.update(0)
+            j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 128).intValue, flush = false)
+          } else {
+            strip.update((sliderParams(idx).value().get() * 128).intValue)
+          }
 
-        // if dual?
-        //sliderParams(idx).value().addValueObserver(128, j.stripBank.setValue(idx, _)) // move fader dot
+          proxy match {
+            case channel: Channel =>
+              j.stripBank.setColor(idx, JamColorState.toColorIndex(channel.color().get()))
+          }
+        } else {
+          j.stripBank.setActive(idx, value = false, flush = false)
+        }
       }
-      j.stripBank.flushValues()
       j.stripBank.flushColors()
+      j.stripBank.flushValues()
     }
 
     override def deactivate(): Unit = {
@@ -190,21 +222,22 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   val levelCycle = new ModeCycleLayer("level", j.level, GateMode.OneWay) with Util {
     override val subModes = Seq(
       new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
+        override val barMode: BarMode = BarMode.DUAL
+
         proxies.forindex { case(track, idx) =>
           val strip: JamTouchStrip = j.stripBank.strips(idx)
-          track.color().markInterested()
           track.addVuMeterObserver(128, -1, true, v => if (isOn) strip.update(v))
-          track.color().addValueObserver((r, g, b) =>
-            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
         }
       },
       new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
-        override def activate(): Unit = {
-          j.stripBank.strips.indices.foreach { idx =>
-            j.stripBank.setColor(idx, JamColorState.toColorIndex(toColor(java.awt.Color.WHITE)))
-          }
-          super.activate()
-        }
+        override val barMode: BarMode = BarMode.DOT
+
+        //override def activate(): Unit = {
+        //  super.activate()
+        //  j.stripBank.strips.indices.foreach { idx =>
+        //    j.stripBank.setColor(idx, JamColorState.toColorIndex(proxies(idx).color().get()))
+        //  }
+        //}
       },
       //new SubModeLayer("strips volume") {
       //  override def activate(): Unit = {
