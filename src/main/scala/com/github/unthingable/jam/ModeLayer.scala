@@ -32,9 +32,11 @@ trait ModeLayer {
   val modeBindings: Seq[Binding[_,_,_]]
   implicit val ext: MonsterJamExt
 
+  var isOn: Boolean = false
+
   // called when layer is activated/deactivated by the container
-  def activate(): Unit = ()
-  def deactivate(): Unit = ()
+  def activate(): Unit = isOn = true
+  def deactivate(): Unit = isOn = false
 
   override def hashCode(): Int = name.hashCode
 }
@@ -91,22 +93,11 @@ abstract class ModeButtonLayer(
   val gateMode: GateMode = GateMode.Auto,
   val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
-  var isOn = false
   private var pressedAt: Instant = null
 
   // For MBL (de)activateActions are internal, safe to call
   override final val activateAction: FakeAction = FakeAction()
   override final val deactivateAction: FakeAction = FakeAction()
-
-  override def activate(): Unit = {
-    ext.host.println(s"$name: activating from inside!")
-    isOn = true
-  }
-
-  override def deactivate(): Unit = {
-    ext.host.println(s"$name: deactivating from inside!")
-    isOn = false
-  }
 
   private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
     case b: HB => Left(b)
@@ -169,7 +160,6 @@ abstract class ModeCycleLayer(
 
   val subModes: Seq[SubModeLayer]
 
-  var isOn: Boolean = false
   var currentMode: Option[SubModeLayer] = None
 
   override final val activateAction  : FakeAction = FakeAction()
@@ -177,14 +167,12 @@ abstract class ModeCycleLayer(
 
   override def activate(): Unit = {
     super.activate()
-    isOn = true
     if (currentMode.isEmpty) currentMode = subModes.headOption
     currentMode.foreach(_.activateAction.invoke())
   }
 
   override def deactivate(): Unit = {
     currentMode.foreach(_.deactivateAction.invoke())
-    isOn = false
     super.deactivate()
   }
 

@@ -29,7 +29,6 @@ object Graph {
     // All source elements currently bound by us
     private val sourceMap: mutable.HashMap[Any, mutable.HashSet[Binding[_, _, _]]] = mutable.HashMap.empty
 
-
     // Assemble graph
     edges foreach { case (a, bb) =>
       bb.layers foreach { b =>
@@ -87,7 +86,7 @@ object Graph {
         }
         case _                     => Seq()
       })
-      val (managed, unmanaged) = bindings.partition(_.managed)
+      val (managed, unmanaged) = bindings.partition(_.behavior.managed)
 
       // bind unmanaged now
       unmanaged.foreach(_.bind())
@@ -145,12 +144,16 @@ object Graph {
           })
 
       case class Bumped(bumped: mutable.Set[Binding[_,_,_]], bumper: Binding[_,_,_])
-      val bumpBindings: Iterable[Bumped] = node.nodeBindings.filter(b => isFakeAction(b.surfaceElem))
-        .flatMap(b => sourceMap.get(b.surfaceElem).map(Bumped(_, b))) //.flatten //.filter(_.node.get != node)
+
+      val bumpBindings: Iterable[Bumped] =
+        node.nodeBindings.filter(b => isFakeAction(b.surfaceElem) && !b.behavior.exclusive)
+          .flatMap(b => sourceMap.get(b.surfaceElem).map(
+            bb => Bumped(bb.filter(!_.behavior.exclusive), b))) //.flatten //.filter(_.node.get != node)
       val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)).filter(_ != node)
 
       if (bumpNodes.nonEmpty) {
-        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")
+        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}: "
+          + bumpBindings.map(_.bumper).collect{case b: HB => b.name}.mkString(", "))
       }
 
       // node stays active?
