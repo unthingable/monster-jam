@@ -142,13 +142,21 @@ class SubModeLayer(
   override val modeBindings: Seq[Binding[_, _, _]] = Seq()
 }
 
+sealed trait CycleMode
+object CycleMode {
+  case object Cycle extends CycleMode
+  case object Select extends CycleMode
+}
+
 abstract class ModeCycleLayer(
   val name: String,
   val modeButton: OnOffButton,
-  val gateMode: GateMode, // maybe TODO
+  val cycleMode: CycleMode,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
   val subModes: Seq[SubModeLayer]
+
+  var selected: Option[Int] = Some(0)
 
   var currentMode: Option[SubModeLayer] = None
 
@@ -168,19 +176,22 @@ abstract class ModeCycleLayer(
     SupBooleanB(modeButton.light.isOn, () => isOn)
   )
 
-  override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
-  )
+  override val modeBindings: Seq[Binding[_, _, _]] =
+    if (cycleMode == CycleMode.Cycle)
+      Seq(
+        HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
+      )
+    else Seq.empty
 
   def cycle(): Unit = {
-    currentMode.foreach(_.deactivateAction.invoke())
-    currentMode = currentMode match {
-      case Some(l) =>
-        val idx = subModes.indexOf(l, 0)
-        Some(subModes((idx + 1) % subModes.length))
-      case None => subModes.headOption
-    }
-    ext.host.println(s"activating submode ${currentMode.get.name}")
-    currentMode.foreach(_.activateAction.invoke())
+    selected.map(i => (i + 1) % subModes.length).orElse(Some(0)).foreach(select)
+  }
+
+  def select(idx: Int): Unit = {
+    selected.foreach(subModes(_).deactivateAction.invoke())
+    val mode = subModes(idx)
+    ext.host.println(s"activating submode ${mode.name}")
+    selected = Some(idx)
+    mode.activateAction.invoke()
   }
 }

@@ -182,7 +182,7 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
 
   def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
-    colors.update(idx, color)
+    colors.update(idx, if (color == 68) 120 else color) // some more NI magic for you
     if (flush) flushColors()
   }
   def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {
@@ -200,17 +200,10 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
     ext.midiOut.sendSysex(createCommand("05",
       colors.zip(active).map { case (n, a) => f"${if (a) barMode.v else "00"}${n}%02x"}.mkString))
   def flushValues(): Unit = {
-    //clear()
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
-
-  //def clearValues(): Unit = {
-  //  values.mapInPlace(_ => 0)
-  //  //if (barMode == BarMode.DUAL)
-  //    strips.foreach(_.update(0))
-  //}
 }
 
 /**
