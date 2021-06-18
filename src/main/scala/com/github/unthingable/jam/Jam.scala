@@ -1,7 +1,6 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.callback.ColorValueChangedCallback
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
@@ -10,9 +9,7 @@ import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
 
 import java.time.{Duration, Instant}
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.duration.DurationDouble
+import java.util.function.BooleanSupplier
 
 /*
 Behavior definition for surface controls
@@ -29,8 +26,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val Select   : ModeButtonLayer = ModeButtonLayer("select", j.select, modeBindings = Seq.empty, GateMode.Gate)
   }
 
-  // wire buttons
-
   val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
@@ -46,7 +41,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   //sceneBank.setIndication(true)
 
   // wire strips, they are special
-  j.stripBank.flushColors()
+  //j.stripBank.flushColors()
 
   abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
     extends SubModeLayer(name) with Util {
@@ -71,6 +66,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       case object ShiftTracking extends State
       case object Normal extends State
     }
+
+    import JAMColorBase._
+    val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA).map(_ * 4)
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
       val strip: JamTouchStrip = j.stripBank.strips(idx)
@@ -125,7 +123,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
       param.value().markInterested()
-      param.value().addValueObserver(128, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
+      param.value().addValueObserver(127, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
 
       proxy match {
         case channel: Channel =>
@@ -136,6 +134,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           send.sendChannelColor().markInterested()
           send.sendChannelColor().addValueObserver((r, g, b) =>
             if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+        case control: RemoteControl =>
+          ()
       }
 
       import Event._
@@ -148,7 +148,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     }
 
     private def sync(idx: Int, flush: Boolean = true): Unit = {
-      j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 128).intValue, flush)
+      j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 127).intValue, flush)
     }
 
     override def activate(): Unit = {
@@ -166,10 +166,12 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
           (proxy match {
             case channel: Channel =>
-              Some(channel.color().get())
+              Some(JamColorState.toColorIndex(channel.color().get()))
             case send: Send =>
-              Some(send.sendChannelColor().get())
-          }).foreach(c => j.stripBank.setColor(idx, JamColorState.toColorIndex(c)))
+              Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
+            case _: RemoteControl =>
+              Some(rainbow(idx))
+          }).foreach(c => j.stripBank.setColor(idx, c))
         } else {
           j.stripBank.setActive(idx, value = false, flush = false)
         }
@@ -568,6 +570,36 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
     }
 
+    // devices!
+    val deviceLayer = new ModeCycleLayer("device", j.control, CycleMode.Select) {
+      val device: PinnableCursorDevice     = ext.cursorTrack.createCursorDevice()
+      val page  : CursorRemoteControlsPage = device.createCursorRemoteControlsPage(8)
+
+      device.hasNext.markInterested()
+      device.hasPrevious.markInterested()
+      page.hasNext.markInterested()
+      page.hasPrevious.markInterested()
+
+      override val subModes: Seq[SubModeLayer] = Seq(
+        new SliderBankMode[RemoteControl]("strips remote", page.getParameter, identity) {
+          override val barMode: BarMode = BarMode.SINGLE
+        }
+      )
+
+      def m(default: BooleanValue, modePressed: BooleanValue): BooleanSupplier =
+        () => if (modeButton.isPressed()) modePressed.get() else default.get()
+
+      def m(default: HardwareActionBindable, modePressed: HardwareActionBindable): () => Unit =
+        () => if (modeButton.isPressed()) modePressed.invoke() else default.invoke()
+
+      override val modeBindings: Seq[Binding[_, _, _]] = Seq(
+        SupBooleanB(j.left.light.isOn, m(device.hasPrevious, page.hasPrevious)),
+        SupBooleanB(j.right.light.isOn, m(device.hasNext, page.hasNext)),
+        HB(j.left.pressedAction, "scroll left", m(device.selectPreviousAction(), page.selectPreviousAction())),
+        HB(j.right.pressedAction, "scroll right", m(device.selectNextAction(), page.selectNextAction())),
+      )
+    }
+
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))
     val bottom = SimpleModeLayer("_|_", modeBindings = Seq.empty)
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Seq.empty)
@@ -580,7 +612,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
-      bottom -> Exclusive(levelCycle, auxLayer),
+      bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
       bottom -> Coexist(auxGate),
       //bottom -> Cycle(levelLayer, panLayer),
       bottom -> Coexist(unmanaged),
