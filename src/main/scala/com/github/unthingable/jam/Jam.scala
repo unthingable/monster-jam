@@ -186,28 +186,37 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         val shiftOn = j.Modifiers.Shift.isPressed()
         val stripOn = strip.isPressed()
 
-        def doubleClicked = if (event == StripP) {
-          val now = Instant.now()
-          val prior = touchedOn
-          touchedOn = now
-          now.isBefore(prior.plus(Duration.ofMillis(500)))
-        } else false
+        //def doubleClicked = if (event == StripP) {
+        //  val now = Instant.now()
+        //  val prior = touchedOn
+        //  touchedOn = now
+        //  now.isBefore(prior.plus(Duration.ofMillis(500)))
+        //} else false
 
         state = (shiftOn, stripOn, event, state) match {
-          case (_, _, StripR, _) =>
-            strip.slider.setBinding(param)
-            sync(idx)
-            Normal
-          case (false, false, _, _) =>
-            Normal
-          case (false,_,StripP,_) if doubleClicked =>
+          //case (_, _, StripR, DoubleClicking) =>
+          //  ext.host.println(s"~~ strip release doubleclicking $idx")
+          //  strip.slider.setBinding(param)
+          //  sync(idx)
+          //  Normal
+          //case (_, _, StripR, _) =>
+          //  ext.host.println(s"~~ strip release normal $idx")
+          //  Normal
+          //case (false, false, _, _) =>
+          //  Normal
+          //case (false,_,StripP,_) if doubleClicked =>
+          //  ext.host.println(s"~~ doubleclick $idx")
+          //  strip.slider.clearBindings()
+          //  sliderParams(idx).reset()
+          //  sync(idx)
+          //  DoubleClicking
+          case (_,_,ShiftP, Normal) =>
             strip.slider.clearBindings()
-            ext.host.println(s"doubleclick $idx")
-            sliderParams(idx).reset()
-            //j.stripBank.setValue(idx, (sliderParams(idx).value().get * 128).intValue)
-            DoubleClicking
+            ShiftTracking
           case (true, true, _:PressEvent, _) =>
-            strip.slider.clearBindings()
+            ext.host.println(s"~~ shift-press $idx")
+            if (state == Normal)
+              strip.slider.clearBindings()
             val current = param.get()
             startValue = None
             offsetObserver = { v: Double =>
@@ -216,11 +225,18 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
               if (startValue.isEmpty) startValue = Some(v)
             }
             ShiftTracking
+          case (true,_,StripR,ShiftTracking) =>
+            ext.host.println(s"~~ release shift On $idx")
+            offsetObserver = _ => ()
+            ShiftTracking
           case (_,_,_:ReleaseEvent,ShiftTracking) =>
+            ext.host.println(s"~~ release shift Off $idx")
             offsetObserver = _ => ()
             strip.slider.setBinding(param)
             Normal
-          case (_,_,_,_) => Normal
+          case x: (_,_,_,_) =>
+            ext.host.println("~~ " + x.toString())
+            Normal
         }
 
       }
