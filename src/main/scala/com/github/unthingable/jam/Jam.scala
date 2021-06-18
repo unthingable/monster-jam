@@ -190,7 +190,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           val now = Instant.now()
           val prior = touchedOn
           touchedOn = now
-          now.isBefore(prior.plus(Duration.ofMillis(800)))
+          now.isBefore(prior.plus(Duration.ofMillis(500)))
         } else false
 
         state = (shiftOn, stripOn, event, state) match {

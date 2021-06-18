@@ -191,8 +191,8 @@ trait BindingDSL {
 
   // fake action detector (optimize later)
   def isFakeAction(source: Any): Boolean = source match {
-    case a: FakeAction => a.masquerade
-    case _             => true
+    case a: FakeAction => true // !a.masquerade
+    case _             => false
   }
 }
 

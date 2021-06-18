@@ -169,7 +169,7 @@ abstract class ModeCycleLayer(
   )
 
   override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.pressedAction, s"$name cycle", () => cycle())
+    HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
   )
 
   def cycle(): Unit = {

@@ -154,17 +154,26 @@ object Graph {
             //}
           })
 
-      case class Bumped(bumped: mutable.Set[Binding[_,_,_]], bumper: Binding[_,_,_])
+      case class Bumped(bumper: Binding[_,_,_], bumped: Set[Binding[_,_,_]])
 
       val bumpBindings: Iterable[Bumped] =
-        node.nodeBindings.filter(b => isFakeAction(b.surfaceElem) && !b.behavior.exclusive)
-          .flatMap(b => sourceMap.get(b.surfaceElem).map(
-            bb => Bumped(bb.filter(!_.behavior.exclusive), b))) //.flatten //.filter(_.node.get != node)
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)).filter(_ != node)
+        node.nodeBindings
+          .filter(b => !isFakeAction(b.surfaceElem) && b.behavior.exclusive)
+          .map(b => Bumped(b, sourceMap
+            .get(b.surfaceElem)
+            .toSet
+            .flatten
+            .filter(_.behavior.exclusive)
+            .filter(!_.node.contains(node))))
+          .filter(_.bumped.nonEmpty)
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node))
 
       if (bumpNodes.nonEmpty) {
-        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}: "
-          + bumpBindings.map(_.bumper).collect{case b: HB => b.name}.mkString(", "))
+        def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
+        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}: ")
+        bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
+          ext.host.println(s" > $b <- ${bb.mkString(",")}")
+        }
       }
 
       // node stays active?
