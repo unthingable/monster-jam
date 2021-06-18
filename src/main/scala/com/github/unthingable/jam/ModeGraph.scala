@@ -42,11 +42,19 @@ object Graph {
       }
     }
 
-    (init ++ layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes))
-      .foreach { l =>
+    init.foreach { l =>
+      ext.host.println(s"adding init ${l.name}")
+      indexLayer(l)
+    }
+
+    layerMap.keys.collect { case x: ModeCycleLayer => x }.foreach { cl =>
+      val parent = layerMap.get(cl)
+      cl.subModes.foreach { l =>
         ext.host.println(s"adding submode ${l.name}")
-        indexLayer(l)
+        val sub = indexLayer(l)
+        sub.parent = parent
       }
+    }
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
@@ -101,11 +109,14 @@ object Graph {
     val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parent.isEmpty)
     val exitNodes : Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
 
-    // activate entry nodes
-    entryNodes.foreach(activate)
+    ext.host.scheduleTask(() =>
+    {
+      // activate entry nodes
+      entryNodes.foreach(activate)
 
-    // activate init layers
-    init.flatMap(layerMap.get).foreach(activate)
+      // activate init layers
+      init.flatMap(layerMap.get).foreach(activate)
+    }, 100)
 
     def indexLayer(l: ModeLayer): ModeNode = {
       // make sure we didn't reuse a layer name

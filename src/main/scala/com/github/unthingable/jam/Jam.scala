@@ -12,6 +12,7 @@ import com.github.unthingable.jam.surface._
 import java.time.{Duration, Instant}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration.DurationDouble
 
 /*
 Behavior definition for surface controls
@@ -51,41 +52,184 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     extends SubModeLayer(name) with Util {
     val proxies     : Seq[P]            = j.stripBank.strips.indices.map(obj).toVector
     val sliderParams: Vector[Parameter] = proxies.map(param).toVector
-    def barMode     : BarMode
+    val barMode     : BarMode
+
+    sealed trait Event
+    sealed trait ShiftEvent extends Event
+    sealed trait StripEvent extends Event
+    sealed trait PressEvent extends Event
+    sealed trait ReleaseEvent extends Event
+    object Event {
+      case object ShiftP extends ShiftEvent with PressEvent
+      case object ShiftR extends ShiftEvent with ReleaseEvent
+      case object StripP extends StripEvent with PressEvent
+      case object StripR extends StripEvent with ReleaseEvent
+    }
+
+    sealed trait State
+    object State {
+      //case object Tracking extends State
+      case object ShiftTracking extends State
+      case object DoubleClicking extends State
+      case object Normal extends State
+    }
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
       val strip: JamTouchStrip = j.stripBank.strips(idx)
       val proxy: ObjectProxy   = proxies(idx)
+      val param: Parameter     = sliderParams(idx)
 
-      sliderParams(idx).markInterested()
+      var touchedOn: Instant = Instant.now()
+      var state    : State   = State.Normal
+
+      param.markInterested()
+      param.name().markInterested()
       proxy.exists().markInterested()
 
-      val touchP = ext.host.createAction(() => {
-        val current                    = sliderParams(idx).get
-        var startValue: Option[Double] = None
-        strip.setOffsetCallback { v =>
-          val offset = (v - startValue.getOrElse(v)) * 0.2
-          sliderParams(idx).set(current + offset)
-          if (startValue.isEmpty) startValue = Some(v)
+      var offsetObserver: Double => Unit = _ => ()
+      strip.slider.value().addValueObserver(offsetObserver(_))
+
+      //val touchP = ext.host.createAction(() => {
+      //  val current                    = param.get
+      //  var startValue: Option[Double] = None
+      //  strip.setOffsetCallback { v =>
+      //    val offset = (v - startValue.getOrElse(v)) * 0.2
+      //    param.set(current + offset)
+      //    if (startValue.isEmpty) startValue = Some(v)
+      //  }
+      //}, () => "shift")
+      //
+      //val touchR = ext.host.createAction(() => strip.clearOffsetCallback(), () => "shift")
+      //
+      //var sbP: Option[HardwareBinding] = None
+      //var sbR: Option[HardwareBinding] = None
+      //
+      var startValue: Option[Double] = None
+      //
+      //def shiftOn(): Unit = {
+      //  if (strip.isPressed()) {
+      //    val current = param.get()
+      //    offsetObserver = { v =>
+      //      val offset = (v - startValue.getOrElse(v)) * 0.2
+      //      param.set(current + offset)
+      //      if (startValue.isEmpty) startValue = Some(v)
+      //    }
+      //
+      //    val min = (current - 0.1).max(0)
+      //    val max = (current + 0.1).min(1)
+      //    strip.slider.setBindingWithRange(sliderParams(idx), min, max)
+      //  }
+      //  //strip.slider.clearBindings()
+      //  //sbP = Some(strip.pressedAction.setBinding(touchP))
+      //  //sbR = Some(strip.releasedAction.setBinding(touchR))
+      //}
+      //
+      //def shiftOff(): Unit = {
+      //  strip.clearOffsetCallback()
+      //  sbP.foreach(_.removeBinding())
+      //  sbR.foreach(_.removeBinding())
+      //  //if (strip.isPressed())
+      //    strip.slider.setBinding(sliderParams(idx))
+      //}
+      //
+      //def touchOn(): Unit = {
+      //  isTouched = true
+      //  val now = Instant.now()
+      //  if (now.isBefore(touchedOn.plus(Duration.ofMillis(500)))) { // doubleclick
+      //    strip.slider.clearBindings()
+      //    ext.host.println(s"doubleclick $idx")
+      //    sliderParams(idx).reset()
+      //    j.stripBank.setValue(idx, (sliderParams(idx).value().get * 128).intValue)
+      //    var b: HardwareBinding = null
+      //    b = strip.releasedAction.setBinding(action("after double", () => {
+      //
+      //      b.removeBinding()
+      //    }))
+      //  } else {
+      //    //strip.slider.setBinding(sliderParams(idx))
+      //  }
+      //  touchedOn = now
+      //}
+      //
+      //def touchOff(): Unit = {
+      //  isTouched = false
+      //  //strip.slider.clearBindings()
+      //  // restore after doubleclick
+      //  strip.slider.setBinding(sliderParams(idx))
+      //  // ignore funny business
+      //  j.stripBank.setValue(idx, (sliderParams(idx).value().get * 128).intValue)
+      //}
+      //
+      //
+      //var doubleClickWait: Boolean = false
+      //
+      //def engageTracking(): Unit = {
+      //  (j.Modifiers.Shift.isPressed(), strip.isPressed()) match {
+      //    case (true, true) =>
+      //      strip.slider.clearBindings()
+      //      val current = param.get()
+      //      offsetObserver = { v =>
+      //        val offset = (v - startValue.getOrElse(v)) * 0.2
+      //        param.set(current + offset)
+      //        if (startValue.isEmpty) startValue = Some(v)
+      //      }
+      //    case (false, true) =>
+      //      strip.slider.setBinding(param)
+      //    case _ => ()
+      //  }
+      //}
+
+      def engage(event: Event): Unit = {
+        import Event._
+        import State._
+
+        val shiftOn = j.Modifiers.Shift.isPressed()
+        val stripOn = strip.isPressed()
+
+        def doubleClicked = if (event == StripP) {
+          val now = Instant.now()
+          val prior = touchedOn
+          touchedOn = now
+          now.isBefore(prior.plus(Duration.ofMillis(800)))
+        } else false
+
+        state = (shiftOn, stripOn, event, state) match {
+          case (_, _, StripR, _) =>
+            strip.slider.setBinding(param)
+            sync(idx)
+            Normal
+          case (false, false, _, _) =>
+            Normal
+          case (false,_,StripP,_) if doubleClicked =>
+            strip.slider.clearBindings()
+            ext.host.println(s"doubleclick $idx")
+            sliderParams(idx).reset()
+            //j.stripBank.setValue(idx, (sliderParams(idx).value().get * 128).intValue)
+            DoubleClicking
+          case (true, true, _:PressEvent, _) =>
+            strip.slider.clearBindings()
+            val current = param.get()
+            startValue = None
+            offsetObserver = { v: Double =>
+              val offset = (v - startValue.getOrElse(v)) * 0.2
+              param.set(current + offset)
+              if (startValue.isEmpty) startValue = Some(v)
+            }
+            ShiftTracking
+          case (_,_,_:ReleaseEvent,ShiftTracking) =>
+            offsetObserver = _ => ()
+            strip.slider.setBinding(param)
+            Normal
+          case (_,_,_,_) => Normal
         }
-      }, () => "shift")
 
-      val touchR = ext.host.createAction(() => strip.clearOffsetCallback(), () => "shift")
-
-      def shiftOn(): Unit = {
-        strip.slider.clearBindings()
-        strip.pressedAction.setBinding(touchP)
-        strip.releasedAction.setBinding(touchR)
-        ()
       }
 
-      def shiftOff(): Unit = {
-        strip.clearOffsetCallback()
-        strip.pressedAction.clearBindings()
-        strip.releasedAction.clearBindings()
-        strip.slider.setBinding(sliderParams(idx))
-        ()
-      }
+      //def disengage(): Unit = {
+      //  (j.Modifiers.Shift.isPressed(), strip.isPressed()) match {
+      //    case (false, ) =>
+      //
+      //}
 
       //j.Modifiers.Shift.pressedAction.addBinding(action(s"shit-strips $i pressed", { () =>
       //  strip.slider.clearBindings()
@@ -102,13 +246,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       //}))
 
       proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
-      sliderParams(idx).value().markInterested()
-      sliderParams(idx).value().addValueObserver(128, v =>
-        if (isOn)
-          if (barMode == BarMode.DUAL)
-            j.stripBank.setValue(idx, v) // move fader dot
-          else
-            strip.update(v))
+      param.value().markInterested()
+      param.value().addValueObserver(128, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
 
       proxy match {
         case channel: Channel =>
@@ -117,29 +256,37 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       }
 
+      import Event._
       Seq(
-        HB(j.Modifiers.Shift.pressedAction, s"shift-strip $idx pressed", () => shiftOn(), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.releasedAction, s"shift-strip $idx released", () => shiftOff(), tracked = false, BindingBehavior(exclusive = false)),
+        //HB(j.Modifiers.Shift.pressedAction, s"shift-strip $idx pressed", () => shiftOn(), tracked = false, BindingBehavior(exclusive = false)),
+        //HB(j.Modifiers.Shift.releasedAction, s"shift-strip $idx released", () => shiftOff(), tracked = false, BindingBehavior(exclusive = false)),
+        //HB(strip.pressedAction, s"shift-strip $idx pressed", () => touchOn(), tracked = false, BindingBehavior(exclusive = false)),
+        //HB(strip.releasedAction, s"shift-strip $idx released", () => touchOff(), tracked = false, BindingBehavior(exclusive = false)),
+        HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
+        HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
+        HB(strip.pressedAction, s"shift-strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
+        HB(strip.releasedAction, s"shift-strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
       )
     }
 
+
+    private def sync(idx: Int, flush: Boolean = true): Unit = {
+      j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 128).intValue, flush)
+    }
+
     override def activate(): Unit = {
-      super.activate()
-      j.stripBank.clear()
+
       ext.host.println(barMode.toString)
+      ext.host.println(sliderParams.map(_.name().get()).mkString(","))
+      //ext.run(List.fill(8)((100, () => true, () => )))
+      ext.host.println(sliderParams.map(_.value().get()).mkString(","))
+
       j.stripBank.barMode = barMode
+
       j.stripBank.strips.forindex { case (strip, idx) =>
         val proxy = proxies(idx)
         if (proxy.exists().get) {
           j.stripBank.setActive(idx, value = true, flush = false)
-          strip.slider.setBindingWithRange(sliderParams(idx), 0, 1)
-          // force update the value
-          if (barMode == BarMode.DUAL) {
-            strip.update(0)
-            j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 128).intValue, flush = false)
-          } else {
-            strip.update((sliderParams(idx).value().get() * 128).intValue)
-          }
 
           proxy match {
             case channel: Channel =>
@@ -149,15 +296,20 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           j.stripBank.setActive(idx, value = false, flush = false)
         }
       }
+
       j.stripBank.flushColors()
-      j.stripBank.flushValues()
+
+      sliderParams.indices.foreach(sync(_, false))
+      if (barMode == BarMode.DUAL)
+        j.stripBank.flushValues()
+
+      j.stripBank.strips.zip(sliderParams).foreach { case (s, p) => s.slider.setBinding(p)}
+
+      super.activate()
     }
 
     override def deactivate(): Unit = {
-      j.stripBank.strips.indices.foreach { idx =>
-        val strip: JamTouchStrip = j.stripBank.strips(idx)
-        strip.slider.clearBindings()
-      }
+      j.stripBank.strips.foreach(_.slider.clearBindings())
       super.deactivate()
     }
   }
@@ -221,6 +373,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   val levelCycle = new ModeCycleLayer("level", j.level, GateMode.OneWay) with Util {
     override val subModes = Seq(
+      new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
+        override val barMode: BarMode = BarMode.PAN
+      },
       new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -228,16 +383,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           val strip: JamTouchStrip = j.stripBank.strips(idx)
           track.addVuMeterObserver(128, -1, true, v => if (isOn) strip.update(v))
         }
-      },
-      new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
-        override val barMode: BarMode = BarMode.DOT
 
-        //override def activate(): Unit = {
-        //  super.activate()
-        //  j.stripBank.strips.indices.foreach { idx =>
-        //    j.stripBank.setColor(idx, JamColorState.toColorIndex(proxies(idx).color().get()))
-        //  }
-        //}
+        override def activate(): Unit = {
+          super.activate()
+          j.stripBank.strips.foreach(_.update(0))
+        }
       },
       //new SubModeLayer("strips volume") {
       //  override def activate(): Unit = {

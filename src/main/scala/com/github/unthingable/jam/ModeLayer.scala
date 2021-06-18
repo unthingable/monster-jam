@@ -98,11 +98,6 @@ abstract class ModeButtonLayer(
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   private var pressedAt: Instant = null
 
-  private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
-    case b: HB => Left(b)
-    case b     => Right(b)
-  }._1
-
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
     HB(modeButton.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
@@ -119,7 +114,7 @@ abstract class ModeButtonLayer(
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
-          val operated = hBindings.exists(_.wasOperated)
+          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
             deactivateAction.invoke()

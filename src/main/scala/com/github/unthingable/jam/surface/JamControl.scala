@@ -157,12 +157,6 @@ case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implic
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
   }
 
-  var offsetCallback: Double => Unit = _ => ()
-  def setOffsetCallback(f: Double => Unit): Unit = offsetCallback = f
-  def clearOffsetCallback(): Unit = offsetCallback = _ => ()
-
-  slider.value().addValueObserver(offsetCallback(_))
-
   override val pressedAction : HB.HBS        = button.pressedAction
   override val releasedAction: HB.HBS        = button.releasedAction
   override val isPressed     : () => Boolean = button.isPressed.get
@@ -192,8 +186,10 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
     if (flush) flushColors()
   }
   def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {
-    values.update(idx, value)
-    if (flush) flushValues()
+    if (barMode == BarMode.DUAL) {
+      values.update(idx, value)
+      if (flush) flushValues()
+    } else strips(idx).update(value)
   }
   def setActive(idx: Int, value: Boolean, flush: Boolean = true): Unit = {
     active.update(idx, value)
@@ -209,6 +205,12 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   }
 
   def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
+
+  //def clearValues(): Unit = {
+  //  values.mapInPlace(_ => 0)
+  //  //if (barMode == BarMode.DUAL)
+  //    strips.foreach(_.update(0))
+  //}
 }
 
 /**
