@@ -346,14 +346,23 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
     }
 
-    val loop = new ModeButtonLayer("loop", j.Modifiers.Shift, GateMode.Gate) {
-      val loop = ext.transport.isArrangerLoopEnabled
+    val shiftTransport = new ModeButtonLayer("shiftTransport", j.Modifiers.Shift, GateMode.Gate) {
+      val loop   : SettableBooleanValue = ext.transport.isArrangerLoopEnabled
+      val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
+      val metro = ext.transport.isMetronomeEnabled
       loop.markInterested()
+      overdub.markInterested()
+      metro.markInterested()
 
-      override val modeBindings = Seq(
-        HB(j.right.pressedAction, "loop pressed", () => loop.toggle()),
-        SupBooleanB(j.right.light.isOn, loop)
+      def b(button: OnOffButton, name: String, param: SettableBooleanValue) = Seq(
+        HB(button.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
+        SupBooleanB(button.light.isOn, param)
       )
+      override val modeBindings = Seq(
+        b(j.right, "loop", loop),
+        b(j.record, "record", overdub),
+        b(j.left, "metro", metro),
+      ).flatten
     }
 
     val globalQuant = new ModeButtonLayer("globalQuant",
@@ -567,7 +576,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       play -> top,
       position -> Coexist(tempoLayer),
       sceneLayer -> top,
-      bottom -> Coexist(globalQuant, loop, shiftMatrix, globalShift),
+      bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, globalShift),
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
