@@ -363,7 +363,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         b(j.right, "loop", loop),
         b(j.record, "record", overdub),
         b(j.left, "metro", metro),
-      ).flatten
+      ).flatten ++ Seq(
+        HB(j.tempo.pressedAction, "tap tempo", ext.transport.tapTempoAction())
+      )
     }
 
     val globalQuant = new ModeButtonLayer("globalQuant",
@@ -568,7 +570,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     // devices!
     val deviceLayer = new ModeCycleLayer("device", j.control, CycleMode.Select) {
-      val touchFX = "TouchFX"
+      val touchFX = "MonsterFX"
       val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
       val page  : FilteredPage         = FilteredPage(
         device.createCursorRemoteControlsPage(8),
@@ -625,6 +627,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
+    // Final assembly of all mode layers
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))
     val bottom = SimpleModeLayer("_|_", modeBindings = Seq.empty)
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Seq.empty)
@@ -639,11 +642,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       clipMatrix -> top,
       bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
       bottom -> Coexist(auxGate),
-      //bottom -> Cycle(levelLayer, panLayer),
       bottom -> Coexist(unmanaged),
     )
   }
-
-  // for now
-  //ext.host.scheduleTask(() => ext.hw.invalidateHardwareOutputState(), 200)
 }

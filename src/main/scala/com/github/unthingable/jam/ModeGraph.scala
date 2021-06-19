@@ -148,10 +148,6 @@ object Graph {
           .foreach { n =>
             ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
             deactivate(n)
-            //n.layer match {
-            //  case s: IntActivatedLayer => s.deactivateAction.invoke()
-            //  case _                    => deactivate(n)
-            //}
           })
 
       case class Bumped(bumper: Binding[_,_,_], bumped: Set[Binding[_,_,_]])
@@ -175,9 +171,6 @@ object Graph {
           ext.host.println(s" > $b <- ${bb.mkString(",")}")
         }
       }
-
-      // node stays active?
-      //bumpNodes.foreach(deactivate)
 
       // remember for deactivation
       node.nodesToRestore.addAll(bumpNodes)
