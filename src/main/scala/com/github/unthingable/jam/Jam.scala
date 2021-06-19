@@ -296,7 +296,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       private def handlePress(scene: Scene): Unit = {
         if (GlobalMode.Clear.isOn) scene.deleteObject()
         else if (GlobalMode.Duplicate.isOn) scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
-             else scene.launchAction().invoke()
+             else scene.launch()
       }
     }
 
@@ -487,7 +487,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       // for duplication
       private var source   : Option[ClipLauncherSlot] = None
-      private var pressed  : Option[ClipLauncherSlot] = None
+      private var pressed  : Option[ClipLauncherSlot] = None // TODO fix multiple releases
       private var pressedAt: Instant = Instant.now() // initial value doesn't matter
 
       private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {

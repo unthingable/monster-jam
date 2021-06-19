@@ -158,16 +158,13 @@ abstract class ModeCycleLayer(
 
   var selected: Option[Int] = Some(0)
 
-  var currentMode: Option[SubModeLayer] = None
-
   override def activate(): Unit = {
     super.activate()
-    if (currentMode.isEmpty) currentMode = subModes.headOption
-    currentMode.foreach(_.activateAction.invoke())
+    selected.foreach(subModes(_).activateAction.invoke())
   }
 
   override def deactivate(): Unit = {
-    currentMode.foreach(_.deactivateAction.invoke())
+    selected.foreach(subModes(_).deactivateAction.invoke())
     super.deactivate()
   }
 
