@@ -5,7 +5,7 @@ import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueCha
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.BindingDSL._
-import com.github.unthingable.jam.surface.{FakeAction, JamOnOffButton}
+import com.github.unthingable.jam.surface.{FakeAction, OnOffButton}
 
 import java.time.{Duration, Instant}
 import java.util.function.{BooleanSupplier, Supplier}
@@ -32,9 +32,13 @@ trait ModeLayer {
   val modeBindings: Seq[Binding[_,_,_]]
   implicit val ext: MonsterJamExt
 
+  var isOn: Boolean = false
+
   // called when layer is activated/deactivated by the container
-  def activate(): Unit = ()
-  def deactivate(): Unit = ()
+  def activate(): Unit = isOn = true
+  def deactivate(): Unit = isOn = false
+
+  override def hashCode(): Int = name.hashCode
 }
 
 /**
@@ -53,7 +57,10 @@ trait ExtActivatedLayer extends ActivatedLayer[HBS]
 /**
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
-trait IntActivatedLayer extends ActivatedLayer[FakeAction]
+trait IntActivatedLayer extends ActivatedLayer[FakeAction] {
+  override final val activateAction  : FakeAction = FakeAction()
+  override final val deactivateAction: FakeAction = FakeAction()
+}
 
 trait ListeningLayer {
   // all bindings when layer is ready and listening
@@ -75,29 +82,6 @@ object SimpleModeLayer {
   }
 }
 
-
-// layer activated and deactivated by distinct externally invoked actions
-abstract class ModeActionLayer(
-  val name: String,
-  val loadActions: LoadActions //Seq[InBinding[_,_]] = Seq.empty,
-)(implicit val ext: MonsterJamExt) extends ModeLayer with ExtActivatedLayer {
-  override val activateAction: HBS = loadActions.activate
-  override val deactivateAction: HBS = loadActions.deactivate
-
-  //// activation actions invoked externally, no additional bindings to manage
-  //override final val loadBindings: Seq[Binding[_, _, _]] = Seq.empty
-}
-
-//object ModeActionLayer {
-//  def apply(name: String, modeBindings: Seq[Binding[_, _, _]], loadActions: LoadActions)
-//    (implicit ext: MonsterJamExt): ModeActionLayer = {
-//    val x = modeBindings
-//    new ModeActionLayer(name, loadActions) {
-//      override val modeBindings: Seq[Binding[_, _, _]] = x
-//    }
-//  }
-//}
-
 sealed trait GateMode
 object GateMode {
   case object Gate extends GateMode
@@ -108,34 +92,14 @@ object GateMode {
 
 abstract class ModeButtonLayer(
   val name: String,
-  val modeButton: JamOnOffButton,
+  val modeButton: OnOffButton,
   val gateMode: GateMode = GateMode.Auto,
   val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
-  var isOn = false
   private var pressedAt: Instant = null
 
-  // For MBL (de)activateActions are internal, safe to call
-  override final val activateAction: FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
-
-  override def activate(): Unit = {
-    ext.host.println(s"$name: activating from inside!")
-    isOn = true
-  }
-
-  override def deactivate(): Unit = {
-    ext.host.println(s"$name: deactivating from inside!")
-    isOn = false
-  }
-
-  private lazy val hBindings: Seq[HB] = modeBindings.partitionMap {
-    case b: HB => Left(b)
-    case b     => Right(b)
-  }._1
-
   override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
+    HB(modeButton.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -145,12 +109,12 @@ abstract class ModeButtonLayer(
         activateAction.invoke()
     },
       tracked = false),
-    HB(modeButton.button.releasedAction, s"$name: mode button released", () => gateMode match {
+    HB(modeButton.releasedAction, s"$name: mode button released", () => gateMode match {
       case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
-          val operated = hBindings.exists(_.wasOperated)
+          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
             deactivateAction.invoke()
@@ -161,7 +125,7 @@ abstract class ModeButtonLayer(
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
+  def apply(name: String, modeButton: OnOffButton, modeBindings: Seq[Binding[_, _, _]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false)
     (implicit ext: MonsterJamExt): ModeButtonLayer = {
@@ -172,51 +136,59 @@ object ModeButtonLayer {
   }
 }
 
+class SubModeLayer(
+  val name: String
+)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer {
+  override val modeBindings: Seq[Binding[_, _, _]] = Seq()
+}
+
+sealed trait CycleMode
+object CycleMode {
+  case object Cycle extends CycleMode
+  case object Select extends CycleMode
+}
+
 abstract class ModeCycleLayer(
   val name: String,
-  val modeButton: JamOnOffButton,
-  val gateMode: GateMode,
+  val modeButton: OnOffButton,
+  val cycleMode: CycleMode,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
-  val subModes: Seq[ModeLayer with IntActivatedLayer]
+  val subModes: Seq[SubModeLayer]
 
-  var isOn: Boolean = false
-  var currentMode: Option[ModeLayer with IntActivatedLayer] = None
-
-  override final val activateAction  : FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
+  var selected: Option[Int] = Some(0)
 
   override def activate(): Unit = {
     super.activate()
-    isOn = true
-    if (currentMode.isEmpty) currentMode = subModes.headOption
-    currentMode.foreach(_.activateAction.invoke())
+    selected.foreach(subModes(_).activateAction.invoke())
   }
 
   override def deactivate(): Unit = {
-    currentMode.foreach(_.deactivateAction.invoke())
-    isOn = false
+    selected.foreach(subModes(_).deactivateAction.invoke())
     super.deactivate()
   }
 
   override val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction(), s"$name cycle load MB pressed", () => activateAction.invoke()),
+    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
     SupBooleanB(modeButton.light.isOn, () => isOn)
   )
 
-  override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.button.pressedAction(), s"$name cycle", () => cycle())
-  )
+  override val modeBindings: Seq[Binding[_, _, _]] =
+    if (cycleMode == CycleMode.Cycle)
+      Seq(
+        HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
+      )
+    else Seq.empty
 
   def cycle(): Unit = {
-    currentMode.foreach(_.deactivateAction.invoke())
-    currentMode = currentMode match {
-      case Some(l) =>
-        val idx = subModes.indexOf(l, 0)
-        Some(subModes((idx + 1) % subModes.length))
-      case None => subModes.headOption
-    }
-    ext.host.println(s"activating submode ${currentMode.get.name}")
-    currentMode.foreach(_.activateAction.invoke())
+    selected.map(i => (i + 1) % subModes.length).orElse(Some(0)).foreach(select)
+  }
+
+  def select(idx: Int): Unit = {
+    selected.foreach(subModes(_).deactivateAction.invoke())
+    val mode = subModes(idx)
+    ext.host.println(s"activating submode ${mode.name}")
+    selected = Some(idx)
+    mode.activateAction.invoke()
   }
 }

@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>0.1</version>
+    <version>1.0</version>
 
     <repositories>
         <repository>
@@ -109,6 +109,27 @@
                         <configuration>
                             <sourceFile>${project.build.directory}/${project.build.finalName}.jar</sourceFile>
                             <destinationFile>${project.build.directory}/MonsterJam.bwextension</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>package-release</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>MonsterJam-${project.version}</finalName>
+                            <descriptors>
+                                <descriptor>release.xml</descriptor>
+                            </descriptors>
                         </configuration>
                     </execution>
                 </executions>

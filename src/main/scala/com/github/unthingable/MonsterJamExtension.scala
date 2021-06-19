@@ -18,11 +18,24 @@ case class MonsterJamExt(
   application: Application,
   xmlMap: XmlMap
 ) {
+  type Schedulable = (Int, () => Boolean, () => Unit)
+  final def run(tasks: Schedulable*): Unit = {
+    tasks match {
+      case Nil => ()
+      case (wait, condition, action) :: tt =>
+        host.scheduleTask(() => if (condition()) {
+          action()
+          run(tt: _*)
+        }, wait)
+    }
+  }
 }
 
 class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {
 
   var ext: MonsterJamExt = null
+
+  Util.println = host.println
 
   override def init(): Unit = {
     val host = getHost
@@ -40,7 +53,6 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     new Jam()(ext)
-    Util.println = host.println
 
     host.showPopupNotification("MonsterJam Initialized")
   }

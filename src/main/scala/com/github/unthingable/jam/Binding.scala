@@ -20,8 +20,19 @@ trait Named {
   def name: String
 }
 
+/**
+ * Unmanaged/exclusive bindings are to be left alone when modes are removed
+ *
+ * @param managed bind and stay bound
+ * @param exclusive bumps other bindings
+ */
+case class BindingBehavior(
+  managed: Boolean = true,
+  exclusive: Boolean = true
+)
+
 sealed trait Binding[S, T, I] extends Clearable {
-  def bind(): Unit
+  def bind(): Unit // watch out for idempotence
   def source: S
   def target: T
 
@@ -30,10 +41,7 @@ sealed trait Binding[S, T, I] extends Clearable {
   var node: Option[Graph.ModeNode] = None // backreference to the node that owns this
   def layerName: String = node.map(_.layer.name).getOrElse("")
 
-  /**
-   * Unmanaged/exclusive bindings are to be left alone when modes are removed
-   */
-  val managed: Boolean = true
+  val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
 }
 
 // Controller <- Bitwig host
@@ -50,30 +58,37 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
   var wasOperated: Boolean = false
 }
 
-
+// Bind hardware elements to actions
 case class HB(source: HBS, name: String, target: HardwareBindable,
-  tracked: Boolean = true,
-  override val managed: Boolean = true)
+  override val behavior: BindingBehavior = BindingBehavior(),
+  tracked: Boolean = true)
   (implicit val ext: MonsterJamExt)
   extends OutBinding[HBS, HardwareBindable] with Named {
 
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
+  var isActive = false
 
-  override def bind(): Unit = bindings.addAll(
-    Seq(
-      source.addBinding(target)
-    ) ++ (if (tracked)
-            operatedActions
-              .find(source.canBindTo)
-              .map(source.addBinding)
-          else Seq.empty)
-  )
+  override def bind(): Unit = {
+    //assert(!isActive)
+    if (!isActive)
+      bindings.addAll(
+        Seq(
+          source.addBinding(target)
+        ) ++ (if (tracked)
+                operatedActions
+                  .find(source.canBindTo)
+                  .map(source.addBinding)
+              else Seq.empty)
+      )
+    isActive = true
+  }
 
   override def clear(): Unit = {
     bindings.foreach(_.removeBinding())
     bindings.clear()
     //source.clearBindings() // one of these is probably unnecessary
     wasOperated = false
+    isActive = false
   }
 
   private val operatedActions = Seq(
@@ -86,13 +101,13 @@ case class HB(source: HBS, name: String, target: HardwareBindable,
 object HB extends BindingDSL {
   def apply(source: HBS, name: String, target: () => Unit)
     (implicit ext: MonsterJamExt): HB =
-    HB(source, name, action(name, target))
+    new HB(source, name, action(name, target))
   def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean)
     (implicit ext: MonsterJamExt): HB =
-    HB(source, name, action(name, target), tracked = tracked)
-  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean, managed: Boolean)
+    new HB(source, name, action(name, target), tracked = tracked)
+  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean, behavior: BindingBehavior)
     (implicit ext: MonsterJamExt): HB =
-    HB(source, name, action(name, target), tracked = tracked, managed = managed)
+    new HB(source, name, action(name, target), tracked = tracked, behavior = behavior)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -176,8 +191,8 @@ trait BindingDSL {
 
   // fake action detector (optimize later)
   def isFakeAction(source: Any): Boolean = source match {
-    case a: FakeAction => a.masquerade
-    case _             => true
+    case a: FakeAction => true // !a.masquerade
+    case _             => false
   }
 }
 

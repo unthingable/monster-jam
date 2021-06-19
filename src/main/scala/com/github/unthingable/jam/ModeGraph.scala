@@ -17,13 +17,10 @@ object Graph {
   }
 
   sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
-  // Layers activate and deactivate as they please
+  // Layers activate and deactivate as they please (the default container)
   case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
   // A layer deactivates all others
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
-  // Repeated activation cycles layers (?)
-  //case class Cycle(override val layers: ModeLayer*) extends LayerGroup(layers)
-  //case class Overlay(override val layers: ModeLayer*) extends LayerGroup(layers)
 
   // Graph manages all the bindings
   class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
@@ -32,51 +29,42 @@ object Graph {
     // All source elements currently bound by us
     private val sourceMap: mutable.HashMap[Any, mutable.HashSet[Binding[_, _, _]]] = mutable.HashMap.empty
 
-
     // Assemble graph
     edges foreach { case (a, bb) =>
-      //bb match {
-      //  case Cycle(layers@_*) if layers.length > 1 =>
-      //    val initParent = layerMap.getOrElseUpdate(a, ModeNode(a))
-      //    val first = layers.head
-      //    val initChild  = layerMap.getOrElseUpdate(first, ModeNode(first))
-      //    val lastChild = layers.foldLeft(initParent) { case (p, layer) =>
-      //      val layerNode = layerMap.getOrElseUpdate(layer, ModeNode(layer))
-      //      layerNode.parent = Some(p)
-      //      p.children.add(layerNode)
-      //      layerNode
-      //    }
-      //    lastChild.children.add(initChild)
-      //  case _                =>
       bb.layers foreach { b =>
-        val child  = layerMap.getOrElseUpdate(b, ModeNode(b))
-        val parent = layerMap.getOrElseUpdate(a, ModeNode(a))
+        val child  = indexLayer(b)
+        val parent = indexLayer(a)
 
         child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
         assert(child.parent.isEmpty || child.layer.name == "-^-")
         child.parent = Some(parent)
-        //child.parents.add(parent)
-
         parent.children.add(child)
       }
-
     }
 
-    layerMap.keys.collect {case x: ModeCycleLayer => x}.flatMap(_.subModes).foreach { l =>
-      ext.host.println(s"adding submode ${l.name}")
-      layerMap.update(l, ModeNode(l))
+    init.foreach { l =>
+      ext.host.println(s"adding init ${l.name}")
+      indexLayer(l)
+    }
+
+    layerMap.keys.collect { case x: ModeCycleLayer => x }.foreach { cl =>
+      val parent = layerMap.get(cl)
+      cl.subModes.foreach { l =>
+        ext.host.println(s"adding submode ${l.name}")
+        val sub = indexLayer(l)
+        sub.parent = parent
+      }
     }
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] = {
       edges.map(_._2).partitionMap {
         case l: Exclusive => Left(l.layers.flatMap(layerMap.get).toSet)
-        //case l: Cycle     => Left(l.layers.flatMap(layerMap.get).toSet)
         case _            => Right(())
       }._1.flatMap(s => s.map(_ -> s)).toMap
     }
 
-    // Synthesize layer bindings
+    // Synthesize node bindings
     layerMap.values.foreach { node =>
       val bindings = node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
@@ -106,7 +94,7 @@ object Graph {
         }
         case _                     => Seq()
       })
-      val (managed, unmanaged) = bindings.partition(_.managed)
+      val (managed, unmanaged) = bindings.partition(_.behavior.managed)
 
       // bind unmanaged now
       unmanaged.foreach(_.bind())
@@ -121,10 +109,20 @@ object Graph {
     val entryNodes: Iterable[ModeNode] = layerMap.values.filter(_.parent.isEmpty)
     val exitNodes : Iterable[ModeNode] = layerMap.values.filter(_.children.isEmpty)
 
-    // activate entry nodes
-    entryNodes.foreach(activate)
-    // activate init layers
-    init.flatMap(layerMap.get).foreach(activate)
+    ext.host.scheduleTask(() =>
+    {
+      // activate entry nodes
+      entryNodes.foreach(activate)
+
+      // activate init layers
+      init.flatMap(layerMap.get).foreach(activate)
+    }, 100)
+
+    def indexLayer(l: ModeLayer): ModeNode = {
+      // make sure we didn't reuse a layer name
+      assert(!layerMap.get(l).exists(_.layer.name != l.name), s"Layer name collision: ${l.name}")
+      layerMap.getOrElseUpdate(l, ModeNode(l))
+    }
 
     def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} activate", () => {
       activate(node)
@@ -150,37 +148,35 @@ object Graph {
           .foreach { n =>
             ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
             deactivate(n)
-            //n.layer match {
-            //  case s: IntActivatedLayer => s.deactivateAction.invoke()
-            //  case _                    => deactivate(n)
-            //}
           })
 
-      case class Bumped(bumped: mutable.Set[Binding[_,_,_]], bumper: Binding[_,_,_])
-      val bumpBindings: Iterable[Bumped] = node.nodeBindings.filter(b => isFakeAction(b.surfaceElem))
-        .flatMap(b => sourceMap.get(b.surfaceElem).map(Bumped(_, b))) //.flatten //.filter(_.node.get != node)
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)).filter(_ != node)
+      case class Bumped(bumper: Binding[_,_,_], bumped: Set[Binding[_,_,_]])
+
+      val bumpBindings: Iterable[Bumped] =
+        node.nodeBindings
+          .filter(b => !isFakeAction(b.surfaceElem) && b.behavior.exclusive)
+          .map(b => Bumped(b, sourceMap
+            .get(b.surfaceElem)
+            .toSet
+            .flatten
+            .filter(_.behavior.exclusive)
+            .filter(!_.node.contains(node))))
+          .filter(_.bumped.nonEmpty)
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node))
 
       if (bumpNodes.nonEmpty) {
-        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}")
-        //bumpBindings.foreach { b =>
-        //  ext.host.println(s"bumper: ${b.bumper.toString}")
-        //  b.bumped.foreach(bb => ext.host.println(bb.toString))
-        //}
+        def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
+        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}: ")
+        bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
+          ext.host.println(s" > $b <- ${bb.mkString(",")}")
+        }
       }
-
-      // node stays active?
-      //bumpNodes.foreach(deactivate)
 
       // remember for deactivation
       node.nodesToRestore.addAll(bumpNodes)
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
-      bumpBindings.flatMap(_.bumped).foreach({ b =>
-        //ext.host.println(s"${node.layer.name}: clearing binding for: ${b.layerName}")
-        //b.clear()
-        unbind(b)
-      })
+      bumpBindings.flatMap(_.bumped).foreach(unbind)
 
       node.nodeBindings.foreach(bind)
 

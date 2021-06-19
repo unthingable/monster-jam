@@ -3,10 +3,13 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
+import com.github.unthingable.jam.HB
+import com.github.unthingable.jam.HB.HBS
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
 import scala.collection.mutable
+import scala.language.implicitConversions
 import scala.util.Try
 
 /*
@@ -15,13 +18,21 @@ Jam controls, self-wired to midi
 
 sealed trait JamControl
 
-trait Button extends JamControl { val button: HardwareButton }
+
+trait Button extends JamControl {
+  val pressedAction: HBS
+
+  val releasedAction: HBS
+
+  val isPressed: () => Boolean
+}
 trait Light[L <: HardwareLight] { val light: L }
 trait RgbLight extends Light[MultiStateHardwareLight]
 trait OnOffLight extends Light[OnOffHardwareLight]
+trait OnOffButton extends Button with OnOffLight
 
 case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
-  val button: HardwareButton = ext.hw.createHardwareButton(info.id)
+  protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
   val (on, off) = info.event match {
     case CC(cc) => (
@@ -36,6 +47,11 @@ case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button
 
   button.pressedAction.setActionMatcher(on)
   button.releasedAction.setActionMatcher(off)
+  button.isPressed.markInterested()
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
 
@@ -106,18 +122,26 @@ case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJ
   val jamButton: JamButton = JamButton(infoB)
   val jamLight: JamRgbLight = JamRgbLight(infoL)
 
-  val button: HardwareButton = jamButton.button
+  protected[surface] val button: HardwareButton = jamButton.button
   val light: MultiStateHardwareLight = jamLight.light
   button.setBackgroundLight(light)
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
-case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button with OnOffLight {
+case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends OnOffButton {
   val jamButton: JamButton = JamButton(info)
   val jamLight: JamOnOffLight = JamOnOffLight(info)
 
-  val button: HardwareButton = jamButton.button
+  protected[surface] val button: HardwareButton = jamButton.button
   val light: OnOffHardwareLight = jamLight.light
   button.setBackgroundLight(light)
+
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 }
 
 case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
@@ -133,11 +157,9 @@ case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implic
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
   }
 
-  var offsetCallback: Double => Unit = _ => ()
-  def setOffsetCallback(f: Double => Unit): Unit = offsetCallback = f
-  def clearOffsetCallback(): Unit = offsetCallback = _ => ()
-
-  slider.value().addValueObserver(offsetCallback(_))
+  override val pressedAction : HB.HBS        = button.pressedAction
+  override val releasedAction: HB.HBS        = button.releasedAction
+  override val isPressed     : () => Boolean = button.isPressed.get
 
   // such speedup
   override def hashCode(): Int = touch.event.value
@@ -159,24 +181,25 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
 
-  def setColor(idx: Int, color: Int): Unit = {
-    colors.update(idx, color)
-    flushColors()
+  def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
+    colors.update(idx, if (color == 68) 120 else color) // some more NI magic for you
+    if (flush) flushColors()
   }
-  def setValue(idx: Int, value: Int): Unit = {
-    values.update(idx, value)
-    flushValues()
+  def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {
+    if (barMode == BarMode.DUAL) {
+      values.update(idx, value)
+      if (flush) flushValues()
+    } else strips(idx).update(value)
   }
-  def setActive(idx: Int, value: Boolean): Unit = {
+  def setActive(idx: Int, value: Boolean, flush: Boolean = true): Unit = {
     active.update(idx, value)
-    flushColors()
+    if (flush) flushColors()
   }
 
   def flushColors(): Unit =
     ext.midiOut.sendSysex(createCommand("05",
       colors.zip(active).map { case (n, a) => f"${if (a) barMode.v else "00"}${n}%02x"}.mkString))
   def flushValues(): Unit = {
-    //clear()
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
   }
 
@@ -199,7 +222,7 @@ case class FakeAction(protected val invokeCallback:() => Unit = () => (), masque
     invokeCallback()
     callbacks.zipWithIndex.foreach { case (f, idx) =>
       assert(idx < callbacks.size)
-      Util.println(s"calling $idx of ${callbacks.size}")
+      //Util.println(s"calling $idx of ${callbacks.size}")
       f.invoke()
     }
   }
