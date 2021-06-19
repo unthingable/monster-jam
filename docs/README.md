@@ -45,6 +45,7 @@ Implementation ideas borrowed from original script, Maschine and Moss
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a group button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
+* **KNOB turn**: jog through the project timeline
 
 ## Transport
 
@@ -54,6 +55,7 @@ Implementation ideas borrowed from original script, Maschine and Moss
 * **SHIFT+PAGE LEFT**: Toggle the metronome
 * **SHIFT+PAGE RIGHT**: Toggle transport loop
 * **SHIFT+TEMPO**: Tap Tempo
+* **TEMPO+KNOB turn**: change tempo
 * **GRID**: Hold to change launch grid quantization with SCENE buttons (see Launch grid quantization below)
 * **SOLO**: Solo mode, press track(group) buttons to enable/disable solo. Keep holding SOLO button to automatically 
   disable Solo mode when released.
@@ -105,7 +107,7 @@ MonsterJam does the same with two modes currently, Solo and Mute, more will be a
 
 ### Launch grid quantization
 
-Hold **GRID** to select the current launch quantization with *SCENE** buttons. Buttons correspond to the following values:
+Hold **GRID** to select the current launch quantization with **SCENE** buttons. Buttons correspond to the following values:
 
 * "8", "4", "2", "1", "1/2", "1/4", "1/8", "1/16"
 
