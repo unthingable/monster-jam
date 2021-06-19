@@ -10,6 +10,7 @@ import com.github.unthingable.jam.surface._
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
+import scala.collection.mutable
 
 /*
 Behavior definition for surface controls
@@ -276,9 +277,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
-
-  // Mode layers
-
   {
     // wire scene buttons
     val sceneLayer = new SimpleModeLayer("scene") {
@@ -457,6 +455,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
      * Default clip matrix with clip launchers
      */
     val clipMatrix = new SimpleModeLayer("clipMatrix") {
+      case class PressedAt(var value: Instant)
 
       override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
         val track = trackBank.getItemAt(col)
@@ -464,6 +463,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         track.isQueuedForStop.markInterested()
 
         val clips = track.clipLauncherSlotBank()
+
+        val pressedAt: mutable.Seq[PressedAt] = mutable.ArraySeq.fill(8)(PressedAt(Instant.now()))
+
         (0 to 7).flatMap { row =>
           val btn  = j.matrix(row)(col)
           val clip = clips.getItemAt(row)
@@ -476,8 +478,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
           Seq(
             SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-            HB(btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips)),
-            HB(btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips)),
+            HB(btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
+            HB(btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
           )
         }
       } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
@@ -487,10 +489,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       // for duplication
       private var source   : Option[ClipLauncherSlot] = None
-      private var pressed  : Option[ClipLauncherSlot] = None // TODO fix multiple releases
-      private var pressedAt: Instant = Instant.now() // initial value doesn't matter
 
-      private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
+      private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
         if (GlobalMode.Select.isOn) clip.select()
         else if (GlobalMode.Clear.isOn) clip.deleteObject()
         else if (GlobalMode.Duplicate.isOn) {
@@ -501,20 +501,15 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           }
         }
          else {
-          pressed = Some(clip)
-          pressedAt = Instant.now()
+          pressedAt.value = Instant.now()
         }
       }
 
-      private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank): Unit = {
-        if (pressed.isDefined) {
-          val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
-          if (elapsed)
-            clip.select()
-          else if (clip.isPlaying.get()) clips.stop()
-               else clip.launch()
-        }
-        pressed = None
+      private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
+        if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
+          clip.select()
+        else if (clip.isPlaying.get()) clips.stop()
+             else clip.launch()
       }
 
       private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
