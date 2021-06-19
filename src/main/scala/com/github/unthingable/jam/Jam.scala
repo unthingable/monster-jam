@@ -2,7 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.{FilteredPage, MonsterJamExt, Util}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -124,7 +124,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
       param.value().markInterested()
-      param.value().addValueObserver(127, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
+      param.modulatedValue().markInterested()
+      param.modulatedValue().addValueObserver(127, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
 
       proxy match {
         case channel: Channel =>
@@ -567,32 +568,61 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     // devices!
     val deviceLayer = new ModeCycleLayer("device", j.control, CycleMode.Select) {
-      val device: PinnableCursorDevice     = ext.cursorTrack.createCursorDevice()
-      val page  : CursorRemoteControlsPage = device.createCursorRemoteControlsPage(8)
+      val touchFX = "TouchFX"
+      val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
+      val page  : FilteredPage         = FilteredPage(
+        device.createCursorRemoteControlsPage(8),
+        _ != touchFX)
 
       device.hasNext.markInterested()
       device.hasPrevious.markInterested()
-      page.hasNext.markInterested()
-      page.hasPrevious.markInterested()
+      page.c.pageNames().markInterested()
+      page.c.selectedPageIndex().markInterested()
+
+      val secondCursor: CursorRemoteControlsPage = device.createCursorRemoteControlsPage(touchFX, 8, "")
+      var touchPage: Option[CursorRemoteControlsPage] = None
+      secondCursor.pageNames().markInterested()
+      secondCursor.selectedPageIndex().markInterested()
+      secondCursor.pageNames().addValueObserver(names => touchPage = names
+        .zipWithIndex.find(_._1 == touchFX).map { case (_, idx) =>
+          secondCursor.selectedPageIndex().set(idx)
+          secondCursor
+        })
+
 
       override val subModes: Seq[SubModeLayer] = Seq(
-        new SliderBankMode[RemoteControl]("strips remote", page.getParameter, identity) {
+        new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
           override val barMode: BarMode = BarMode.SINGLE
+
+          j.stripBank.strips.forindex {case (strip, idx) =>
+            strip.button.isPressed.markInterested()
+            strip.button.isPressed.addValueObserver(v => touchPage.foreach(tp =>
+              if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
+          }
         }
       )
 
-      def m(default: BooleanValue, modePressed: BooleanValue): BooleanSupplier =
-        () => if (modeButton.isPressed()) modePressed.get() else default.get()
+      def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
+        () => if (modeButton.isPressed()) modePressed() else default()
 
-      def m(default: HardwareActionBindable, modePressed: HardwareActionBindable): () => Unit =
-        () => if (modeButton.isPressed()) modePressed.invoke() else default.invoke()
+      def m(default: () => Unit, modePressed: () => Unit): () => Unit =
+        () => if (modeButton.isPressed()) modePressed() else default()
 
       override val modeBindings: Seq[Binding[_, _, _]] = Seq(
-        SupBooleanB(j.left.light.isOn, m(device.hasPrevious, page.hasPrevious)),
-        SupBooleanB(j.right.light.isOn, m(device.hasNext, page.hasNext)),
-        HB(j.left.pressedAction, "scroll left", m(device.selectPreviousAction(), page.selectPreviousAction())),
-        HB(j.right.pressedAction, "scroll right", m(device.selectNextAction(), page.selectNextAction())),
+        SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
+        SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
+        HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
+        HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
       )
+
+      override def activate(): Unit = {
+        if (page.c.pageNames().get()(page.c.selectedPageIndex().get()) == touchFX)
+          if (page.hasPrevious())
+            page.selectPrevious()
+          else
+            page.selectNext()
+        super.activate()
+      }
     }
 
     val top    = Coexist(SimpleModeLayer("-^-", modeBindings = Seq.empty))

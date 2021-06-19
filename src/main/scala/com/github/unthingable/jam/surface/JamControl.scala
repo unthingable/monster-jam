@@ -145,7 +145,7 @@ case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends O
 }
 
 case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
-  protected[surface] val button: HardwareButton = JamButton(touch).button
+  val button: HardwareButton = JamButton(touch).button
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
 
   // assume it's always CC
