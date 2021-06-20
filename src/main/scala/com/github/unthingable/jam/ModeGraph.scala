@@ -10,7 +10,7 @@ object Graph {
   case class ModeNode(layer: ModeLayer) {
     protected[Graph] var parent: Option[ModeNode] = None
     protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty
-    protected[Graph] val nodeBindings: mutable.Set[Binding[_, _, _]] = mutable.HashSet.empty
+    protected[Graph] val nodeBindings: mutable.Set[Binding[_, _, _]] = mutable.LinkedHashSet.empty
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
     protected[Graph] var isActive = false
     //override def hashCode(): Int = layer.name.hashCode()
@@ -25,7 +25,7 @@ object Graph {
   // Graph manages all the bindings
   class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
-    private val layerMap: mutable.HashMap[ModeLayer, ModeNode] = mutable.HashMap.empty
+    private val layerMap: mutable.Map[ModeLayer, ModeNode] = mutable.LinkedHashMap.empty
     // All source elements currently bound by us
     private val sourceMap: mutable.HashMap[Any, mutable.HashSet[Binding[_, _, _]]] = mutable.HashMap.empty
 
