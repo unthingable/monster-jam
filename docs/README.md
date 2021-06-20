@@ -40,12 +40,15 @@ MonsterJam focuses primarily on essential performance features, less on content 
 Implementation ideas borrowed from original script, Maschine and Moss 
 (including some documentation snippets), among others.
 
+**NOTE**: Key bindings are experimental and may change in future versions.
+
 ## Global
 
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a group button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
-* **KNOB turn**: jog through the project timeline
+* **KNOB turn**: Jog through the project timeline
+* **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
 
 ## Transport
 
@@ -63,8 +66,6 @@ Implementation ideas borrowed from original script, Maschine and Moss
 
 ## Clip Launcher
 
-* The arrow keys scroll the grid by blocks of 8 tracks/scenes. Hold **SHIFT** to only scroll 1 track/scene. 
-  Keys will light up if there is content to scroll to.
 * **(PAD)** on empty clip: record new clip
 * **(PAD)** on existing clip: start clip playback
 * **(PAD)** on playing clip: stop clip playback
@@ -72,6 +73,16 @@ Implementation ideas borrowed from original script, Maschine and Moss
   While **SELECT** is pressed the currently selected clip is WHITE.
 * **CLEAR+(PAD)**: Delete the clip
 * **DUPLICATE**: To duplicate a clip keep the duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip with content); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
+
+### Page navigation
+
+* The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
+* **SHIFT+**: hold shift and then
+  * Arrow keys: scroll by 1 track/scene
+  * **SCENE(1-8)**: directly select from the first 8 pages of scenes
+  * **GROUP(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
+  * The currently selected scene/track page is orange, available pages are white. If the view is currently between pages, two adjacent pages will be orange.
+
 
 ## Group Buttons (A-H) and Scene Buttons (1-8)
 
@@ -127,3 +138,13 @@ Usage example:
 * Make a preset page of buttons called `MonsterFX` in a container to enable/disable FX devices, or do anything else.
 
 It's a bit of a hack until a better way is found.
+
+# Preferences
+
+* _Show pretty shift commands in matrix_: when enabled, holding **SHIFT**
+will change the colors of the top row of the clip matrix buttons to indicate that they are special.
+* _SHIFT-GROUP selects track page_: see **Page navigation**
+
+After changing preferences it may be necessary to reload the extension (turn it off an on again in Controllers settings page).
+Also, after upgrading MonsterJam version be sure to check the settings - deprecated settings 
+may not get automatically removed by Bitwig, in which case delete and add the controller again.

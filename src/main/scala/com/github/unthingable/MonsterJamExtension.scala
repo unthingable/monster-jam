@@ -6,6 +6,11 @@ import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
+case class MonsterPref(
+  shiftRow: SettableBooleanValue,
+  shiftGroup: SettableBooleanValue,
+)
+
 case class MonsterJamExt(
   host: ControllerHost,
   midiIn: MidiIn,
@@ -16,6 +21,7 @@ case class MonsterJamExt(
   transport: Transport,
   document: DocumentState,
   application: Application,
+  preferences: MonsterPref,
   xmlMap: XmlMap
 ) {
   type Schedulable = (Int, () => Boolean, () => Unit)
@@ -37,6 +43,8 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
   Util.println = host.println
 
+  val preferences: Preferences = host.getPreferences
+
   override def init(): Unit = {
     val host = getHost
     ext = MonsterJamExt(
@@ -49,6 +57,10 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createTransport(),
       host.getDocumentState,
       host.createApplication(),
+      MonsterPref(
+        preferences.getBooleanSetting("Show pretty shift commands in matrix", "Options", true),
+        preferences.getBooleanSetting("SHIFT-GROUP selects track page", "Options", true)
+      ),
       loadMap(host)
     )
 
