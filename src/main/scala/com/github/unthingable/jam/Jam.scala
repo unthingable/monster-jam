@@ -11,6 +11,7 @@ import com.github.unthingable.jam.surface._
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 import scala.collection.mutable
+import scala.util.Try
 
 /*
 Behavior definition for surface controls
@@ -537,22 +538,24 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
-    var superScene = new ModeButtonLayer("superScene", j.song, GateMode.Toggle) {
-      val maxTracks = 64
+    var superScene = new ModeButtonLayer("superScene", j.song, GateMode.Toggle) with Util {
+      val maxTracks = 64 // can be up to 256 before serialization needs to be rethought
       val maxScenes = 64
+      val bufferSize = maxTracks * maxScenes * 4
 
       val superBank  : TrackBank                  = ext.host.createMainTrackBank(maxTracks, 8, maxScenes)
       superBank.itemCount().markInterested()
 
-      val setting: SettableStringValue = ext.document.getStringSetting("MonsterJam", "superScenes", 8192, "")
+      val setting: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
       setting.asInstanceOf[Setting].hide()
 
-      val superScenes: mutable.ArraySeq[Map[Int, Int]] = {
-        ext.host.println(setting.get())
-        if (setting.get().nonEmpty)
-          mutable.ArraySeq.from(deserialize(maxTracks, maxScenes)(setting.get()))
-        else
-          mutable.ArraySeq.fill(maxTracks)(Map.empty)
+      lazy val superScenes: mutable.ArraySeq[Map[Int, Int]] = {
+        //ext.host.println(setting.get())
+        Try(mutable.ArraySeq.from(deserialize(maxTracks, maxScenes)(setting.get())))
+          .toEither
+          .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
+          .left.map{e => ext.host.println(s"Failed to deserialize superscenes: ${e}"); e}
+          .getOrElse(mutable.ArraySeq.fill(maxTracks)(Map.empty))
       }
 
       (0 until maxTracks).foreach {t =>
@@ -591,7 +594,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         else if (superScenes(idx).isEmpty) {
           superScenes.update(idx, scan().map(ct => ct.track -> ct.clip).toMap)
           val ser = serialize(maxTracks, maxScenes)(superScenes)
-          ext.host.println(ser)
+          //ext.host.println(ser)
           setting.set(ser)
         } else
             recall(idx)
@@ -600,16 +603,20 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       def serialize(rows: Int, cols: Int)(o: Iterable[Map[Int, Int]]): String =
         o.take(rows).map { row =>
           (0 until cols).map { idx =>
-            f"${idx + 1}%02x${row.get(idx).map(_ + 1).getOrElse(0)}%02x"
+            f"${idx}%02x${row.get(idx).map(_ + 1).getOrElse(0)}%02x"
           }.mkString
         }.mkString
 
       def deserialize(rows: Int, cols: Int)(s: String): Iterable[Map[Int, Int]] = {
-        assert(s.length == rows * cols)
-        s.grouped(2).map(Integer.parseInt(_, 16)).filter(_ == 0).map(_ - 1)
-          .grouped(2).map(s => s(0) -> s(1))
-          .grouped(cols).map(_.toMap.filter(_ != (0,0)))
-      }.toSeq
+        assert(s.length == bufferSize, s"length mismatch: expected $bufferSize, got ${s.length}")
+        assert(rows * cols * 4 == bufferSize, s"rows * cols (${rows * cols * 4}) does not match expected bufferSize $bufferSize")
+        val ret = s.grouped(2).map(Integer.parseInt(_, 16))
+          .grouped(2).map(s => s(0) -> (s(1) - 1))
+          .grouped(cols).map(_.filter(_._2 != -1).toMap)
+          .toSeq
+        assert(ret.forall(_.forall(x => x._1 < maxTracks && x._2 < maxScenes)), "index out of bounds")
+        ret
+      }
 
       override val modeBindings: Seq[Binding[_, _, _]] = (0 to 7).flatMap { idx =>
         Seq(
