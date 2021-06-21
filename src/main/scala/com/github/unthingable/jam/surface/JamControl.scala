@@ -182,7 +182,8 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
 
   def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
-    colors.update(idx, if (color == 68) 120 else color) // some more NI magic for you, white is not the same for strips
+    // some more NI magic for you, white is not the same for strips. Also we can't really show black tracks.
+    colors.update(idx, if (color == 68 || color == 0) 120 else color)
     if (flush) flushColors()
   }
   def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {

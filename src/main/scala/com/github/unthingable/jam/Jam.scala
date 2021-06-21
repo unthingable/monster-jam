@@ -140,7 +140,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           send.sendChannelColor().markInterested()
           send.sendChannelColor().addValueObserver((r, g, b) =>
             if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
-        case control: RemoteControl =>
+        case _: RemoteControl =>
           ()
       }
 
