@@ -542,6 +542,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val maxTracks = 64 // can be up to 256 before serialization needs to be rethought
       val maxScenes = 64
       val bufferSize = maxTracks * maxScenes * 4
+      var pageIndex = 0
 
       val superBank  : TrackBank                  = ext.host.createMainTrackBank(maxTracks, 8, maxScenes)
       superBank.itemCount().markInterested()
@@ -618,12 +619,15 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         ret
       }
 
+      def page(idx: Int): mutable.Seq[Map[Int, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
+
       override val modeBindings: Seq[Binding[_, _, _]] = (0 to 7).flatMap { idx =>
+        def pageOffset = pageIndex * 8
         Seq(
-          HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(idx)),
+          HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
           SupColorStateB(j.sceneButtons(idx).light, () =>
             JamColorState(
-              if (superScenes(idx).isEmpty) JAMColorBase.OFF else ((idx % 16) + 1) * 4,
+              if (superScenes(pageOffset + idx).isEmpty) JAMColorBase.OFF else (((pageOffset + idx) % 16) + 1) * 4,
               0), JamColorState.empty),
         )
       }
@@ -690,10 +694,22 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             (0 to 7).flatMap(bankB(sceneBank, j.sceneButtons, _)) ++ trackPages
         },
         new SimpleModeLayer("superscene pages") with IntActivatedLayer {
-          override val modeBindings: Seq[Binding[_, _, _]] =
-            (0 to 7).flatMap(i => bankB(sceneBank, j.matrix(7), i)) ++ trackPages ++ Seq(
-
-            )
+          override val modeBindings: Seq[Binding[_, _, _]] = {
+            trackPages ++
+            (0 to 7).flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Seq(
+              SupColorStateB(j.sceneButtons(idx).light, () =>
+                JamColorState(
+                  if (!superScene.page(idx).forall(_.isEmpty))
+                    if (idx == superScene.pageIndex)
+                      JAMColorBase.RED
+                    else
+                      JAMColorBase.YELLOW
+                  else JAMColorBase.OFF,
+                  0)
+                , JamColorState.empty),
+              HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superScene.pageIndex = idx)
+            ))
+          }
         }
       )
 
