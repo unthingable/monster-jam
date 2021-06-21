@@ -543,6 +543,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val maxScenes = 64
       val bufferSize = maxTracks * maxScenes * 4
       var pageIndex = 0
+      var lastScene: Option[Int] = None
 
       val superBank  : TrackBank                  = ext.host.createMainTrackBank(maxTracks, 8, maxScenes)
       superBank.itemCount().markInterested()
@@ -579,26 +580,29 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }
       }
 
-      def recall(idx: Int): Unit = {
+      def recall(scene: Int): Unit = {
         (0 until maxTracks).foreach { track =>
-          superScenes(idx).get(track) match {
+          superScenes(scene).get(track) match {
             case Some(clip) =>
               superBank.getItemAt(track).clipLauncherSlotBank().launch(clip)
             case None        =>
               superBank.getItemAt(track).stop()
           }
+          lastScene = Some(scene)
         }
       }
 
-      def pressed(idx: Int): Unit = {
-        if (GlobalMode.Clear.isOn) superScenes.update(idx, Map.empty)
-        else if (superScenes(idx).isEmpty) {
-          superScenes.update(idx, scan().map(ct => ct.track -> ct.clip).toMap)
+      def pressed(scene: Int): Unit = {
+        if (GlobalMode.Clear.isOn) superScenes.update(scene, Map.empty)
+        else if (superScenes(scene).isEmpty) {
+          superScenes.update(scene, scan().map(ct => ct.track -> ct.clip).toMap)
+          lastScene = Some(scene)
+
           val ser = serialize(maxTracks, maxScenes)(superScenes)
           //ext.host.println(ser)
           setting.set(ser)
         } else
-            recall(idx)
+            recall(scene)
       }
 
       def serialize(rows: Int, cols: Int)(o: Iterable[Map[Int, Int]]): String =
@@ -627,8 +631,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
           SupColorStateB(j.sceneButtons(idx).light, () =>
             JamColorState(
-              if (superScenes(pageOffset + idx).isEmpty) JAMColorBase.OFF else (((pageOffset + idx) % 16) + 1) * 4,
-              0), JamColorState.empty),
+              if (superScenes(pageOffset + idx).isEmpty)
+                JAMColorBase.OFF
+              else if (lastScene.contains(pageOffset + idx)) JAMColorBase.WHITE
+              else (((pageOffset + idx) % 16) + 1) * 4,
+              if (lastScene.contains(pageOffset + idx)) 2 else 0), JamColorState.empty),
         )
       }
     }
@@ -699,11 +706,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             (0 to 7).flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Seq(
               SupColorStateB(j.sceneButtons(idx).light, () =>
                 JamColorState(
-                  if (!superScene.page(idx).forall(_.isEmpty))
-                    if (idx == superScene.pageIndex)
-                      JAMColorBase.RED
-                    else
-                      JAMColorBase.YELLOW
+                  if (idx == superScene.pageIndex)
+                    JAMColorBase.RED
+                  else if (superScene.page(idx).exists(_.nonEmpty))
+                    JAMColorBase.YELLOW
                   else JAMColorBase.OFF,
                   0)
                 , JamColorState.empty),
