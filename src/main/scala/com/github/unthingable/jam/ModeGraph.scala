@@ -70,29 +70,29 @@ object Graph {
         child.layer match {
           case l: ActivatedLayer[HBS] with ListeningLayer =>
             ext.host.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
-            l.loadBindings ++ Seq(
+            l.loadBindings ++ Vector(
               HB(l.activateAction, s"${l.name} syn act", activateAction(child)),
               HB(l.deactivateAction, s"${l.name} syn deact", deactivateAction(child)),
             )
           case l: ActivatedLayer[HBS] =>
             ext.host.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
-            Seq(
+            Vector(
               HB(l.activateAction, s"${l.name} syn act", activateAction(child)),
               HB(l.deactivateAction, s"${l.name} syn deact", deactivateAction(child)),
             )
-          case _                     => Seq()
+          case _                     => Vector.empty
         }
       } ++ (node.layer match {
         // ModeCycleLayer is its submodes' parent
         case layer: ModeCycleLayer => layer.subModes.flatMap { sm =>
           val smn = layerMap(sm)
           ext.host.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
-          Seq(
+          Vector(
             HB(sm.activateAction, s"${node.layer.name}->${sm.name} syn act", activateAction(smn), tracked = false),
             HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
           )
         }
-        case _                     => Seq()
+        case _                     => Vector.empty
       })
       val (managed, unmanaged) = bindings.partition(_.behavior.managed)
 
@@ -140,7 +140,7 @@ object Graph {
       ext.host.println(s"activating node ${node.layer.name}")
 
       // Deactivate exclusive
-      val bumpedExc: Iterable[ModeNode] = exclusiveGroups.get(node).toSeq
+      val bumpedExc: Iterable[ModeNode] = exclusiveGroups.get(node).toVector
         //.map(_ ++ node.parents) // also deactivate parents (greedy Exclusive)
         .flatMap(_
           .filter(_.isActive)

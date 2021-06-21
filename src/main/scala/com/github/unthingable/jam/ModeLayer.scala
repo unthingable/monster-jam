@@ -98,7 +98,7 @@ abstract class ModeButtonLayer(
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   private var pressedAt: Instant = null
 
-  override final val loadBindings: Seq[Binding[_, _, _]] = Seq(
+  override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
     HB(modeButton.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
@@ -121,7 +121,7 @@ abstract class ModeButtonLayer(
         }
     },
       tracked = false)
-  ) ++ (if (!silent) Seq(SupBooleanB(modeButton.light.isOn, () => isOn)) else Seq())
+  ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, () => isOn)) else Vector.empty)
 }
 
 object ModeButtonLayer {
@@ -139,7 +139,7 @@ object ModeButtonLayer {
 class SubModeLayer(
   val name: String
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer {
-  override val modeBindings: Seq[Binding[_, _, _]] = Seq()
+  override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
 }
 
 sealed trait CycleMode
@@ -181,21 +181,21 @@ abstract class ModeCycleLayer(
     mode.activateAction.invoke()
   }
 
-  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
+  override val loadBindings: Seq[Binding[_, _, _]] = Vector(
     HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
     SupBooleanB(modeButton.light.isOn, () => isOn)
   )
 
   override val modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle      =>
-      Seq(
+      Vector(
         HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
       )
     case CycleMode.GateSelect =>
-      Seq(
+      Vector(
         HB(modeButton.pressedAction, s"$name gate on", () => activateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false)),
         HB(modeButton.releasedAction, s"$name gate off", () => deactivateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false))
       )
-    case _                    => Seq.empty
+    case _                    => Vector.empty
   }
 }

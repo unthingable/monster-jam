@@ -59,7 +59,7 @@ object XmlMap {
 
     val foundFiles: Option[File] = (new File(extDir)).listFiles((_, name) => name.endsWith(".ncmj")).headOption
 
-    val source = Seq(
+    val source = Vector(
       // bring your own
       Try {
         val f = foundFiles.get

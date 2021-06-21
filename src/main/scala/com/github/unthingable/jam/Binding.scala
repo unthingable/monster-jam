@@ -74,7 +74,7 @@ case class HB(
     //assert(!isActive)
     if (!isActive)
       bindings.addAll(
-        Seq(
+        Vector(
           source.addBinding(target)
         ) ++ (if (tracked)
                 operatedActions
@@ -93,7 +93,7 @@ case class HB(
     isActive = false
   }
 
-  private val operatedActions = Seq(
+  private val operatedActions = Vector(
     action(() => s"$layerName: HB: unit operated", () => {wasOperated = true}),
     action(() => s"$layerName: HB: double operated", _ => {wasOperated = true}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
