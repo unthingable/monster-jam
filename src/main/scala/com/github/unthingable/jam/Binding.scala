@@ -59,9 +59,11 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
 }
 
 // Bind hardware elements to actions
-case class HB(source: HBS, name: String, target: HardwareBindable,
-  override val behavior: BindingBehavior = BindingBehavior(),
-  tracked: Boolean = true)
+case class HB(
+  source: HBS,
+  name: String, target: HardwareBindable,
+  tracked: Boolean = true,
+  override val behavior: BindingBehavior = BindingBehavior())
   (implicit val ext: MonsterJamExt)
   extends OutBinding[HBS, HardwareBindable] with Named {
 
@@ -72,7 +74,7 @@ case class HB(source: HBS, name: String, target: HardwareBindable,
     //assert(!isActive)
     if (!isActive)
       bindings.addAll(
-        Seq(
+        Vector(
           source.addBinding(target)
         ) ++ (if (tracked)
                 operatedActions
@@ -91,7 +93,7 @@ case class HB(source: HBS, name: String, target: HardwareBindable,
     isActive = false
   }
 
-  private val operatedActions = Seq(
+  private val operatedActions = Vector(
     action(() => s"$layerName: HB: unit operated", () => {wasOperated = true}),
     action(() => s"$layerName: HB: double operated", _ => {wasOperated = true}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
