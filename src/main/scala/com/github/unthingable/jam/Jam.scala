@@ -167,20 +167,17 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       j.stripBank.strips.forindex { case (strip, idx) =>
         val proxy = proxies(idx)
-        if (proxy.exists().get) {
-          j.stripBank.setActive(idx, value = true, flush = false)
 
-          (proxy match {
-            case channel: Channel =>
-              Some(JamColorState.toColorIndex(channel.color().get()))
-            case send: Send       =>
-              Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
-            case _: RemoteControl =>
-              Some(rainbow(idx))
-          }).foreach(c => j.stripBank.setColor(idx, c))
-        } else {
-          j.stripBank.setActive(idx, value = false, flush = false)
-        }
+        (proxy match {
+          case channel: Channel =>
+            Some(JamColorState.toColorIndex(channel.color().get()))
+          case send: Send       =>
+            Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
+          case _: RemoteControl =>
+            Some(rainbow(idx))
+        }).foreach(c => j.stripBank.setColor(idx, c))
+
+        j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
       }
 
       j.stripBank.flushColors()
