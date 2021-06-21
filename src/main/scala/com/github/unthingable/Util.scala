@@ -5,7 +5,7 @@ import com.bitwig.extension.callback.BooleanValueChangedCallback
 import com.bitwig.extension.controller.api.{BooleanValue, ControllerHost, Cursor, CursorRemoteControlsPage, HardwareActionBindable, RelativeHardwareControl, RelativeHardwareControlBinding}
 
 trait Util {
-  implicit class SeqOps[A, S[B] <: Seq[B]](seq: S[A]) {
+  implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
     def forindex(f: (A, Int) => Unit): S[A] = {
       seq.zipWithIndex.foreach(f.tupled)
       seq

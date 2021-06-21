@@ -49,6 +49,7 @@ Implementation ideas borrowed from original script, Maschine and Moss
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
 * **KNOB turn**: Jog through the project timeline
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
+* **SONG**: SuperScene mode
 
 ## Transport
 
@@ -77,12 +78,15 @@ Implementation ideas borrowed from original script, Maschine and Moss
 ### Page navigation
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
-* **SHIFT+**: hold shift and then
+* **SHIFT+** in regular mode: hold shift and then
   * Arrow keys: scroll by 1 track/scene
   * **SCENE(1-8)**: directly select from the first 8 pages of scenes
   * **GROUP(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
-  * The currently selected scene/track page is orange, available pages are white. If the view is currently between pages, two adjacent pages will be orange.
-
+  * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
+* **SHIFT+** in SuperScene mode:
+  * Group buttons and arrow keys same as above
+  * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
+  * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
 
 ## Group Buttons (A-H) and Scene Buttons (1-8)
 
@@ -106,9 +110,9 @@ from the track, for additional fun and profit (like Maschine).
 
 Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls. This works in all touchstrip modes.
 
-## Modes and notes
+# Modes and notes
 
-### Self-gating modes
+## Self-gating modes
 
 This is something Novation Circuit does well: a quick press on a mode button turns it on, but hold the button and 
 make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
@@ -116,7 +120,7 @@ and performance.
 
 MonsterJam does the same with two modes currently, Solo and Mute, more will be added as needed.
 
-### Launch grid quantization
+## Launch grid quantization
 
 Hold **GRID** to select the current launch quantization with **SCENE** buttons. Buttons correspond to the following values:
 
@@ -124,7 +128,7 @@ Hold **GRID** to select the current launch quantization with **SCENE** buttons. 
 
 THe current setting is lit. Press the lit button to disable grid quantization altogether.
 
-### PERFORM FX
+## PERFORM FX
 
 Maschine native has a great PERFORM mode, where dual-touch strips control both an effect parameter and effect routing
 (e.g., an insert effect is enabled only when the strip is being touched). MonsterJam does something similar.
@@ -138,6 +142,18 @@ Usage example:
 * Make a preset page of buttons called `MonsterFX` in a container to enable/disable FX devices, or do anything else.
 
 It's a bit of a hack until a better way is found.
+
+## SuperScene
+
+SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperScenes are available per project.
+
+* **SONG** toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
+* Empty **SCENE(1-8)** creates new SuperScene from playing clips
+* Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Currently selected scene is **white**.
+* **CLEAR+SCENE(1-8)** deletes the SuperScene (clips and their playing states are unaffected)
+* **SHIFT+SCENE(1-8)** selects a SuperScene page (see **Page navigation**)
+
+SuperScenes are saved with the project.
 
 # Preferences
 

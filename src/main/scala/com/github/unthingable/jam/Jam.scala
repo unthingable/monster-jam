@@ -551,14 +551,19 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val setting: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
       setting.asInstanceOf[Setting].hide()
 
-      lazy val superScenes: mutable.ArraySeq[Map[Int, Int]] = {
-        //ext.host.println(setting.get())
-        Try(mutable.ArraySeq.from(deserialize(maxTracks, maxScenes)(setting.get())))
+      lazy val superScenes: mutable.ArraySeq[Map[Int, Int]] = mutable.ArraySeq.from(fromSettings(setting.get()))
+
+      private def fromSettings(s: String): Iterable[Map[Int, Int]] =
+        Try(deserialize(maxTracks, maxScenes)(s))
           .toEither
           .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-          .left.map{e => ext.host.println(s"Failed to deserialize superscenes: ${e}"); e}
-          .getOrElse(mutable.ArraySeq.fill(maxTracks)(Map.empty))
-      }
+          .left.map { e => ext.host.println(s"Failed to deserialize superscenes: ${e}"); e }
+          .getOrElse(Seq.fill(maxTracks)(Map.empty))
+
+      ext.application.projectName().markInterested()
+      ext.application.projectName().addValueObserver(_ => {
+        fromSettings(setting.get()).forindex {case (m, idx) => superScenes.update(idx, m)}
+      })
 
       (0 until maxTracks).foreach {t =>
         val clips = superBank.getItemAt(t).clipLauncherSlotBank()
