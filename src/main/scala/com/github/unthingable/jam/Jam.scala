@@ -787,7 +787,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
 
       override def activate(): Unit = {
-        if (page.c.pageNames().get()(page.c.selectedPageIndex().get()) == touchFX)
+        val idx = page.c.selectedPageIndex().get()
+        val pageNames = page.c.pageNames().get()
+        if (idx >= 0 && pageNames(idx) == touchFX)
           if (page.hasPrevious())
             page.selectPrevious()
           else
