@@ -600,7 +600,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         if (GlobalMode.Clear.isOn) superScenes.update(scene, Map.empty)
         else if (superScenes(scene).isEmpty) {
           superScenes.update(scene, scan().map(ct => ct.track -> ct.clip).toMap)
-          lastScene = Some(scene)
+          //lastScene = Some(scene)
 
           val ser = serialize(maxTracks, maxScenes)(superScenes)
           //ext.host.println(ser)
