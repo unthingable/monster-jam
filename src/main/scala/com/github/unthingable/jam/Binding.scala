@@ -59,9 +59,11 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
 }
 
 // Bind hardware elements to actions
-case class HB(source: HBS, name: String, target: HardwareBindable,
-  override val behavior: BindingBehavior = BindingBehavior(),
-  tracked: Boolean = true)
+case class HB(
+  source: HBS,
+  name: String, target: HardwareBindable,
+  tracked: Boolean = true,
+  override val behavior: BindingBehavior = BindingBehavior())
   (implicit val ext: MonsterJamExt)
   extends OutBinding[HBS, HardwareBindable] with Named {
 

@@ -140,14 +140,22 @@ object Graph {
       ext.host.println(s"activating node ${node.layer.name}")
 
       // Deactivate exclusive
-      exclusiveGroups.get(node)
+      val bumpedExc: Iterable[ModeNode] = exclusiveGroups.get(node).toSeq
         //.map(_ ++ node.parents) // also deactivate parents (greedy Exclusive)
-        .foreach(_
+        .flatMap(_
           .filter(_.isActive)
           .filter(_ != node) // this really shouldn't happen unless the node didn't properly deactivate
-          .foreach { n =>
+          .flatMap { n =>
             ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
             deactivate(n)
+
+            //node.layer match {
+            //  case l: ModeButtonLayer if l.gateMode == GateMode.OneWay => None
+            //  case l: ModeCycleLayer if l.cycleMode == G => None
+            //  case _ if init.contains(n.layer) => Some(n)
+            //  case _ => None
+            //}
+            None
           })
 
       case class Bumped(bumper: Binding[_,_,_], bumped: Set[Binding[_,_,_]])
@@ -162,7 +170,7 @@ object Graph {
             .filter(_.behavior.exclusive)
             .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node))
+      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)) ++ bumpedExc
 
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
@@ -193,6 +201,7 @@ object Graph {
 
     private def deactivate(node: ModeNode): Unit = {
       ext.host.println(s"deactivating node ${node.layer.name}")
+      node.isActive = false
       node.layer.deactivate()
       node.nodeBindings.foreach(unbind)
 
@@ -201,7 +210,6 @@ object Graph {
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
-      node.isActive = false
       ext.host.println(s"-- deactivated ${node.layer.name} ---")
     }
 

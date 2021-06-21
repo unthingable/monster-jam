@@ -146,6 +146,7 @@ sealed trait CycleMode
 object CycleMode {
   case object Cycle extends CycleMode
   case object Select extends CycleMode
+  case object GateSelect extends CycleMode
 }
 
 abstract class ModeCycleLayer(
@@ -154,7 +155,7 @@ abstract class ModeCycleLayer(
   val cycleMode: CycleMode,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
-  val subModes: Seq[SubModeLayer]
+  val subModes: Seq[ModeLayer with IntActivatedLayer]
 
   var selected: Option[Int] = Some(0)
 
@@ -168,18 +169,6 @@ abstract class ModeCycleLayer(
     super.deactivate()
   }
 
-  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
-    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
-    SupBooleanB(modeButton.light.isOn, () => isOn)
-  )
-
-  override val modeBindings: Seq[Binding[_, _, _]] =
-    if (cycleMode == CycleMode.Cycle)
-      Seq(
-        HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
-      )
-    else Seq.empty
-
   def cycle(): Unit = {
     selected.map(i => (i + 1) % subModes.length).orElse(Some(0)).foreach(select)
   }
@@ -190,5 +179,23 @@ abstract class ModeCycleLayer(
     ext.host.println(s"activating submode ${mode.name}")
     selected = Some(idx)
     mode.activateAction.invoke()
+  }
+
+  override val loadBindings: Seq[Binding[_, _, _]] = Seq(
+    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
+    SupBooleanB(modeButton.light.isOn, () => isOn)
+  )
+
+  override val modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
+    case CycleMode.Cycle      =>
+      Seq(
+        HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
+      )
+    case CycleMode.GateSelect =>
+      Seq(
+        HB(modeButton.pressedAction, s"$name gate on", () => activateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false)),
+        HB(modeButton.releasedAction, s"$name gate off", () => deactivateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false))
+      )
+    case _                    => Seq.empty
   }
 }

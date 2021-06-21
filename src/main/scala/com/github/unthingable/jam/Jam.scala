@@ -302,15 +302,15 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     val position = SimpleModeLayer("position",
       Seq(HB(j.encoder.turn, "position turn", ext.host.createRelativeHardwareControlStepTarget(
-        ext.transport.fastForwardAction(),
-        ext.transport.rewindAction()))))
+              ext.transport.fastForwardAction(),
+              ext.transport.rewindAction()))))
 
     val tempoLayer = ModeButtonLayer("tempo",
       j.tempo,
       Seq(
         HB(j.encoder.turn, "tempo turn", ext.host.createRelativeHardwareControlStepTarget(
-          action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
-          action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
+                  action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
+                  action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
 
     val play = new SimpleModeLayer("play") {
       ext.transport.isPlaying.markInterested()
@@ -384,11 +384,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           SupColorB(sceneButton.light, () =>
             if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
           HB(sceneButton.pressedAction, "global quant grid", action(s"grid $idx", () => {
-            if (quant.get == enumValues(idx))
-              quant.set("none")
-            else
-              quant.set(enumValues(idx))
-          })))
+                      if (quant.get == enumValues(idx))
+                        quant.set("none")
+                      else
+                        quant.set(enumValues(idx))
+                    })))
       }
     }
 
@@ -537,6 +537,91 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
+    var superScene = new ModeButtonLayer("superScene", j.song, GateMode.Toggle) {
+      val maxTracks = 64
+      val maxScenes = 64
+
+      val superBank  : TrackBank                  = ext.host.createMainTrackBank(maxTracks, 8, maxScenes)
+      superBank.itemCount().markInterested()
+
+      val setting: SettableStringValue = ext.document.getStringSetting("MonsterJam", "superScenes", 8192, "")
+      setting.asInstanceOf[Setting].hide()
+
+      val superScenes: mutable.ArraySeq[Map[Int, Int]] = {
+        ext.host.println(setting.get())
+        if (setting.get().nonEmpty)
+          mutable.ArraySeq.from(deserialize(maxTracks, maxScenes)(setting.get()))
+        else
+          mutable.ArraySeq.fill(maxTracks)(Map.empty)
+      }
+
+      (0 until maxTracks).foreach {t =>
+        val clips = superBank.getItemAt(t).clipLauncherSlotBank()
+        clips.itemCount().markInterested()
+        (0 until maxScenes).foreach(c => clips.getItemAt(c).isPlaying.markInterested())
+      }
+
+      case class ClipTarget(track: Int, clip: Int)
+
+      def scan(): Seq[ClipTarget] = (0 until maxTracks.min(superBank.itemCount().get)).flatMap { tIdx =>
+        val scenes = superBank.getItemAt(tIdx).clipLauncherSlotBank()
+        (0 until maxScenes.min(scenes.itemCount().get())).flatMap { sIdx =>
+          val clip = scenes.getItemAt(sIdx)
+
+          if (clip.isPlaying.get())
+            Some(ClipTarget(tIdx, sIdx))
+          else
+            None
+        }
+      }
+
+      def recall(idx: Int): Unit = {
+        (0 until maxTracks).foreach { track =>
+          superScenes(idx).get(track) match {
+            case Some(clip) =>
+              superBank.getItemAt(track).clipLauncherSlotBank().launch(clip)
+            case None        =>
+              superBank.getItemAt(track).stop()
+          }
+        }
+      }
+
+      def pressed(idx: Int): Unit = {
+        if (GlobalMode.Clear.isOn) superScenes.update(idx, Map.empty)
+        else if (superScenes(idx).isEmpty) {
+          superScenes.update(idx, scan().map(ct => ct.track -> ct.clip).toMap)
+          val ser = serialize(maxTracks, maxScenes)(superScenes)
+          ext.host.println(ser)
+          setting.set(ser)
+        } else
+            recall(idx)
+      }
+
+      def serialize(rows: Int, cols: Int)(o: Iterable[Map[Int, Int]]): String =
+        o.take(rows).map { row =>
+          (0 until cols).map { idx =>
+            f"${idx + 1}%02x${row.get(idx).map(_ + 1).getOrElse(0)}%02x"
+          }.mkString
+        }.mkString
+
+      def deserialize(rows: Int, cols: Int)(s: String): Iterable[Map[Int, Int]] = {
+        assert(s.length == rows * cols)
+        s.grouped(2).map(Integer.parseInt(_, 16)).filter(_ == 0).map(_ - 1)
+          .grouped(2).map(s => s(0) -> s(1))
+          .grouped(cols).map(_.toMap.filter(_ != (0,0)))
+      }.toSeq
+
+      override val modeBindings: Seq[Binding[_, _, _]] = (0 to 7).flatMap { idx =>
+        Seq(
+          HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(idx)),
+          SupColorStateB(j.sceneButtons(idx).light, () =>
+            JamColorState(
+              if (superScenes(idx).isEmpty) JAMColorBase.OFF else ((idx % 16) + 1) * 4,
+              0), JamColorState.empty),
+        )
+      }
+    }
+
     /**
      * Shift matrix row
      */
@@ -565,7 +650,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
-    val shiftPages = new ModeButtonLayer("shiftMatrix", j.Modifiers.Shift, GateMode.Gate) {
+    val shiftPages = new ModeCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.GateSelect) {
       trackBank.itemCount().markInterested()
       trackBank.scrollPosition().markInterested()
       sceneBank.itemCount().markInterested()
@@ -586,11 +671,28 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         HB(btn(idx).pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
       )
 
-      override val modeBindings: Seq[Binding[_, _, _]] = (0 to 7).flatMap { idx =>
-        bankB(sceneBank, j.sceneButtons, idx) ++
-        (if (ext.preferences.shiftGroup.get())
-          bankB(trackBank, j.groupButtons, idx)
-         else Seq.empty)
+      val trackPages: Seq[Binding[_, _, _]] =
+        if (ext.preferences.shiftGroup.get())
+          (0 to 7).flatMap(bankB(trackBank, j.groupButtons, _))
+        else
+          Seq.empty
+
+      override val subModes = Seq(
+        new SimpleModeLayer("scene pages") with IntActivatedLayer {
+          override val modeBindings: Seq[Binding[_, _, _]] =
+            (0 to 7).flatMap(bankB(sceneBank, j.sceneButtons, _)) ++ trackPages
+        },
+        new SimpleModeLayer("superscene pages") with IntActivatedLayer {
+          override val modeBindings: Seq[Binding[_, _, _]] =
+            (0 to 7).flatMap(i => bankB(sceneBank, j.matrix(7), i)) ++ trackPages ++ Seq(
+
+            )
+        }
+      )
+
+      override def activate(): Unit = {
+        selected = if (superScene.isOn) Some(1) else Some(0)
+        super.activate()
       }
     }
 
@@ -665,7 +767,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val bottom    = SimpleModeLayer("_|_", modeBindings = Seq.empty)
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Seq.empty)
     new ModeDGraph(
-      init = Seq(levelCycle),
+      init = Seq(levelCycle, sceneLayer),
       play -> top,
       position -> Coexist(tempoLayer),
       sceneLayer -> top,
@@ -675,6 +777,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       clipMatrix -> top,
       bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
       bottom -> Coexist(auxGate),
+      bottom -> Coexist(sceneLayer, superScene),
       bottom -> Coexist(unmanaged),
     )
   }
