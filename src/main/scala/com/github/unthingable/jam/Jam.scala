@@ -677,14 +677,12 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       def bankB(b: Bank[_], btn: Int => JamRgbButton, idx: Int) = Seq(
         SupColorStateB(btn(idx).light, () =>
-          JamColorState(
-            if (b.itemCount().get() > idx * 8)
-              if (((idx * 8) - 7 until (idx * 8) + 7) contains b.scrollPosition().get())
-                JAMColorBase.ORANGE
-              else
-                JAMColorBase.WHITE
-            else JAMColorBase.OFF,
-            0)
+          if (b.itemCount().get() > idx * 8)
+            if (((idx * 8) - 7 until (idx * 8) + 7) contains b.scrollPosition().get())
+              JamColorState(JAMColorBase.WHITE, 2)
+            else
+              JamColorState(JAMColorBase.WARM_YELLOW, 0)
+          else JamColorState.empty
           , JamColorState.empty),
         HB(btn(idx).pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
       )
@@ -705,14 +703,14 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             trackPages ++
             (0 to 7).flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Seq(
               SupColorStateB(j.sceneButtons(idx).light, () =>
-                JamColorState(
-                  if (idx == superScene.pageIndex)
-                    JAMColorBase.RED
-                  else if (superScene.page(idx).exists(_.nonEmpty))
-                    JAMColorBase.YELLOW
-                  else JAMColorBase.OFF,
-                  0)
-                , JamColorState.empty),
+                if (idx == superScene.pageIndex)
+                  JamColorState(JAMColorBase.WHITE, 3)
+                else if (superScene.lastScene.exists(i => (0 until 8).map(_ + (idx * 8)).contains(i)))
+                  JamColorState(JAMColorBase.LIME, 0)
+                else if (superScene.page(idx).exists(_.nonEmpty))
+                  JamColorState(JAMColorBase.ORANGE, 0)
+                else JamColorState.empty
+              , JamColorState.empty),
               HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superScene.pageIndex = idx)
             ))
           }
