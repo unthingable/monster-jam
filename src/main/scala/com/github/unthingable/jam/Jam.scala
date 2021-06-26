@@ -7,9 +7,8 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
-import com.github.unthingable.bitwig.{TrackTracker, TrackerOps}
+import com.github.unthingable.bitwig.{DumbTracker, SmartTracker, TrackTracker}
 
-import java.nio.ByteBuffer
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 import scala.collection.mutable
@@ -19,7 +18,7 @@ import scala.util.Try
 Behavior definition for surface controls
  */
 
-class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
+class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   implicit val j: JamSurface = new JamSurface()(ext)
 
@@ -35,20 +34,18 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
   val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
-  val superBank: TrackBank = ext.host.createTrackBank(128, 8, 128, true)
+  val superBank: TrackBank = ext.host.createMainTrackBank(64, 8, 64)
   //superBank.followCursorTrack(ext.cursorTrack)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
 
-  implicit val tracker: TrackTracker = new TrackTracker(superBank)
-
-  //val sentinels = (0 until 64).map(i => {
-  //  val track = superBank.getItemAt(i)
-  //  track.createeq
-  //  superBank.getItemAt(i).position().markInterested()
-  //})
-
-  superBank.getItemAt(0).color()
+  ext.preferences.smartTracker.markInterested()
+  implicit val tracker: TrackTracker = {
+    if (ext.preferences.smartTracker.get())
+      new SmartTracker(superBank)
+    else
+      new DumbTracker(superBank)
+  }
 
   val sceneBank  : SceneBank   = trackBank.sceneBank()
   val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
@@ -66,7 +63,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
 
 
   val auxLayer = new ModeCycleLayer("aux", j.aux, CycleMode.Select) with Util {
-    override val subModes = (0 to 7).map(idx =>
+    override val subModes = EIGHT.map(idx =>
       new SliderBankMode[Send]("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity) {
         override val barMode: BarMode = BarMode.SINGLE
       })
@@ -290,7 +287,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
     val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JAMColorBase.YELLOW)
     val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JAMColorBase.ORANGE)
 
-    val trackGroup = new SimpleModeLayer("trackGroup") with TrackerOps {
+    val trackGroup = new SimpleModeLayer("trackGroup") {
       val foldToggleTop: Action = ext.application.getAction("toggle_top_level_track_groups_expanded")
       val foldToggleAll: Action = ext.application.getAction("toggle_all_track_groups_expanded")
       ext.cursorTrack.position().markInterested()
@@ -315,50 +312,17 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
         def handlePress(): Unit = {
           val now = Instant.now()
           if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
-            ext.host.println(s"track before: " + track.position().get())
-            ext.host.println(s"cursor track before: " + ext.cursorTrack.position().get())
-            //superBank.scrollPosition().set(track.position().get)
-            val c = track.color().get()
-            //ext.host.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
 
-            val shadowTrack = superBank.getItemAt(track.position().get)
-
-            val trackId = track.ephemeralId
+            val trackId = tracker.trackId(track)
+            val cb = () => trackId.foreach(id => {
+              val pos = tracker.positionForId(id)
+              ext.host.println(s"hunting track $id at $pos")
+              trackBank.scrollPosition().set(pos - idx)
+            })
+            tracker.addRescanCallback(cb)
 
             foldToggleTop.invoke()
 
-            //ext.host.println(s"cursor track after: " + ext.cursorTrack.position().get())
-            ////trackBank.scrollPosition().set(track.position().get())
-            //val c = track.color().get()
-            //ext.host.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
-            //val c2 = Color.fromRGBA(c.getRed, c.getGreen, c.getBlue + 0.0001, c.getAlpha - 0.01)
-            //track.color().set(c2)
-            //val c3 = track.color().get()
-            //ext.host.println((c3.getRed, c3.getGreen, c3.getBlue, c3.getAlpha).toString())
-
-            ext.host.scheduleTask(() => {
-              ext.host.println(s"cursor track now: " + ext.cursorTrack.position().get())
-              ext.host.println(s"track now: " + track.position().get())
-
-              trackId.foreach(id => {
-                val pos = tracker.idPos(id)
-                ext.host.println(s"hunting track $id at $pos")
-                trackBank.scrollPosition().set(pos - idx)
-              })
-
-              //val newPos = superBank.find(trackId).map(_.position().get()).getOrElse(0)
-              //ext.host.println(s"ephemeral track now: " + newPos)
-              //
-              //trackBank.scrollPosition().set(newPos - idx)
-
-              //ext.cursorTrack.selectInMixer()
-              //trackBank.scrollPosition().set(superBank.scrollPosition().get() - idx)
-              //ext.cursorTrack.selectInMixer()
-              //trackBank.scrollPosition().set(shadowTrack.position().get() - idx)
-            }
-              , 200)
-            // TODO scroll
-            //track.selectInMixer()
           } else if (GlobalMode.Clear.isOn) track.deleteObject()
           else if (GlobalMode.Duplicate.isOn) track.duplicate()
                else track.selectInMixer()
@@ -549,7 +513,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
 
       def page(idx: Int): mutable.Seq[Map[Int, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
 
-      override val modeBindings: Seq[Binding[_, _, _]] = (0 to 7).flatMap { idx =>
+      override val modeBindings: Seq[Binding[_, _, _]] = EIGHT.flatMap { idx =>
         def pageOffset = pageIndex * 8
         Vector(
           HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
@@ -625,11 +589,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
         new SimpleModeLayer("superscene pages") with IntActivatedLayer {
           override val modeBindings: Vector[Binding[_, _, _]] = {
             trackPages ++
-            (0 to 7).flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
+            EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
               SupColorStateB(j.sceneButtons(idx).light, () =>
                 if (idx == superScene.pageIndex)
                   JamColorState(JAMColorBase.WHITE, 3)
-                else if (superScene.lastScene.exists(i => (0 until 8).map(_ + (idx * 8)).contains(i)))
+                else if (superScene.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i)))
                   JamColorState(JAMColorBase.LIME, 0)
                 else if (superScene.page(idx).exists(_.nonEmpty))
                   JamColorState(JAMColorBase.ORANGE, 0)
