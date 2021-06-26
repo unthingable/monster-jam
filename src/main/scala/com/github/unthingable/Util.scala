@@ -1,8 +1,7 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.callback.BooleanValueChangedCallback
-import com.bitwig.extension.controller.api.{BooleanValue, ControllerHost, Cursor, CursorRemoteControlsPage, HardwareActionBindable, RelativeHardwareControl, RelativeHardwareControlBinding}
+import com.bitwig.extension.controller.api.CursorRemoteControlsPage
 
 trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
@@ -18,6 +17,7 @@ trait Util {
 
 object Util {
   var println: String => Unit = null
+  //var ext: MonsterJamExt = null
 }
 
 case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {

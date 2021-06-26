@@ -7,7 +7,9 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
+import com.github.unthingable.bitwig.{TrackTracker, TrackerOps}
 
+import java.nio.ByteBuffer
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 import scala.collection.mutable
@@ -17,9 +19,9 @@ import scala.util.Try
 Behavior definition for surface controls
  */
 
-class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
+class Jam(implicit ext: MonsterJamExt) extends BindingDSL with TrackerOps {
 
-  val j = new JamSurface()(ext)
+  implicit val j: JamSurface = new JamSurface()(ext)
 
   val EIGHT: Vector[Int] = (0 to 7).toVector
 
@@ -32,6 +34,21 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
+
+  val superBank: TrackBank = ext.host.createTrackBank(128, 8, 128, true)
+  //superBank.followCursorTrack(ext.cursorTrack)
+  superBank.itemCount().markInterested()
+  superBank.scrollPosition().markInterested()
+
+  implicit val tracker: TrackTracker = new TrackTracker(superBank)
+
+  //val sentinels = (0 until 64).map(i => {
+  //  val track = superBank.getItemAt(i)
+  //  track.createeq
+  //  superBank.getItemAt(i).position().markInterested()
+  //})
+
+  superBank.getItemAt(0).color()
 
   val sceneBank  : SceneBank   = trackBank.sceneBank()
   val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
@@ -47,155 +64,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   // wire strips, they are special
   //j.stripBank.flushColors()
 
-  abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
-    extends SubModeLayer(name) with Util {
-    val proxies     : Vector[P]            = j.stripBank.strips.indices.map(obj).toVector
-    val sliderParams: Vector[Parameter] = proxies.map(param)
-    val barMode: BarMode
-
-    sealed trait Event
-    sealed trait ShiftEvent extends Event
-    sealed trait StripEvent extends Event
-    sealed trait PressEvent extends Event
-    sealed trait ReleaseEvent extends Event
-    object Event {
-      case object ShiftP extends ShiftEvent with PressEvent
-      case object ShiftR extends ShiftEvent with ReleaseEvent
-      case object StripP extends StripEvent with PressEvent
-      case object StripR extends StripEvent with ReleaseEvent
-    }
-
-    sealed trait State
-    object State {
-      case object ShiftTracking extends State
-      case object Normal extends State
-    }
-
-    import JAMColorBase._
-
-    val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
-
-    override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
-      val strip: JamTouchStrip = j.stripBank.strips(idx)
-      val proxy: ObjectProxy   = proxies(idx)
-      val param: Parameter     = sliderParams(idx)
-
-      var state: State = State.Normal
-
-      param.markInterested()
-      param.name().markInterested()
-      proxy.exists().markInterested()
-
-      var offsetObserver: Double => Unit = _ => ()
-      strip.slider.value().addValueObserver(offsetObserver(_))
-
-      var startValue: Option[Double] = None
-
-      def engage(event: Event): Unit = {
-        import Event._
-        import State._
-
-        val shiftOn = j.Modifiers.Shift.isPressed()
-        val stripOn = strip.isPressed()
-
-        state = (shiftOn, stripOn, event, state) match {
-          case (_,_,ShiftP, Normal) =>
-            strip.slider.clearBindings()
-            ShiftTracking
-          case (true, true, _:PressEvent, _) =>
-            if (state == Normal)
-              strip.slider.clearBindings()
-            val current = param.get()
-            startValue = None
-            offsetObserver = { v: Double =>
-              val offset = (v - startValue.getOrElse(v)) * 0.2
-              param.set(current + offset)
-              if (startValue.isEmpty) startValue = Some(v)
-            }
-            ShiftTracking
-          case (true,_,StripR,ShiftTracking) =>
-            offsetObserver = _ => ()
-            ShiftTracking
-          case (_,_,_:ReleaseEvent,ShiftTracking) =>
-            offsetObserver = _ => ()
-            strip.slider.setBinding(param)
-            Normal
-          case x: (_,_,_,_) =>
-            Normal
-        }
-
-      }
-
-      proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
-      param.value().markInterested()
-      param.modulatedValue().markInterested()
-      param.modulatedValue().addValueObserver(127, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
-
-      proxy match {
-        case channel: Channel       =>
-          channel.color().markInterested()
-          channel.color().addValueObserver((r, g, b) =>
-            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
-        case send: Send             =>
-          send.sendChannelColor().markInterested()
-          send.sendChannelColor().addValueObserver((r, g, b) =>
-            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
-        case _: RemoteControl =>
-          ()
-      }
-
-      import Event._
-      Vector(
-        HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.pressedAction, s"shift-strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.releasedAction, s"shift-strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
-      )
-    }
-
-    private def sync(idx: Int, flush: Boolean = true): Unit = {
-      j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 127).intValue, flush)
-    }
-
-    override def activate(): Unit = {
-
-      //ext.host.println(barMode.toString)
-      //ext.host.println(sliderParams.map(_.name().get()).mkString(","))
-      //ext.host.println(sliderParams.map(_.value().get()).mkString(","))
-
-      j.stripBank.barMode = barMode
-
-      j.stripBank.strips.forindex { case (strip, idx) =>
-        val proxy = proxies(idx)
-
-        (proxy match {
-          case channel: Channel =>
-            Some(JamColorState.toColorIndex(channel.color().get()))
-          case send: Send       =>
-            Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
-          case _: RemoteControl =>
-            Some(rainbow(idx))
-        }).foreach(c => j.stripBank.setColor(idx, c))
-
-        j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
-      }
-
-      j.stripBank.flushColors()
-
-      sliderParams.indices.foreach(sync(_, false))
-      if (barMode == BarMode.DUAL)
-        j.stripBank.flushValues()
-
-      j.stripBank.strips.zip(sliderParams).foreach { case (s, p) => s.slider.setBinding(p) }
-
-      super.activate()
-    }
-
-    override def deactivate(): Unit = {
-      j.stripBank.strips.foreach(_.slider.clearBindings())
-      super.deactivate()
-    }
-  }
 
   val auxLayer = new ModeCycleLayer("aux", j.aux, CycleMode.Select) with Util {
     override val subModes = (0 to 7).map(idx =>
@@ -422,9 +290,14 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JAMColorBase.YELLOW)
     val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JAMColorBase.ORANGE)
 
-    val trackGroup = new SimpleModeLayer("trackGroup") {
+    val trackGroup = new SimpleModeLayer("trackGroup") with TrackerOps {
+      val foldToggleTop: Action = ext.application.getAction("toggle_top_level_track_groups_expanded")
+      val foldToggleAll: Action = ext.application.getAction("toggle_all_track_groups_expanded")
+      ext.cursorTrack.position().markInterested()
+
       override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
         val btn = j.groupButtons(idx)
+        var pressedOn = Instant.now()
 
         val track        = trackBank.getItemAt(idx)
         val color        = track.color()
@@ -435,6 +308,62 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         playingNotes.markInterested()
         cursorIndex.markInterested()
         track.exists().markInterested()
+        track.isGroup.markInterested()
+        track.position().markInterested()
+        track.trackType().markInterested()
+
+        def handlePress(): Unit = {
+          val now = Instant.now()
+          if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
+            ext.host.println(s"track before: " + track.position().get())
+            ext.host.println(s"cursor track before: " + ext.cursorTrack.position().get())
+            //superBank.scrollPosition().set(track.position().get)
+            val c = track.color().get()
+            //ext.host.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
+
+            val shadowTrack = superBank.getItemAt(track.position().get)
+
+            val trackId = track.ephemeralId
+
+            foldToggleTop.invoke()
+
+            //ext.host.println(s"cursor track after: " + ext.cursorTrack.position().get())
+            ////trackBank.scrollPosition().set(track.position().get())
+            //val c = track.color().get()
+            //ext.host.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
+            //val c2 = Color.fromRGBA(c.getRed, c.getGreen, c.getBlue + 0.0001, c.getAlpha - 0.01)
+            //track.color().set(c2)
+            //val c3 = track.color().get()
+            //ext.host.println((c3.getRed, c3.getGreen, c3.getBlue, c3.getAlpha).toString())
+
+            ext.host.scheduleTask(() => {
+              ext.host.println(s"cursor track now: " + ext.cursorTrack.position().get())
+              ext.host.println(s"track now: " + track.position().get())
+
+              trackId.foreach(id => {
+                val pos = tracker.idPos(id)
+                ext.host.println(s"hunting track $id at $pos")
+                trackBank.scrollPosition().set(pos - idx)
+              })
+
+              //val newPos = superBank.find(trackId).map(_.position().get()).getOrElse(0)
+              //ext.host.println(s"ephemeral track now: " + newPos)
+              //
+              //trackBank.scrollPosition().set(newPos - idx)
+
+              //ext.cursorTrack.selectInMixer()
+              //trackBank.scrollPosition().set(superBank.scrollPosition().get() - idx)
+              //ext.cursorTrack.selectInMixer()
+              //trackBank.scrollPosition().set(shadowTrack.position().get() - idx)
+            }
+              , 200)
+            // TODO scroll
+            //track.selectInMixer()
+          } else if (GlobalMode.Clear.isOn) track.deleteObject()
+          else if (GlobalMode.Duplicate.isOn) track.duplicate()
+               else track.selectInMixer()
+          pressedOn = now
+        }
 
         Vector(
           SupColorStateB(btn.light, () => JamColorState(
@@ -446,14 +375,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             }
           ), JamColorState.empty),
           //HB(btn.button.pressedAction(), () => trackBank.cursorIndex().set(idx))
-          HB(btn.pressedAction, s"group $idx pressed: select in mixer", () => handlePress(track))
+          HB(btn.pressedAction, s"group $idx pressed: select in mixer", () => handlePress())
         )
-      }
-
-      private def handlePress(track: Track): Unit = {
-        if (GlobalMode.Clear.isOn) track.deleteObject()
-        else if (GlobalMode.Duplicate.isOn) track.duplicate()
-             else track.selectInMixer()
       }
     }
 
@@ -543,9 +466,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val bufferSize = maxTracks * maxScenes * 4
       var pageIndex = 0
       var lastScene: Option[Int] = None
-
-      val superBank  : TrackBank                  = ext.host.createMainTrackBank(maxTracks, 8, maxScenes)
-      superBank.itemCount().markInterested()
 
       val setting: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
       setting.asInstanceOf[Setting].hide()
