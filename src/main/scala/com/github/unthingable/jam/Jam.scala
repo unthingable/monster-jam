@@ -720,7 +720,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
           j.stripBank.strips.forindex { case (strip, idx) =>
             strip.button.isPressed.markInterested()
-            strip.button.isPressed.addValueObserver(v => touchPage.foreach(tp =>
+            strip.button.isPressed.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
               if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
           }
         }
