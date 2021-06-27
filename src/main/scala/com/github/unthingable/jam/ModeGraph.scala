@@ -175,9 +175,9 @@ object Graph {
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
         ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString}: ")
-        bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
-          ext.host.println(s" > $b <- ${bb.mkString(",")}")
-        }
+        //bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
+        //  ext.host.println(s" > $b <- ${bb.mkString(",")}")
+        //}
       }
 
       // remember for deactivation

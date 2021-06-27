@@ -51,7 +51,7 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
 * **KNOB turn**: Jog through the project timeline
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
-* **SONG**: SuperScene mode
+* **SONG**: SuperScene mode (see below)
 
 ## Transport
 
@@ -121,6 +121,7 @@ from the track, for additional fun and profit (like Maschine).
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
+  * **CONTROL+SELECT**: Cycle through **Device Selector** modes (see below)
 
 ### Fine adjustment
 
@@ -175,6 +176,43 @@ SuperScenes are saved with the project.
 Namely, if a clip is in a nested track and the group is folded, or not in the group when the group
 is entered, SuperScene will not be able to launch or stop it. **Pro tip**: if you need to
 fold/unfold groups, make its scene clip part of a SuperScene and not the individual track clips.
+
+## Device Selector
+
+Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+
+* **CONTROL + ...**
+  * **SELECT**: Cycle through available device selector modes
+    * disabled
+    * Device Matrix
+
+## Device Matrix
+
+In this mode the clip matrix shows devices in each track, just like in Mixer. Press a matrix button
+to select a device (selecting a device also selects its track).
+
+Devices are color coded:
+
+* Native devices
+  * Audio FX: orange
+  * Instrument: yellow
+  * Note FX: cyan
+* Plugins
+  * Audio FX: magenta
+  * Instrument: lime
+  * Note FX: plum
+  
+### Page navigation
+
+Use **ARROW** keys to:
+
+* **LEFT/RIGHT**: scroll track bank page
+* **UP/DOWN**: scroll device bank pages
+
+**NOTE**: unlike scenes, device banks do not all scroll together. Instead, devices on each
+track will scroll only if there are more devices to scroll to, others will stay in place.
+That is, if you have one track with 20 devices and another with 1, you will always see 
+the 1 device while the other 20 are scrolling.
 
 # Preferences
 

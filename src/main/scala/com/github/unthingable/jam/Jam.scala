@@ -2,7 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.{FilteredPage, MonsterJamExt, Util}
+import com.github.unthingable.{FilteredPage, MonsterJamExt, Util, jam}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -732,7 +732,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       def m(default: () => Unit, modePressed: () => Unit): () => Unit =
         () => if (modeButton.isPressed()) modePressed() else default()
 
-      override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+      override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
         SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
         SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
         HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
@@ -742,7 +742,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       override def activate(): Unit = {
         val idx = page.c.selectedPageIndex().get()
         val pageNames = page.c.pageNames().get()
-        if (idx >= 0 && pageNames(idx) == touchFX)
+        if (idx >= 0 && idx < pageNames.length && pageNames(idx) == touchFX)
           if (page.hasPrevious())
             page.selectPrevious()
           else
@@ -751,7 +751,78 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
-    // Final assembly of all mode layers
+    val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.GateSelect, silent = true) {
+      val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
+
+      override val subModes: Seq[ModeLayer with IntActivatedLayer] = Vector(
+        new SimpleModeLayer("noopSelector") with IntActivatedLayer {
+          override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
+        },
+        // all device matrix
+        new SimpleModeLayer("matrixSelector") with IntActivatedLayer {
+          val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
+          deviceBanks.foreach { bank =>
+            bank.canScrollForwards.markInterested()
+            bank.canScrollBackwards.markInterested()
+          }
+
+          def selectDevice(trackIdx: Int, device: Device): Unit = {
+            if (device.exists().get()) {
+              ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
+              //cursorDevice.selectDevice(device)
+              device.selectInEditor()
+              //deviceBanks(trackIdx).scrollIntoView(device.position().get())
+            }
+          }
+
+          def deviceColor(device: Device): Int = (device.isPlugin.get(), device.deviceType().get()) match {
+            case (false, "audio-effect") => JAMColorBase.ORANGE
+            case (false, "instrument")   => JAMColorBase.WARM_YELLOW
+            case (false, "note-effect")  => JAMColorBase.CYAN
+            case (true, "audio-effect")  => JAMColorBase.MAGENTA
+            case (true, "instrument")    => JAMColorBase.LIME
+            case (true, "note-effect")   => JAMColorBase.PLUM
+            case (_, s)                  =>
+              ext.host.println(s"unknown device $s")
+              JAMColorBase.GREEN
+          }
+
+          override val modeBindings: Seq[Binding[_, _, _]] = deviceBanks.zipWithIndex.flatMap { case (bank, col) =>
+            EIGHT.flatMap { row =>
+              val mButton = j.matrix(row)(col)
+              val device = bank.getItemAt(row)
+              device.exists().markInterested()
+              device.position().markInterested()
+              device.deviceType().markInterested()
+              device.isPlugin.markInterested()
+              val isSelected = device.createEqualsValue(cursorDevice)
+              isSelected.markInterested()
+
+              Vector(
+                HB(mButton.pressedAction, s"select device $col:$row", () => selectDevice(col, device)),
+                HB(mButton.releasedAction, s"noop $col:$row", () => ()),
+                SupColorStateB(mButton.light,
+                  () => if (device.exists().get())
+                          JamColorState(deviceColor(device), if (isSelected.get()) 3 else 0)
+                        else JamColorState.empty,
+                  JamColorState.empty),
+              )
+            }
+          } ++ Vector(
+            SupBooleanB(j.dpad.up.light.isOn, () => deviceBanks.exists(_.canScrollBackwards.get())),
+            SupBooleanB(j.dpad.down.light.isOn, () => deviceBanks.exists(_.canScrollForwards.get())),
+            HB(j.dpad.up.pressedAction, "device bank up", () => deviceBanks.foreach(_.scrollPageBackwards())),
+            HB(j.dpad.down.pressedAction, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
+          )
+        }
+        // device navigator
+      )
+      override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+        HB(j.select.pressedAction, "cycle device selectors", () => cycle())
+      )
+    }
+
+      // Final assembly of all mode layers
     val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))
     val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
@@ -766,7 +837,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
       bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
-      bottom -> Coexist(auxGate),
+      bottom -> Coexist(auxGate, deviceSelector),
       trackGroup -> Exclusive(EIGHT.map(trackGate):_*),
       bottom -> Coexist(sceneLayer, superScene),
       bottom -> Coexist(unmanaged),
