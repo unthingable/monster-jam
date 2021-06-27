@@ -1,15 +1,10 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.api.Color
-import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
-import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.BindingDSL._
-import com.github.unthingable.jam.surface.{FakeAction, OnOffButton}
+import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
 
 import java.time.{Duration, Instant}
-import java.util.function.{BooleanSupplier, Supplier}
-import scala.collection.mutable
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -92,7 +87,7 @@ object GateMode {
 
 abstract class ModeButtonLayer(
   val name: String,
-  val modeButton: OnOffButton,
+  val modeButton: Button,
   val gateMode: GateMode = GateMode.Auto,
   val silent: Boolean = false
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
@@ -121,7 +116,10 @@ abstract class ModeButtonLayer(
         }
     },
       tracked = false)
-  ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, () => isOn)) else Vector.empty)
+  ) ++ (modeButton match {
+    case b: OnOffButton if !silent => Vector(SupBooleanB(b.light.isOn, () => isOn))
+    case _                         => Vector.empty
+  })
 }
 
 object ModeButtonLayer {
