@@ -174,8 +174,47 @@ SuperScenes are saved with the project.
 
 **NOTE**: SuperScene launcher can only operate on tracks that are currently visible in Bitwig.
 Namely, if a clip is in a nested track and the group is folded, or not in the group when the group
-is entered, SuperScene will not be able to launch or stop it. **Pro tip**: if you need to
-fold/unfold groups, make its scene clip part of a SuperScene and not the individual track clips.
+is entered, SuperScene will not be able to launch or stop it directly. 
+
+If a group track containing SuperScene clips in its inner tracks was folded, 
+SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
+
+## Device Selector
+
+Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+
+* **CONTROL + ...**
+  * **SELECT**: Cycle through available device selector modes
+    * disabled
+    * Device Matrix
+
+## Device Matrix
+
+In this mode the clip matrix shows devices in each track, just like in Mixer. Press a matrix button
+to select a device (selecting a device also selects its track).
+
+Devices are color coded:
+
+* Native devices
+  * Audio FX: orange
+  * Instrument: yellow
+  * Note FX: cyan
+* Plugins
+  * Audio FX: magenta
+  * Instrument: lime
+  * Note FX: plum
+  
+### Page navigation
+
+Use **ARROW** keys to:
+
+* **LEFT/RIGHT**: scroll track bank page
+* **UP/DOWN**: scroll device bank pages
+
+**NOTE**: unlike scenes, device banks do not all scroll together. Instead, devices on each
+track will scroll only if there are more devices to scroll to, others will stay in place.
+That is, if you have one track with 20 devices and another with 1, you will always see 
+the 1 device while the other 20 are scrolling.
 
 ## Device Selector
 
