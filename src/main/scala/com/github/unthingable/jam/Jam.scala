@@ -7,7 +7,6 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
-import com.github.unthingable.bitwig.{DumbTracker, SmartTracker, TrackId, TrackTracker}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -59,9 +58,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   trackBank.setSkipDisabledItems(true)
   //sceneBank.setIndication(true)
 
-  // wire strips, they are special
-  //j.stripBank.flushColors()
-
 
   val auxLayer = new ModeCycleLayer("aux", j.aux, CycleMode.Select) with Util {
     override val subModes = EIGHT.map(idx =>
@@ -102,7 +98,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         ext.preferences.limitLevel.markInterested()
         ext.preferences.limitLevel.addValueObserver(_ => updateLimits(None))
 
-        val paramLimits = mutable.ArrayBuffer.fill(8)(1.0)
+        val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
 
         override val barMode: BarMode = BarMode.DUAL
 
@@ -219,7 +215,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         val isPlaying = ext.transport.isPlaying
         val t         = ext.transport
         (isPlaying.get(), j.Modifiers.Shift.isPressed()) match {
-          // needs work
           // just play
           case (true, false) => t.play()
           // restart (and stop)

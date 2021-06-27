@@ -1,4 +1,4 @@
-package com.github.unthingable.bitwig
+package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Track, TrackBank}
