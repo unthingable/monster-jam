@@ -1,6 +1,6 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.controller.api.{Channel, ObjectProxy, Parameter, RemoteControl, Send}
+import com.bitwig.extension.controller.api.{Channel, HardwareSlider, ObjectProxy, Parameter, RemoteControl, Send, Track}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -34,6 +34,13 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
   import JAMColorBase._
 
   val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+
+  def paramRange(idx: Int): (Double, Double) = (0.0, 1.0)
+
+  def bindWithRange(idx: Int): Unit = {
+    val (min, max) = paramRange(idx)
+    j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
+  }
 
   override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
@@ -78,7 +85,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           ShiftTracking
         case (_,_,_:ReleaseEvent,ShiftTracking) =>
           offsetObserver = _ => ()
-          strip.slider.setBinding(param)
+          bindWithRange(idx)
           Normal
         case x: (_,_,_,_) =>
           Normal
@@ -89,7 +96,9 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
     param.value().markInterested()
     param.modulatedValue().markInterested()
-    param.modulatedValue().addValueObserver(127, v => if (isOn) j.stripBank.setValue(idx, v)) // move fader dot
+    param.modulatedValue().addValueObserver(128,
+      (v: Int) => if (isOn) j.stripBank.setValue(idx,
+        127.min((v.toDouble / paramRange(idx)._2).toInt))) // move fader dot
 
     proxy match {
       case channel: Channel       =>
@@ -114,7 +123,9 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit = {
-    j.stripBank.setValue(idx, (sliderParams(idx).value().get() * 127).intValue, flush)
+    j.stripBank.setValue(idx,
+      127.min((sliderParams(idx).value().get() * (128 / paramRange(idx)._2).toInt).intValue),
+      flush)
   }
 
   override def activate(): Unit = {
@@ -146,7 +157,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     if (barMode == BarMode.DUAL)
       j.stripBank.flushValues()
 
-    j.stripBank.strips.zip(sliderParams).foreach { case (s, p) => s.slider.setBinding(p) }
+    j.stripBank.strips.indices.foreach(bindWithRange)
 
     super.activate()
   }

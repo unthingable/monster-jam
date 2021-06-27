@@ -94,6 +94,16 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   val levelCycle = new ModeCycleLayer("level", j.level, CycleMode.Cycle) with Util {
     override val subModes = Vector(
       new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
+        EIGHT.foreach { idx =>
+          val track = trackBank.getItemAt(idx)
+          track.trackType().markInterested()
+          track.trackType().addValueObserver(_ => updateLimits(Some(idx)))
+        }
+        ext.preferences.limitLevel.markInterested()
+        ext.preferences.limitLevel.addValueObserver(_ => updateLimits(None))
+
+        val paramLimits = mutable.ArrayBuffer.fill(8)(1.0)
+
         override val barMode: BarMode = BarMode.DUAL
 
         proxies.forindex { case (track, idx) =>
@@ -104,6 +114,30 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         override def activate(): Unit = {
           super.activate()
           j.stripBank.strips.foreach(_.update(0))
+        }
+
+        override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
+
+        def updateLimits(maybeIdx: Option[Int]): Unit = {
+          val max      = 1.259921049894873
+          val zero     = 1.0
+          val minusTen = 0.6812920690579614
+
+          maybeIdx match {
+            case Some(idx) =>
+              paramLimits.update(idx, ext.preferences.limitLevel.get() match {
+                case "None"   => 1.0
+                case "Smart"  =>
+                  trackBank.getItemAt(idx).trackType().get() match {
+                    case "Group" => zero / max
+                    case _       => minusTen / max
+                  }
+                case "0 dB"   => zero / max
+                case "-10 dB" => minusTen / max
+                case _        => 1.0
+              })
+            case None => EIGHT.map(Some.apply).foreach(updateLimits)
+          }
         }
       },
       new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
