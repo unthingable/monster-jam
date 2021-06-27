@@ -67,7 +67,7 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
 
-## Track (A-H) and Scenes (1-8) buttons
+## Track (A-H) and Scene (1-8) buttons
 
 Track and scene buttons are lit in the color of their respective tracks/scenes or blank if track/scene does not exist.
 
@@ -77,11 +77,11 @@ from the track, for additional fun and profit (like Maschine).
 * **CLEAR+TRACK/SCENE**: Delete the track/scene
 * **DUPLICATE+TRACK/SCENE**: Duplicate the track/scene
 * **TRACK(A-H)+...**: Hold track button for more functions:
-  * **ARROW DOWN**: If current track is a group track, enter it. Button is lit when this is possible.
-  * **ARROW UP**: If we're currently in a group, exit out of it. Button is lit when this is possible.
-  * **SOLO**: Solo this track
-  * **MUTE**: Solo this track
-* Doubleclick **TRACK(A-H)** to expand/collapse top-level groups.
+  * **ARROW DOWN**: If this track is a group track, enter it. Arrow button is lit when this is possible.
+  * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit when this is possible.
+  * **SOLO**: Solo/unsolo this track
+  * **MUTE**: Mute/unmute this track
+* Doubleclick **TRACK(A-H)** on a group track to expand/collapse top-level groups.
   
 ## Clip Launcher
 
