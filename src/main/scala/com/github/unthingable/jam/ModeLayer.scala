@@ -24,7 +24,7 @@ import java.time.{Duration, Instant}
 trait ModeLayer {
   val name: String
   // all bindings when layer is active
-  val modeBindings: Seq[Binding[_,_,_]]
+  def modeBindings: Seq[Binding[_,_,_]]
   implicit val ext: MonsterJamExt
 
   var isOn: Boolean = false
@@ -151,6 +151,7 @@ abstract class ModeCycleLayer(
   val name: String,
   val modeButton: OnOffButton,
   val cycleMode: CycleMode,
+  val silent: Boolean = false,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
 
   val subModes: Seq[ModeLayer with IntActivatedLayer]
@@ -179,12 +180,12 @@ abstract class ModeCycleLayer(
     mode.activateAction.invoke()
   }
 
-  override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false),
-    SupBooleanB(modeButton.light.isOn, () => isOn)
-  )
+  override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
+    HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
+  ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, () => isOn)) else Vector.empty)
 
-  override val modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
+  // if overriding, remember to include these
+  def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle      =>
       Vector(
         HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
