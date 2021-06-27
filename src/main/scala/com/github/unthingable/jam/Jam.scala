@@ -385,6 +385,35 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
+    def trackGate(idx: Int) = new ModeButtonLayer(s"track gate $idx", j.groupButtons(idx),
+      GateMode.Gate,
+      silent = true
+    ) {
+      val track   = trackBank.getItemAt(idx)
+      val isAtTop = ext.host.getProject.getRootTrackGroup.createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
+
+      track.isGroup.markInterested()
+      isAtTop.markInterested()
+
+      track.mute().markInterested()
+      track.solo().markInterested()
+
+      override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+        SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get()),
+        SupBooleanB(j.dpad.down.light.isOn, track.isGroup),
+        SupBooleanB(j.dpad.left.light.isOn, () => false),
+        SupBooleanB(j.dpad.right.light.isOn, () => false),
+        HB(j.dpad.up.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),
+        HB(j.dpad.down.pressedAction, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
+        HB(j.dpad.left.pressedAction, "ignore left", () => ()),
+        HB(j.dpad.right.pressedAction, "ignore right", () => ()),
+        SupBooleanB(j.solo.light.isOn, track.solo()),
+        SupBooleanB(j.mute.light.isOn, track.mute()),
+        HB(j.solo.pressedAction, "track direct solo", track.solo().toggleAction()),
+        HB(j.mute.pressedAction, "track direct mute", track.mute().toggleAction()),
+      )
+    }
+
     /**
      * Default clip matrix with clip launchers
      */
@@ -738,6 +767,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       clipMatrix -> top,
       bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
       bottom -> Coexist(auxGate),
+      trackGroup -> Exclusive(EIGHT.map(trackGate):_*),
       bottom -> Coexist(sceneLayer, superScene),
       bottom -> Coexist(unmanaged),
     )
