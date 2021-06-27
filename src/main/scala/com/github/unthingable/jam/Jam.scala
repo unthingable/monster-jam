@@ -142,17 +142,16 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     )
   }
 
-  // this behavior ls always the same, can wire it here directly without creating a mode layer
-  {
-    // wire dpad
-    Vector(
+  val dpad = new SimpleModeLayer("dpad") {
+    val actionMap = Vector(
       j.dpad.left -> trackBank.canScrollBackwards,
       j.dpad.right -> trackBank.canScrollForwards,
       j.dpad.up -> sceneBank.canScrollBackwards,
       j.dpad.down -> sceneBank.canScrollForwards
-    ) foreach { case (b: JamOnOffButton, e: BooleanValue) =>
+    )
+
+    actionMap.foreach { case (b: JamOnOffButton, e: BooleanValue) =>
       e.markInterested()
-      b.light.isOn.setValueSupplier(e)
     }
 
     def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
@@ -165,11 +164,17 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }, () => s"scroll_$forward")
     }
 
-    j.dpad.left.pressedAction.setBinding(scroll(false, trackBank))
-    j.dpad.right.pressedAction.setBinding(scroll(true, trackBank))
-    j.dpad.up.pressedAction.setBinding(scroll(false, sceneBank))
-    j.dpad.down.pressedAction.setBinding(scroll(true, sceneBank))
+    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+      HB(j.dpad.left.pressedAction, "page left", scroll(false, trackBank)),
+      HB(j.dpad.right.pressedAction, "page right", scroll(true, trackBank)),
+      HB(j.dpad.up.pressedAction, "page up", scroll(false, sceneBank)),
+      HB(j.dpad.down.pressedAction, "page down", scroll(true, sceneBank)),
+    ) ++ actionMap.map { case (b: JamOnOffButton, e: BooleanValue) =>
+      SupBooleanB(b.light.isOn, e)
+    }
+  }
 
+  {
     // meters
     masterTrack.addVuMeterObserver(128, 0, true, j.levelMeter.uL)
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
@@ -723,6 +728,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
     new ModeDGraph(
       init = Vector(levelCycle, sceneLayer),
+      dpad -> top,
       play -> top,
       position -> Coexist(tempoLayer),
       sceneLayer -> top,
