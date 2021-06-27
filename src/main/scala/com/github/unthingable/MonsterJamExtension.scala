@@ -62,8 +62,8 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createApplication(),
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Options", true),
-        preferences.getBooleanSetting("SHIFT-GROUP selects track page", "Options", true),
-        preferences.getEnumSetting("Limit volume sliders", "Options", Array("None", "0 dB", "-10 dB", "Smart"), "None"),
+        preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Options", true),
+        preferences.getEnumSetting("Limit level sliders", "Options", Array("None", "0 dB", "-10 dB", "Smart"), "None"),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
       ),
       loadMap(host)

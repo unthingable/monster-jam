@@ -40,12 +40,14 @@ MonsterJam focuses primarily on essential performance features, less on content 
 Implementation ideas borrowed from original script, Maschine and Moss 
 (including some documentation snippets), among others.
 
+Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for simplicity.
+
 **NOTE**: Key bindings are experimental and may change in future versions.
 
 ## Global
 
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
-* **DUPLICATE**: Combine with a scene pad (duplicate scene) or a group button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
+* **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
 * **KNOB turn**: Jog through the project timeline
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
@@ -61,10 +63,26 @@ Implementation ideas borrowed from original script, Maschine and Moss
 * **SHIFT+TEMPO**: Tap Tempo
 * **TEMPO+KNOB turn**: change tempo
 * **GRID**: Hold to change launch grid quantization with SCENE buttons (see Launch grid quantization below)
-* **SOLO**: Solo mode, press track(group) buttons to enable/disable solo. Keep holding SOLO button to automatically 
+* **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically 
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
 
+## Track (A-H) and Scenes (1-8) buttons
+
+Track and scene buttons are lit in the color of their respective tracks/scenes or blank if track/scene does not exist.
+
+* **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
+* **TRACK(A-H)**: Select the tracks in the current page of the track bank. Track buttons will light up on MIDI events
+from the track, for additional fun and profit (like Maschine).
+* **CLEAR+TRACK/SCENE**: Delete the track/scene
+* **DUPLICATE+TRACK/SCENE**: Duplicate the track/scene
+* **TRACK(A-H)+...**: Hold track button for more functions:
+  * **ARROW DOWN**: If current track is a group track, enter it. Button is lit when this is possible.
+  * **ARROW UP**: If we're currently in a group, exit out of it. Button is lit when this is possible.
+  * **SOLO**: Solo this track
+  * **MUTE**: Solo this track
+* Doubleclick **TRACK(A-H)** to expand/collapse top-level groups.
+  
 ## Clip Launcher
 
 * **(PAD)** on empty clip: record new clip
@@ -78,28 +96,26 @@ Implementation ideas borrowed from original script, Maschine and Moss
 ### Page navigation
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
-* **SHIFT+** in regular mode: hold shift and then
+* **SHIFT+...** in regular mode: hold shift and then
   * Arrow keys: scroll by 1 track/scene
   * **SCENE(1-8)**: directly select from the first 8 pages of scenes
-  * **GROUP(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
+  * **TRACK(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
   * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
-* **SHIFT+** in SuperScene mode:
-  * Group buttons and arrow keys same as above
+* **SHIFT+...** in SuperScene mode:
+  * Track buttons and arrow keys same as above
   * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
 
-## Group Buttons (A-H) and Scene Buttons (1-8)
 
-The **group buttons (A-H)** select the tracks in the current page of the track bank.
-
-The **scene buttons (1-8)** launch the scenes in the current page of the scene bank. Track buttons will light up on MIDI events 
-from the track, for additional fun and profit (like Maschine).
 
 ## Touch Strips
 
-* **LEVEL**: Toggles between Volume and Panorama editing of 8 tracks. If Volume is active and playback is started the VU of the tracks is displayed as well. All strips are lit in their tracks' color.
+* **LEVEL**: Toggles between Volume and Panorama editing of 8 tracks. 
+  If Volume is active and playback is started the VU of the tracks is displayed as well. 
+  All strips are lit in their tracks' color.
+  * Note: maximum slider range can be limited to values other than +6 dB, see **Preferences**.
 * **AUX**: Edit send levels for a specific send for all tracks. Strips are lit in corresponding Effect track colors.
-* **AUX+GROUP(A-H)**: Hold **AUX** down to select from the first 8 Effect tracks. Group buttons are lit in corresponding 
+* **AUX+TRACK(A-H)**: Hold **AUX** down to select from the first 8 Effect tracks. Track buttons are lit in corresponding 
   Effect track colors, currently selected send is in WHITE.
 * **CONTROL**: Edit device remote controls
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
@@ -155,12 +171,27 @@ SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperSc
 
 SuperScenes are saved with the project.
 
+**NOTE**: SuperScene launcher can only operate on tracks that are currently visible in Bitwig.
+Namely, if a clip is in a nested track and the group is folded, or not in the group when the group
+is entered, SuperScene will not be able to launch or stop it. **Pro tip**: if you need to
+fold/unfold groups, make its scene clip part of a SuperScene and not the individual track clips.
+
 # Preferences
 
-* _Show pretty shift commands in matrix_: when enabled, holding **SHIFT**
+* **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
-* _SHIFT-GROUP selects track page_: see **Page navigation**
+* **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
+* **Limit level sliders**: slider range when controlling track levels
+  * _None_: sliders behave as shown in the app (i.e., +6 dB is maximum)
+  * _0 dB_: slider maximum is 0 dB for all tracks
+  * _-10 dB_: slider maximum is -10 dB for all tracks
+  * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
+* **Enable track tracker**: use extreme cleverness to follow the tracks as layout changes.
+  * Why you want this:
+    * SuperScenes will work correctly even if tracks have changed positions
+    * Scroll window will maintain its position when folding/unfolding tracks
+  * Why you may not want this: track tracker introduces tiny variations in track colors (specifically the alpha channel).
+    * This modifies the project even if you didn't do anything, so it will ask you to save
+    * Track color selectors will not display the color as selected
 
-After changing preferences it may be necessary to reload the extension (turn it off an on again in Controllers settings page).
-Also, after upgrading MonsterJam version be sure to check the settings - deprecated settings 
-may not get automatically removed by Bitwig, in which case delete and add the controller again.
+After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).

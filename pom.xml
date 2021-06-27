@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>3.0</version>
+    <version>4.0</version>
 
     <repositories>
         <repository>
