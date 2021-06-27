@@ -7,21 +7,29 @@ import com.github.unthingable.{MonsterJamExt, Util}
 import java.nio.ByteBuffer
 import scala.collection.mutable
 
-trait TrackTracker {
-  def positionForId(id: Int): Int
+case class TrackId(value: Int)
 
-  def trackId(track: Track): Option[Int]
+trait TrackTracker {
+  protected def bank: TrackBank
+
+  def positionForId(id: TrackId): Option[Int]
+
+  def idForPosition(pos: Int): Option[TrackId]
+
+  def trackId(track: Track): Option[TrackId]
 
   def addRescanCallback(f: () => Unit): Unit
 
+  def getItemAt(id: TrackId): Option[Track] = positionForId(id).map(bank.getItemAt)
 }
+
 // assign ephemeral ids for up to 255 tracks using steganography on colors
 
 /**
  * TrackTracker attempts to
  * @param bank
  */
-class SmartTracker(bank: TrackBank)(implicit val ext: MonsterJamExt) extends TrackTracker {
+class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends TrackTracker {
   import TrackTracker._
 
   var sequence: Int = 0
@@ -30,13 +38,12 @@ class SmartTracker(bank: TrackBank)(implicit val ext: MonsterJamExt) extends Tra
   //
   //val track2color = mutable.ArrayBuffer()
 
-  val rescanCallbacks = mutable.ArrayDeque.empty[() => Unit]
+  private val rescanCallbacks = mutable.ArrayDeque.empty[() => Unit]
 
   bank.itemCount().markInterested()
 
-  val positionMap = mutable.HashMap.empty[Int, Int]
-  val idPos = mutable.ArrayBuffer.fill(256)(-1)
-  val posId = mutable.ArrayBuffer.fill(256)(-1)
+  private val idPos = mutable.ArrayBuffer.fill(256)(-1)
+  private val posId = mutable.ArrayBuffer.fill(256)(-1)
 
   (0 until bank.getCapacityOfBank).foreach(i => {
     val track = bank.getItemAt(i)
@@ -50,10 +57,10 @@ class SmartTracker(bank: TrackBank)(implicit val ext: MonsterJamExt) extends Tra
 
   bank.itemCount().addValueObserver(_ => rescan())
 
-  override def trackId(track: Track): Option[Int] = {
+  override def trackId(track: Track): Option[TrackId] = {
     val sig = signature(track)
     if (isOurs(sig))
-      Some(sig & 0xff)
+      Some(TrackId(sig & 0xff))
     else
       None
   }
@@ -112,7 +119,13 @@ class SmartTracker(bank: TrackBank)(implicit val ext: MonsterJamExt) extends Tra
     }
   }
 
-  override def positionForId(id: Signature): Signature = idPos(id)
+  override def positionForId(id: TrackId): Option[Int] = {
+    val pos = idPos(id.value)
+    if (pos == -1)
+      None
+    else
+      Some(pos)
+  }
 
   override def addRescanCallback(f: () => Unit): Unit = {
     rescanCallbacks.addOne(f)
@@ -120,16 +133,24 @@ class SmartTracker(bank: TrackBank)(implicit val ext: MonsterJamExt) extends Tra
     // in case rescan didn't fire
     ext.host.scheduleTask(() => rescanCallbacks.removeAll(_ == f), 500)
   }
+
+  override def idForPosition(pos: Signature): Option[TrackId] = {
+    val id = posId(pos)
+    if (id == -1) None else Some(TrackId(pos))
+  }
 }
 
-class DumbTracker(bank: TrackBank) extends TrackTracker {
+// positions and IDs are the same
+class DumbTracker(val bank: TrackBank) extends TrackTracker {
   (0 until bank.getCapacityOfBank).foreach(bank.getItemAt(_).position().markInterested())
 
-  override def positionForId(id: Int): Int = id
+  override def positionForId(id: TrackId): Option[Int] = Some(id.value)
 
-  override def trackId(track: Track): Option[Int] = Some(track.position().get())
+  override def trackId(track: Track): Option[TrackId] = Some(TrackId(track.position().get()))
 
   override def addRescanCallback(f: () => Unit): Unit = ()
+
+  override def idForPosition(pos: Int): Option[TrackId] = Some(TrackId(pos))
 }
 
 object TrackTracker {
@@ -166,11 +187,4 @@ object TrackTracker {
   def asByte(v: Float): Array[Byte] = ByteBuffer.allocate(4).putFloat(v).array()
   def asByte(v: Double): Array[Byte] = ByteBuffer.allocate(8).putDouble(v).array()
 
-  //def printColor(c: Color): Unit = {
-  //  Util.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
-  //  Vector(c.getRed, c.getGreen, c.getBlue, c.getAlpha).foreach { v =>
-  //    val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
-  //    Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
-  //  }
-  //}
 }

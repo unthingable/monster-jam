@@ -7,7 +7,7 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface._
-import com.github.unthingable.bitwig.{DumbTracker, SmartTracker, TrackTracker}
+import com.github.unthingable.bitwig.{DumbTracker, SmartTracker, TrackId, TrackTracker}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -38,6 +38,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   //superBank.followCursorTrack(ext.cursorTrack)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
+  superBank.setSkipDisabledItems(true)
 
   ext.preferences.smartTracker.markInterested()
   implicit val tracker: TrackTracker = {
@@ -313,13 +314,19 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           val now = Instant.now()
           if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
 
-            val trackId = tracker.trackId(track)
-            val cb = () => trackId.foreach(id => {
-              val pos = tracker.positionForId(id)
-              ext.host.println(s"hunting track $id at $pos")
-              trackBank.scrollPosition().set(pos - idx)
-            })
-            tracker.addRescanCallback(cb)
+            val trackId  = tracker.trackId(track)
+            val callback = () => {
+              for {
+                id <- trackId
+                pos <- tracker.positionForId(id)
+              } yield {
+                ext.host.println(s"hunting track $id at $pos")
+                trackBank.scrollPosition().set(pos - idx)
+              }
+              ()
+            }
+
+            tracker.addRescanCallback(callback)
 
             foldToggleTop.invoke()
 
@@ -434,9 +441,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val setting: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
       setting.asInstanceOf[Setting].hide()
 
-      lazy val superScenes: mutable.ArraySeq[Map[Int, Int]] = mutable.ArraySeq.from(fromSettings(setting.get()))
+      lazy val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(setting.get()))
 
-      private def fromSettings(s: String): Iterable[Map[Int, Int]] =
+      private def fromSettings(s: String): Iterable[Map[TrackId, Int]] =
         Try(deserialize(maxTracks, maxScenes)(s))
           .toEither
           .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
@@ -454,7 +461,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         (0 until maxScenes).foreach(c => clips.getItemAt(c).isPlaying.markInterested())
       }
 
-      case class ClipTarget(track: Int, clip: Int)
+      case class ClipTarget(trackId: TrackId, clip: Int)
 
       def scan(): Seq[ClipTarget] = (0 until maxTracks.min(superBank.itemCount().get)).flatMap { tIdx =>
         val scenes = superBank.getItemAt(tIdx).clipLauncherSlotBank()
@@ -462,7 +469,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           val clip = scenes.getItemAt(sIdx)
 
           if (clip.isPlaying.get())
-            Some(ClipTarget(tIdx, sIdx))
+            tracker.idForPosition(tIdx).map(ClipTarget(_, sIdx))
           else
             None
         }
@@ -470,21 +477,23 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       def recall(scene: Int): Unit = {
         (0 until maxTracks).foreach { track =>
-          superScenes(scene).get(track) match {
+          val id = TrackId(track)
+          superScenes(scene).get(id) match {
             case Some(clip) =>
-              superBank.getItemAt(track).clipLauncherSlotBank().launch(clip)
+              // If a scene has a clip for a track id, attempt to launch it
+              tracker.getItemAt(id).foreach(_.clipLauncherSlotBank().launch(clip))
             case None        =>
-              superBank.getItemAt(track).stop()
+              // Otherwise attempt to stop
+              tracker.getItemAt(id).foreach(_.stop())
           }
-          lastScene = Some(scene)
         }
+        lastScene = Some(scene)
       }
 
       def pressed(scene: Int): Unit = {
         if (GlobalMode.Clear.isOn) superScenes.update(scene, Map.empty)
         else if (superScenes(scene).isEmpty) {
-          superScenes.update(scene, scan().map(ct => ct.track -> ct.clip).toMap)
-          //lastScene = Some(scene)
+          superScenes.update(scene, scan().map(ct => ct.trackId -> ct.clip).toMap)
 
           val ser = serialize(maxTracks, maxScenes)(superScenes)
           //ext.host.println(ser)
@@ -493,25 +502,25 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             recall(scene)
       }
 
-      def serialize(rows: Int, cols: Int)(o: Iterable[Map[Int, Int]]): String =
+      def serialize(rows: Int, cols: Int)(o: Iterable[Map[TrackId, Int]]): String =
         o.take(rows).map { row =>
-          (0 until cols).map { idx =>
-            f"${idx}%02x${row.get(idx).map(_ + 1).getOrElse(0)}%02x"
+          (0 until cols).map { idx => // danger zone: we depend on TrackId implementation being and int-based byte
+            f"${idx}%02x${row.get(TrackId(idx)).map(_ + 1).getOrElse(0)}%02x"
           }.mkString
         }.mkString
 
-      def deserialize(rows: Int, cols: Int)(s: String): Iterable[Map[Int, Int]] = {
+      def deserialize(rows: Int, cols: Int)(s: String): Iterable[Map[TrackId, Int]] = {
         assert(s.length == bufferSize, s"length mismatch: expected $bufferSize, got ${s.length}")
         assert(rows * cols * 4 == bufferSize, s"rows * cols (${rows * cols * 4}) does not match expected bufferSize $bufferSize")
         val ret = s.grouped(2).map(Integer.parseInt(_, 16))
           .grouped(2).map(s => s(0) -> (s(1) - 1))
-          .grouped(cols).map(_.filter(_._2 != -1).toMap)
+          .grouped(cols).map(_.filter(_._2 != -1).map(t => (TrackId(t._1), t._2)).toMap)
           .toVector
-        assert(ret.forall(_.forall(x => x._1 < maxTracks && x._2 < maxScenes)), "index out of bounds")
+        //assert(ret.forall(_.forall(x => x._1 < maxTracks && x._2 < maxScenes)), "index out of bounds")
         ret
       }
 
-      def page(idx: Int): mutable.Seq[Map[Int, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
+      def page(idx: Int): mutable.Seq[Map[TrackId, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
 
       override val modeBindings: Seq[Binding[_, _, _]] = EIGHT.flatMap { idx =>
         def pageOffset = pageIndex * 8
