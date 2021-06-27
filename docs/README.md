@@ -173,8 +173,10 @@ SuperScenes are saved with the project.
 
 **NOTE**: SuperScene launcher can only operate on tracks that are currently visible in Bitwig.
 Namely, if a clip is in a nested track and the group is folded, or not in the group when the group
-is entered, SuperScene will not be able to launch or stop it. **Pro tip**: if you need to
-fold/unfold groups, make its scene clip part of a SuperScene and not the individual track clips.
+is entered, SuperScene will not be able to launch or stop it directly. 
+
+If a group track containing SuperScene clips in its inner tracks was folded, 
+SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
 
 # Preferences
 
