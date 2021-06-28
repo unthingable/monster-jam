@@ -51,7 +51,10 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
 * **KNOB turn**: Jog through the project timeline
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
-* **SONG**: SuperScene mode (see below)
+* **SHIFT-PAD (second row)**: Additional functions and settings
+  * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
+* **SONG**: **SuperScene** mode (see below)
+* **PERFORM**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 
 ## Transport
 
@@ -121,7 +124,8 @@ from the track, for additional fun and profit (like Maschine).
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
-  * **CONTROL+SELECT**: Cycle through **Device Selector** modes (see below)
+  * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
+  * **CONTROL+PERFORM**: Toggle between device controls (rainbow) and **user controls** (all red)
 
 ### Fine adjustment
 
@@ -131,11 +135,11 @@ Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strip
 
 ## Self-gating modes
 
-This is something Novation Circuit does well: a quick press on a mode button turns it on, but hold the button and 
+A quick press on a mode button turns it on, but hold the button and 
 make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
 and performance.
 
-MonsterJam does the same with two modes currently, Solo and Mute, more will be added as needed.
+Two modes support this currently: Solo and Mute. More will be added as needed.
 
 ## Launch grid quantization
 
@@ -183,14 +187,9 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
 
-* **CONTROL + ...**
-  * **SELECT**: Cycle through available device selector modes
-    * disabled
-    * Device Matrix
+* **CONTROL+SELECT**: Toggle device matrix
 
-## Device Matrix
-
-In this mode the clip matrix shows devices in each track, just like in Mixer. Press a matrix button
+In this mode the clip matrix shows devices in each track, just like in Mixer. Press a pad
 to select a device (selecting a device also selects its track).
 
 Devices are color coded:
@@ -216,44 +215,34 @@ track will scroll only if there are more devices to scroll to, others will stay 
 That is, if you have one track with 20 devices and another with 1, you will always see 
 the 1 device while the other 20 are scrolling.
 
-## Device Selector
+## Track Selector
 
-Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+Hold **PERFORM** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
+in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
+to select a track, currently selected track is colored brightly.
 
-* **CONTROL + ...**
-  * **SELECT**: Cycle through available device selector modes
-    * disabled
-    * Device Matrix
+Holding **PERFORM** also switches control strips to user control mode.
 
-## Device Matrix
+## User controls
 
-In this mode the clip matrix shows devices in each track, just like in Mixer. Press a matrix button
-to select a device (selecting a device also selects its track).
+A bank of 8 user controls available for general global mapping, controlled by the touch strips.
 
-Devices are color coded:
+User controls are accessible in two ways:
 
-* Native devices
-  * Audio FX: orange
-  * Instrument: yellow
-  * Note FX: cyan
-* Plugins
-  * Audio FX: magenta
-  * Instrument: lime
-  * Note FX: plum
-  
-### Page navigation
+* Momentarily, by holding **PERFORM**
+* In **CONTROL** mode, press **CONTROL+PERFORM** to switch user controls on and off
 
-Use **ARROW** keys to:
+### A note on mapping
 
-* **LEFT/RIGHT**: scroll track bank page
-* **UP/DOWN**: scroll device bank pages
+Needs a trick to map slider value to a parameter in Bitwig: touch the slider first, then map to controller without letting go.
 
-**NOTE**: unlike scenes, device banks do not all scroll together. Instead, devices on each
-track will scroll only if there are more devices to scroll to, others will stay in place.
-That is, if you have one track with 20 devices and another with 1, you will always see 
-the 1 device while the other 20 are scrolling.
+Because the touchstrip is actually two hardware controls in one, it sends out several events in sequence:
+first is slider being touched, then slider value updates. If you start the mapping before touching
+the slider, Bitwig will map it to the touch control and not to the slider value.
 
 # Preferences
+
+## Global
 
 * **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
@@ -272,3 +261,9 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
     * Track color selectors will not display the color as selected
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
+
+## Project
+
+(Open Studio I/O Panel and look under Maschine Jam)
+
+* Hide disabled: tracks — disabled tracks are skipped

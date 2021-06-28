@@ -221,8 +221,8 @@ case class FakeAction(protected val invokeCallback:() => Unit = () => (), masque
   val callbacks = mutable.LinkedHashSet.empty[HardwareActionBindable]
   def invoke(): Unit = {
     invokeCallback()
-    callbacks.zipWithIndex.foreach { case (f, idx) =>
-      assert(idx < callbacks.size)
+    Array.from(callbacks).zipWithIndex.foreach { case (f, idx) =>
+      //assert(idx < callbacks.size)
       //Util.println(s"calling $idx of ${callbacks.size}")
       f.invoke()
     }
