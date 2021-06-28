@@ -54,7 +54,7 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 * **SHIFT-PAD (second row)**: Additional functions and settings
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
 * **SONG**: **SuperScene** mode (see below)
-* **PERFORM**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
+* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 
 ## Transport
 
@@ -125,7 +125,7 @@ from the track, for additional fun and profit (like Maschine).
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
-  * **CONTROL+PERFORM**: Toggle between device controls (rainbow) and **user controls** (all red)
+  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red)
 
 ### Fine adjustment
 
@@ -151,7 +151,7 @@ THe current setting is lit. Press the lit button to disable grid quantization al
 
 ## PERFORM FX
 
-Maschine native has a great PERFORM mode, where dual-touch strips control both an effect parameter and effect routing
+Maschine native has a great "performance fx" mode, where dual-touch strips control both an effect parameter and effect routing
 (e.g., an insert effect is enabled only when the strip is being touched). MonsterJam does something similar.
 
 If a device has a remote control page called `MonsterFX`, MonsterJam will treat it specially:
@@ -217,11 +217,11 @@ the 1 device while the other 20 are scrolling.
 
 ## Track Selector
 
-Hold **PERFORM** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
+Hold **MACRO** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
 in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
 to select a track, currently selected track is colored brightly.
 
-Holding **PERFORM** also switches control strips to user control mode.
+Holding **MACRO** also switches control strips to user control mode.
 
 ## User controls
 
@@ -229,8 +229,8 @@ A bank of 8 user controls available for general global mapping, controlled by th
 
 User controls are accessible in two ways:
 
-* Momentarily, by holding **PERFORM**
-* In **CONTROL** mode, press **CONTROL+PERFORM** to switch user controls on and off
+* Momentarily, by holding **MACRO**
+* In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
 
 ### A note on mapping
 

@@ -755,7 +755,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           override val barMode: BarMode = BarMode.SINGLE
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-            SupBooleanB(j.perform.light.isOn, () => true)
+            SupBooleanB(j.macroButton.light.isOn, () => true)
           )
         },
       )
@@ -848,13 +848,13 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
       override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
         HB(j.select.pressedAction, "cycle device selectors", () => cycle()),
-        HB(j.perform.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
+        HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
       )
     }
 
     val stripGroup = Exclusive(levelCycle, auxLayer, deviceLayer)
 
-    val performLayer = new ModeButtonLayer("performLayer", j.perform, GateMode.Gate, silent = true) {
+    val macroLayer = new ModeButtonLayer("macroLayer", j.macroButton, GateMode.Gate, silent = true) {
       var bumpedStrip: Option[IntActivatedLayer] = None
       var bumpedSubMode: Option[Int] = None
 
@@ -910,7 +910,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
       bottom -> stripGroup,
-      bottom -> Coexist(auxGate, deviceSelector, performLayer),
+      bottom -> Coexist(auxGate, deviceSelector, macroLayer),
       trackGroup -> Exclusive(EIGHT.map(trackGate):_*),
       bottom -> Coexist(sceneLayer, superScene),
       bottom -> Coexist(unmanaged),
