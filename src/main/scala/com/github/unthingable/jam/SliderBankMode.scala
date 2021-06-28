@@ -9,7 +9,7 @@ import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchSt
 abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
   (implicit ext: MonsterJamExt, j: JamSurface)
   extends SubModeLayer(name) with Util {
-  val proxies     : Vector[P]            = j.stripBank.strips.indices.map(obj).toVector
+  val proxies     : Vector[P]         = j.stripBank.strips.indices.map(obj).toVector
   val sliderParams: Vector[Parameter] = proxies.map(param)
   val barMode: BarMode
 
@@ -87,7 +87,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           offsetObserver = _ => ()
           bindWithRange(idx)
           Normal
-        case x: (_,_,_,_) =>
+        case _ =>
           Normal
       }
 

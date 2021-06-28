@@ -755,9 +755,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
 
       override val subModes: Seq[ModeLayer with IntActivatedLayer] = Vector(
-        new SimpleModeLayer("noopSelector") with IntActivatedLayer {
-          override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
-        },
         // all device matrix
         new SimpleModeLayer("matrixSelector") with IntActivatedLayer {
           val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
@@ -784,7 +781,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             case (true, "note-effect")   => JAMColorBase.PLUM
             case (_, s)                  =>
               ext.host.println(s"unknown device $s")
-              JAMColorBase.GREEN
+              JAMColorBase.RED
           }
 
           override val modeBindings: Seq[Binding[_, _, _]] = deviceBanks.zipWithIndex.flatMap { case (bank, col) =>
@@ -814,8 +811,13 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             HB(j.dpad.up.pressedAction, "device bank up", () => deviceBanks.foreach(_.scrollPageBackwards())),
             HB(j.dpad.down.pressedAction, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
           )
-        }
-        // device navigator
+        },
+        // device navigator - maybe todo,
+        // noop mode (disable device selector)
+        new SimpleModeLayer("noopSelector") with IntActivatedLayer {
+          override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
+        },
+
       )
       override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
         HB(j.select.pressedAction, "cycle device selectors", () => cycle())
