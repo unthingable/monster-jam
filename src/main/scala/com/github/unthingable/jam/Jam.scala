@@ -610,27 +610,41 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
      */
     val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Modifiers.Shift, GateMode.Gate) {
       val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
-      override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-        (JAMColorBase.RED, () => ext.application.undo()),
-        (JAMColorBase.GREEN, () => ext.application.redo()),
-        (JAMColorBase.LIME, () => clip.quantize(1.0)),
-        (JAMColorBase.LIME, () => clip.quantize(0.5)),
-        (JAMColorBase.MAGENTA, () => clip.transpose(-1)),
-        (JAMColorBase.MAGENTA, () => clip.transpose(1)),
-        (JAMColorBase.FUCHSIA, () => clip.transpose(-12)),
-        (JAMColorBase.FUCHSIA, () => clip.transpose(12)),
-      ).zipWithIndex.flatMap { case ((color, action), idx) =>
-        val button = j.matrix(0)(idx)
-        Vector(HB(button.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
-          if (ext.preferences.shiftRow.get())
-            Vector(SupColorStateB(
-              button.light, () => JamColorState(
-                color,
-                brightness = if (button.isPressed()) 2 else 0),
-              JamColorState.empty))
-          else Vector.empty
-          )
-      }
+      override val modeBindings: Seq[Binding[_, _, _]] =
+        (Vector(
+          (JAMColorBase.RED, () => ext.application.undo()),
+          (JAMColorBase.GREEN, () => ext.application.redo()),
+          (JAMColorBase.LIME, () => clip.quantize(1.0)),
+          (JAMColorBase.LIME, () => clip.quantize(0.5)),
+          (JAMColorBase.MAGENTA, () => clip.transpose(-1)),
+          (JAMColorBase.MAGENTA, () => clip.transpose(1)),
+          (JAMColorBase.FUCHSIA, () => clip.transpose(-12)),
+          (JAMColorBase.FUCHSIA, () => clip.transpose(12)),
+        ).zipWithIndex.flatMap { case ((color, action), idx) =>
+          val button = j.matrix(0)(idx)
+          Vector(HB(button.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
+            if (ext.preferences.shiftRow.get())
+              Vector(SupColorStateB(
+                button.light, () => JamColorState(
+                  color,
+                  brightness = if (button.isPressed()) 2 else 0),
+                JamColorState.empty))
+            else Vector.empty
+            )
+        }
+         ++ (if (ext.preferences.shiftRow.get()) Vector(
+          SupColorStateB(j.matrix(1)(0).light, () =>
+            if (ShowHide.withName(ext.docPrefs.hideDisabled.get()) == ShowHide.Hide)
+              JamColorState(JAMColorBase.RED, 0)
+            else JamColorState(JAMColorBase.YELLOW, 0)
+          )) else Vector.empty)
+         ++ Vector(
+          HB(j.matrix(1)(0).pressedAction, "toggle hide disabled", () => {
+            if (ShowHide.withName(ext.docPrefs.hideDisabled.get()) == ShowHide.Hide)
+              ext.docPrefs.hideDisabled.set(ShowHide.Show.toString)
+            else ext.docPrefs.hideDisabled.set(ShowHide.Hide.toString)
+          })
+        ))
     }
 
     val shiftPages = new ModeCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.GateSelect) {
