@@ -713,6 +713,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         secondCursor
       })
 
+      val userBank: UserControlBank = ext.host.createUserControls(8)
 
       override val subModes: Seq[SubModeLayer] = Vector(
         new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
@@ -723,7 +724,14 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             strip.button.isPressed.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
               if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
           }
-        }
+        },
+        new SliderBankMode[Parameter]("strips user bank", userBank.getControl, identity) {
+          override val barMode: BarMode = BarMode.SINGLE
+
+          override def modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+            SupBooleanB(j.perform.light.isOn, () => true)
+          )
+        },
       )
 
       def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
@@ -737,6 +745,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
         HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
         HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
+        HB(j.perform.pressedAction, "control userbank cycle", () => cycle()),
       )
 
       override def activate(): Unit = {

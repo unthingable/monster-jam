@@ -134,11 +134,9 @@ object ModeButtonLayer {
   }
 }
 
-class SubModeLayer(
+abstract class SubModeLayer(
   val name: String
-)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer {
-  override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
-}
+)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer
 
 sealed trait CycleMode
 object CycleMode {

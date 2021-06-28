@@ -42,7 +42,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
   }
 
-  override val modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
+  override def modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
     val proxy: ObjectProxy   = proxies(idx)
     val param: Parameter     = sliderParams(idx)
@@ -110,7 +110,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
         send.sendChannelColor().addValueObserver((r, g, b) =>
           if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case _: RemoteControl =>
-        ()
+      case _: Parameter => ()
     }
 
     import Event._
@@ -146,6 +146,9 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
         case _: RemoteControl =>
           Some(rainbow(idx))
+        case _: Parameter =>
+          // a random parameter we know nothing about (probably from UserControlBank)
+          Some(JAMColorBase.RED)
       }).foreach(c => j.stripBank.setColor(idx, c))
 
       j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
