@@ -745,7 +745,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
         HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
         HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
-        HB(j.perform.pressedAction, "control userbank cycle", () => cycle()),
       )
 
       override def activate(): Unit = {
@@ -829,8 +828,27 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       )
       override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-        HB(j.select.pressedAction, "cycle device selectors", () => cycle())
+        HB(j.select.pressedAction, "cycle device selectors", () => cycle()),
+        HB(j.perform.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
       )
+    }
+
+    val performLayer = new ModeButtonLayer("performLayer", j.perform, GateMode.Gate, silent = true) {
+      override def modeBindings: Seq[Binding[_, _, _]] =
+        (0 until superBank.getCapacityOfBank).flatMap { superIdx =>
+          val track = superBank.getItemAt(superIdx)
+          val row = superIdx / 8
+          val col = superIdx % 8
+          val btn = j.matrix(row)(col)
+          val isSelected = ext.cursorTrack.createEqualsValue(track)
+          isSelected.markInterested()
+
+          Vector(
+            SupColorStateB(btn.light, () => JamColorState(track.color().get(), if (isSelected.get()) 3 else 0)),
+            HB(btn.pressedAction, "direct select track", () => ext.cursorTrack.selectChannel(track)),
+            HB(btn.releasedAction, "direct select release", () => ()),
+          )
+        }
     }
 
       // Final assembly of all mode layers
@@ -848,7 +866,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
       bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
-      bottom -> Coexist(auxGate, deviceSelector),
+      bottom -> Coexist(auxGate, deviceSelector, performLayer),
       trackGroup -> Exclusive(EIGHT.map(trackGate):_*),
       bottom -> Coexist(sceneLayer, superScene),
       bottom -> Coexist(unmanaged),

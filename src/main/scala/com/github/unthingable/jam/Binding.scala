@@ -8,8 +8,7 @@ import com.github.unthingable.jam.BindingDSL.HBS
 
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
-import com.github.unthingable.jam.BindingDSL._
-import com.github.unthingable.jam.surface.FakeAction
+import com.github.unthingable.jam.surface.{FakeAction, JamColorState}
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -120,7 +119,7 @@ case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
 }
 
 case class SupColorStateB[A <: InternalHardwareLightState](
-  target: MultiStateHardwareLight, source: Supplier[A], empty: A)
+  target: MultiStateHardwareLight, source: Supplier[A], empty: A = JamColorState.empty)
   extends InBinding[Supplier[A], MultiStateHardwareLight] {
   override def bind(): Unit = target.state.setValueSupplier(source)
 
@@ -134,27 +133,27 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
   override def clear(): Unit = target.setValueSupplier(() => false)
 }
 
-
-class ObserverB[S, T, C](val source: S, val target: T, binder: (S, C) => Unit, receiver: C, empty: C)
-  extends InBinding[S, T] {
-  // observers are not removable, so
-  private var action: C = empty
-  binder(source, action)
-
-  override def bind(): Unit = action = receiver
-
-  override def clear(): Unit = action = empty
-}
-
-// not working?
-case class ValObserverB[A <: ValueChangedCallback, T](value: Value[A], receiver: A, override val target: T)
-  (implicit emp: EmptyCB[A])
-  extends ObserverB[Value[A], T, A](value, target, _.addValueObserver(_), receiver, emp.empty)
-
-case class LoadActions(
-  activate: HBS,
-  deactivate: HBS,
-)
+//
+//class ObserverB[S, T, C](val source: S, val target: T, binder: (S, C) => Unit, receiver: C, empty: C)
+//  extends InBinding[S, T] {
+//  // observers are not removable, so
+//  private var action: C = empty
+//  binder(source, action)
+//
+//  override def bind(): Unit = action = receiver
+//
+//  override def clear(): Unit = action = empty
+//}
+//
+//// not working?
+//case class ValObserverB[A <: ValueChangedCallback, T](value: Value[A], receiver: A, override val target: T)
+//  (implicit emp: EmptyCB[A])
+//  extends ObserverB[Value[A], T, A](value, target, _.addValueObserver(_), receiver, emp.empty)
+//
+//case class LoadActions(
+//  activate: HBS,
+//  deactivate: HBS,
+//)
 
 trait BindingDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
