@@ -171,11 +171,11 @@ abstract class ModeCycleLayer(
   }
 
   def select(idx: Int): Unit = {
-    selected.foreach(subModes(_).deactivateAction.invoke())
+    if (isOn) selected.foreach(subModes(_).deactivateAction.invoke())
     val mode = subModes(idx)
-    ext.host.println(s"activating submode ${mode.name}")
+    ext.host.println((if (isOn) "activating" else "selecting") + s" submode ${mode.name}")
     selected = Some(idx)
-    mode.activateAction.invoke()
+    if (isOn) mode.activateAction.invoke()
   }
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(

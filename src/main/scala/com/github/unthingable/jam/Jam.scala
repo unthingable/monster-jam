@@ -833,8 +833,30 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
     }
 
+    val stripGroup = Exclusive(levelCycle, auxLayer, deviceLayer)
+
     val performLayer = new ModeButtonLayer("performLayer", j.perform, GateMode.Gate, silent = true) {
-      override def modeBindings: Seq[Binding[_, _, _]] =
+      var bumpedStrip: Option[IntActivatedLayer] = None
+      var bumpedSubMode: Option[Int] = None
+
+      override def activate(): Unit = {
+        super.activate()
+        // dirty hack to show user controls
+        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }
+        bumpedSubMode = deviceLayer.selected
+        deviceLayer.select(1)
+        deviceLayer.activateAction.invoke()
+      }
+
+      override def deactivate(): Unit = {
+        bumpedStrip.foreach(_.activateAction.invoke())
+        bumpedSubMode.foreach(deviceLayer.select)
+        bumpedStrip = None
+        bumpedSubMode = None
+        super.deactivate()
+      }
+
+      override val modeBindings: Seq[Binding[_, _, _]] =
         (0 until superBank.getCapacityOfBank).flatMap { superIdx =>
           val track = superBank.getItemAt(superIdx)
           val row = superIdx / 8
@@ -855,6 +877,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))
     val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
     val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
+
     new ModeDGraph(
       init = Vector(levelCycle, sceneLayer),
       dpad -> top,
@@ -865,7 +888,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
       trackGroup -> Exclusive(solo, mute),
       clipMatrix -> top,
-      bottom -> Exclusive(levelCycle, auxLayer, deviceLayer),
+      bottom -> stripGroup,
       bottom -> Coexist(auxGate, deviceSelector, performLayer),
       trackGroup -> Exclusive(EIGHT.map(trackGate):_*),
       bottom -> Coexist(sceneLayer, superScene),
