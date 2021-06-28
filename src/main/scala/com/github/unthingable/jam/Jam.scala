@@ -842,10 +842,12 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       override def activate(): Unit = {
         super.activate()
         // dirty hack to show user controls
-        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }
-        bumpedSubMode = deviceLayer.selected
-        deviceLayer.select(1)
-        deviceLayer.activateAction.invoke()
+        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != deviceLayer)
+        if (!deviceLayer.selected.contains(1)) {
+          bumpedSubMode = deviceLayer.selected
+          deviceLayer.select(1)
+        }
+        if (!deviceLayer.isOn) deviceLayer.activateAction.invoke()
       }
 
       override def deactivate(): Unit = {
