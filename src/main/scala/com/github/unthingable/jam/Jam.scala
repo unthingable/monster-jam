@@ -724,11 +724,18 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             strip.button.isPressed.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
               if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
           }
+
+          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+            SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
+            SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
+            HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
+            HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
+          )
         },
         new SliderBankMode[Parameter]("strips user bank", userBank.getControl, identity) {
           override val barMode: BarMode = BarMode.SINGLE
 
-          override def modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.perform.light.isOn, () => true)
           )
         },
@@ -739,13 +746,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       def m(default: () => Unit, modePressed: () => Unit): () => Unit =
         () => if (modeButton.isPressed()) modePressed() else default()
-
-      override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-        SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
-        SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
-        HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
-        HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
-      )
 
       override def activate(): Unit = {
         val idx = page.c.selectedPageIndex().get()
