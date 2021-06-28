@@ -2,7 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.{FilteredPage, MonsterJamExt, Util, jam}
+import com.github.unthingable.{FilteredPage, MonsterJamExt, ShowHide, Util, jam}
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -37,7 +37,6 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   //superBank.followCursorTrack(ext.cursorTrack)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
-  superBank.setSkipDisabledItems(true)
 
   ext.preferences.smartTracker.markInterested()
   implicit val tracker: TrackTracker = {
@@ -55,7 +54,13 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   sceneBank.itemCount().markInterested()
 
   trackBank.cursorIndex().markInterested()
-  trackBank.setSkipDisabledItems(true)
+
+  ext.docPrefs.hideDisabled.markInterested()
+  ext.docPrefs.hideDisabled.addValueObserver { v =>
+    val skip = (ShowHide.withName(v) != ShowHide.Show)
+    trackBank.setSkipDisabledItems(skip)
+    superBank.setSkipDisabledItems(skip)
+  }
   //sceneBank.setIndication(true)
 
 
@@ -501,10 +506,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       var pageIndex = 0
       var lastScene: Option[Int] = None
 
-      val setting: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
-      setting.asInstanceOf[Setting].hide()
+      val sceneStore: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
+      sceneStore.asInstanceOf[Setting].hide()
 
-      lazy val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(setting.get()))
+      lazy val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(sceneStore.get()))
 
       private def fromSettings(s: String): Iterable[Map[TrackId, Int]] =
         Try(deserialize(maxTracks, maxScenes)(s))
@@ -515,7 +520,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       ext.application.projectName().markInterested()
       ext.application.projectName().addValueObserver(_ => {
-        fromSettings(setting.get()).forindex {case (m, idx) => superScenes.update(idx, m)}
+        fromSettings(sceneStore.get()).forindex {case (m, idx) => superScenes.update(idx, m)}
       })
 
       (0 until maxTracks).foreach {t =>
@@ -560,7 +565,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
           val ser = serialize(maxTracks, maxScenes)(superScenes)
           //ext.host.println(ser)
-          setting.set(ser)
+          sceneStore.set(ser)
         } else
             recall(scene)
       }
