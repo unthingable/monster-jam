@@ -44,6 +44,10 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 
 **NOTE**: Key bindings are experimental and may change in future versions.
 
+## Button combination order
+
+Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not the same as **CONTROL+SHIFT**.
+
 ## Global
 
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
@@ -138,7 +142,7 @@ A quick press on a mode button turns it on, but hold the button and
 make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
 and performance.
 
-Two modes support this currently: Solo and Mute. More will be added as needed.
+Solo, Mute, and TEMPO are like this, more to come.
 
 ## Launch grid quantization
 
