@@ -108,8 +108,7 @@ from the track, for additional fun and profit (like Maschine).
   * Track buttons and arrow keys same as above
   * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
-
-
+* **MACRO** lets you jump directly to one of 64 tracks using pad buttons
 
 ## Touch Strips
 
@@ -219,7 +218,7 @@ the 1 device while the other 20 are scrolling.
 
 Hold **MACRO** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
 in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
-to select a track, currently selected track is colored brightly.
+to select a track, currently selected track is bright white.
 
 Holding **MACRO** also switches control strips to user control mode.
 

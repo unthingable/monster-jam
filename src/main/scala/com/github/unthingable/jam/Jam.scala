@@ -887,7 +887,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           isSelected.markInterested()
 
           Vector(
-            SupColorStateB(btn.light, () => JamColorState(track.color().get(), if (isSelected.get()) 3 else 0)),
+            SupColorStateB(btn.light, () =>
+              if (isSelected.get())
+                JamColorState(JAMColorBase.WHITE, 3)
+              else
+                JamColorState(track.color().get(), 0)),
             HB(btn.pressedAction, "direct select track", () => ext.cursorTrack.selectChannel(track)),
             HB(btn.releasedAction, "direct select release", () => ()),
           )
