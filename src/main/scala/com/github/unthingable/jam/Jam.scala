@@ -98,10 +98,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         EIGHT.foreach { idx =>
           val track = trackBank.getItemAt(idx)
           track.trackType().markInterested()
-          track.trackType().addValueObserver(_ => updateLimits(Some(idx)))
+          track.trackType().addValueObserver(v => if (isOn) updateLimits(Some(idx, v)))
         }
         ext.preferences.limitLevel.markInterested()
-        ext.preferences.limitLevel.addValueObserver(_ => updateLimits(None))
+        ext.preferences.limitLevel.addValueObserver(_ => if (isOn) updateLimits(None))
 
         val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
 
@@ -119,25 +119,27 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
         override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
 
-        def updateLimits(maybeIdx: Option[Int]): Unit = {
+        def updateLimits(maybeType: Option[(Int, String)]): Unit = {
           val max      = 1.259921049894873
           val zero     = 1.0
           val minusTen = 0.6812920690579614
 
-          maybeIdx match {
-            case Some(idx) =>
+          maybeType match {
+            case Some((idx, trackType)) =>
               paramLimits.update(idx, ext.preferences.limitLevel.get() match {
                 case "None"   => 1.0
                 case "Smart"  =>
-                  trackBank.getItemAt(idx).trackType().get() match {
-                    case "Group" => zero / max
-                    case _       => minusTen / max
+                  trackType match {
+                    case "Group"             => zero / max
+                    //case "Effect" | "Master" => 1.0
+                    case _                   => minusTen / max
                   }
                 case "0 dB"   => zero / max
                 case "-10 dB" => minusTen / max
                 case _        => 1.0
               })
-            case None => EIGHT.map(Some.apply).foreach(updateLimits)
+              bindWithRange(idx)
+            case None => EIGHT.map(idx => Some((idx, trackBank.getItemAt(idx).trackType().get()))).foreach(updateLimits)
           }
         }
       },

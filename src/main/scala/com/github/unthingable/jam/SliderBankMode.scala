@@ -6,6 +6,8 @@ import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
 
+import scala.collection.mutable
+
 abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
   (implicit ext: MonsterJamExt, j: JamSurface)
   extends SubModeLayer(name) with Util {
@@ -36,18 +38,18 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
   val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
 
   def paramRange(idx: Int): (Double, Double) = (0.0, 1.0)
+  val paramState: mutable.ArrayBuffer[Any] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
-  def bindWithRange(idx: Int): Unit = {
-    val (min, max) = paramRange(idx)
-    j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
-  }
+  def bindWithRange(idx: Int, force: Boolean = false): Unit =
+    if (force || paramState(idx) == State.Normal) {
+      val (min, max) = paramRange(idx)
+      j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
+    }
 
   override def modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
     val proxy: ObjectProxy   = proxies(idx)
     val param: Parameter     = sliderParams(idx)
-
-    var state: State = State.Normal
 
     param.markInterested()
     param.name().markInterested()
@@ -65,11 +67,11 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       val shiftOn = j.Modifiers.Shift.isPressed()
       val stripOn = strip.isPressed()
 
-      state = (shiftOn, stripOn, event, state) match {
+      val state = (shiftOn, stripOn, event, paramState(idx)) match {
         case (_,_,ShiftP, Normal) =>
           strip.slider.clearBindings()
           ShiftTracking
-        case (true, true, _:PressEvent, _) =>
+        case (true, true, _:PressEvent, state) =>
           if (state == Normal)
             strip.slider.clearBindings()
           val current = param.get()
@@ -85,12 +87,12 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           ShiftTracking
         case (_,_,_:ReleaseEvent,ShiftTracking) =>
           offsetObserver = _ => ()
-          bindWithRange(idx)
+          bindWithRange(idx, force = true)
           Normal
         case _ =>
           Normal
       }
-
+      paramState.update(idx, state)
     }
 
     proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
@@ -134,6 +136,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     //ext.host.println(sliderParams.map(_.name().get()).mkString(","))
     //ext.host.println(sliderParams.map(_.value().get()).mkString(","))
 
+    paramState.mapInPlace(_ => State.Normal)
     j.stripBank.barMode = barMode
 
     j.stripBank.strips.forindex { case (strip, idx) =>
@@ -160,7 +163,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     if (barMode == BarMode.DUAL)
       j.stripBank.flushValues()
 
-    j.stripBank.strips.indices.foreach(bindWithRange)
+    j.stripBank.strips.indices.foreach(bindWithRange(_))
 
     super.activate()
   }
