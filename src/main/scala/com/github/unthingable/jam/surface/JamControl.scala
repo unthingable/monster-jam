@@ -34,16 +34,7 @@ trait OnOffButton extends Button with OnOffLight
 case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
   protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
-  val (on, off) = info.event match {
-    case CC(cc) => (
-      ext.midiIn.createCCActionMatcher(info.channel, cc, 127),
-      ext.midiIn.createCCActionMatcher(info.channel, cc, 0)
-    )
-    case Note(note) => (
-      ext.midiIn.createNoteOnActionMatcher(info.channel, note),
-      ext.midiIn.createNoteOffActionMatcher(info.channel, note)
-    )
-  }
+  val (on, off) = JamButton.infoActionMatchers(info)
 
   button.pressedAction.setActionMatcher(on)
   button.releasedAction.setActionMatcher(off)
@@ -54,6 +45,21 @@ case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button
   override val isPressed     : () => Boolean = button.isPressed.get
 }
 
+object JamButton {
+  def infoActionMatchers(info: MidiInfo)(implicit ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
+    info.event match {
+      case CC(cc)     =>
+        (
+          ext.midiIn.createCCActionMatcher(info.channel, cc, 127),
+          ext.midiIn.createCCActionMatcher(info.channel, cc, 0)
+        )
+      case Note(note) =>
+        (
+          ext.midiIn.createNoteOnActionMatcher(info.channel, note),
+          ext.midiIn.createNoteOffActionMatcher(info.channel, note)
+        )
+    }
+}
 
 case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight {
   import JamColorState._
@@ -144,22 +150,22 @@ case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends O
   override val isPressed     : () => Boolean = button.isPressed.get
 }
 
-case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
-  val button: HardwareButton = JamButton(touch).button
+case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) {
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
+  slider.isBeingTouched.markInterested()
 
   // assume it's always CC
   val matcher = ext.midiIn.createAbsoluteCCValueMatcher(slide.channel, slide.event.value)
   slider.setAdjustValueMatcher(matcher)
 
+  val (on, off) = JamButton.infoActionMatchers(touch)
+  slider.beginTouchAction().setActionMatcher(on)
+  slider.endTouchAction().setActionMatcher(off)
+
   def update(value: Int): Unit = {
     //ext.host.println(s"updating slider ${slide} to $level")
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
   }
-
-  override val pressedAction : HB.HBS        = button.pressedAction
-  override val releasedAction: HB.HBS        = button.releasedAction
-  override val isPressed     : () => Boolean = button.isPressed.get
 
   // such speedup
   override def hashCode(): Int = touch.event.value
@@ -173,7 +179,6 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
       led = ext.xmlMap.led(s"Tst${idx}IDX", ext.xmlMap.touchElems))
 
   }.toVector
-    .forindex(_.button.setIndexInGroup(_))
     .forindex(_.slider.setIndexInGroup(_))
 
   var barMode: BarMode = BarMode.DUAL

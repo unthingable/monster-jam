@@ -65,7 +65,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       import State._
 
       val shiftOn = j.Modifiers.Shift.isPressed()
-      val stripOn = strip.isPressed()
+      val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
         case (_,_,ShiftP, Normal) =>
@@ -119,8 +119,8 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     Vector(
       HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
       HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-      HB(strip.pressedAction, s"shift-strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
-      HB(strip.releasedAction, s"shift-strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
+      HB(strip.slider.beginTouchAction, s"shift-strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
+      HB(strip.slider.endTouchAction, s"shift-strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
     )
   }
 

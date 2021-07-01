@@ -741,8 +741,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
           override val barMode: BarMode = BarMode.SINGLE
 
           j.stripBank.strips.forindex { case (strip, idx) =>
-            strip.button.isPressed.markInterested()
-            strip.button.isPressed.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
+            strip.slider.isBeingTouched.markInterested()
+            strip.slider.isBeingTouched.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
               if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
           }
 
