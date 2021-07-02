@@ -235,14 +235,6 @@ User controls are accessible in two ways:
 * Momentarily, by holding **MACRO**
 * In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
 
-### A note on mapping
-
-Needs a trick to map slider value to a parameter in Bitwig: touch the slider first, then map to controller without letting go.
-
-Because the touchstrip is actually two hardware controls in one, it sends out several events in sequence:
-first is slider being touched, then slider value updates. If you start the mapping before touching
-the slider, Bitwig will map it to the touch control and not to the slider value.
-
 # Preferences
 
 ## Global
