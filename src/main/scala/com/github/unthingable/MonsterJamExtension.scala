@@ -13,6 +13,10 @@ case class MonsterPref(
   smartTracker: SettableBooleanValue,
 )
 
+case class MonsterDocPrefs(
+  hideDisabled: SettableEnumValue
+)
+
 case class MonsterJamExt(
   host: ControllerHost,
   midiIn: MidiIn,
@@ -24,6 +28,7 @@ case class MonsterJamExt(
   document: DocumentState,
   application: Application,
   preferences: MonsterPref,
+  docPrefs: MonsterDocPrefs,
   xmlMap: XmlMap
 ) {
   type Schedulable = (Int, () => Boolean, () => Unit)
@@ -65,6 +70,9 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
         preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Options", true),
         preferences.getEnumSetting("Limit level sliders", "Options", Array("None", "0 dB", "-10 dB", "Smart"), "None"),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
+      ),
+      MonsterDocPrefs(
+        host.getDocumentState.getEnumSetting("Tracks", "Hide disabled", ShowHide.values.map(_.toString).toArray, ShowHide.Show.toString),
       ),
       loadMap(host)
     )

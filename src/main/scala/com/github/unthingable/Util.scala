@@ -53,3 +53,8 @@ case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
   }
 
 }
+
+object ShowHide extends Enumeration {
+  type ShowHide = Value
+  val Show, Hide = Value
+}

@@ -44,6 +44,10 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 
 **NOTE**: Key bindings are experimental and may change in future versions.
 
+## Button combination order
+
+Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not the same as **CONTROL+SHIFT**.
+
 ## Global
 
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
@@ -51,7 +55,10 @@ Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
 * **KNOB turn**: Jog through the project timeline
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
-* **SONG**: SuperScene mode (see below)
+* **SHIFT-PAD (second row)**: Additional functions and settings
+  * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
+* **SONG**: **SuperScene** mode (see below)
+* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 
 ## Transport
 
@@ -105,8 +112,7 @@ from the track, for additional fun and profit (like Maschine).
   * Track buttons and arrow keys same as above
   * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
-
-
+* **MACRO** lets you jump directly to one of 64 tracks using pad buttons
 
 ## Touch Strips
 
@@ -121,7 +127,8 @@ from the track, for additional fun and profit (like Maschine).
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
-  * **CONTROL+SELECT**: Cycle through **Device Selector** modes (see below)
+  * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
+  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red)
 
 ### Fine adjustment
 
@@ -131,11 +138,11 @@ Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strip
 
 ## Self-gating modes
 
-This is something Novation Circuit does well: a quick press on a mode button turns it on, but hold the button and 
+A quick press on a mode button turns it on, but hold the button and 
 make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
 and performance.
 
-MonsterJam does the same with two modes currently, Solo and Mute, more will be added as needed.
+Solo, Mute, and TEMPO are like this, more to come.
 
 ## Launch grid quantization
 
@@ -147,7 +154,7 @@ THe current setting is lit. Press the lit button to disable grid quantization al
 
 ## PERFORM FX
 
-Maschine native has a great PERFORM mode, where dual-touch strips control both an effect parameter and effect routing
+Maschine native has a great "performance fx" mode, where dual-touch strips control both an effect parameter and effect routing
 (e.g., an insert effect is enabled only when the strip is being touched). MonsterJam does something similar.
 
 If a device has a remote control page called `MonsterFX`, MonsterJam will treat it specially:
@@ -183,14 +190,9 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
 
-* **CONTROL + ...**
-  * **SELECT**: Cycle through available device selector modes
-    * disabled
-    * Device Matrix
+* **CONTROL+SELECT**: Toggle device matrix
 
-## Device Matrix
-
-In this mode the clip matrix shows devices in each track, just like in Mixer. Press a matrix button
+In this mode the clip matrix shows devices in each track, just like in Mixer. Press a pad
 to select a device (selecting a device also selects its track).
 
 Devices are color coded:
@@ -216,7 +218,26 @@ track will scroll only if there are more devices to scroll to, others will stay 
 That is, if you have one track with 20 devices and another with 1, you will always see 
 the 1 device while the other 20 are scrolling.
 
+## Track Selector
+
+Hold **MACRO** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
+in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
+to select a track, currently selected track is bright white.
+
+Holding **MACRO** also switches control strips to user control mode.
+
+## User controls
+
+A bank of 8 user controls available for general global mapping, controlled by the touch strips.
+
+User controls are accessible in two ways:
+
+* Momentarily, by holding **MACRO**
+* In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
+
 # Preferences
+
+## Global
 
 * **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
@@ -235,3 +256,9 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
     * Track color selectors will not display the color as selected
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
+
+## Project
+
+(Open Studio I/O Panel and look under Maschine Jam)
+
+* Hide disabled: tracks — disabled tracks are skipped
