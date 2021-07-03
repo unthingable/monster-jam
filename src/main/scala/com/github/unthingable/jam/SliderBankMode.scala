@@ -99,8 +99,8 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
 
     // move slider
     if (paramKnowsValue) {
-      param.modulatedValue().markInterested()
-      param.modulatedValue().addValueObserver(stripObserver(idx))
+      param.value().markInterested()
+      param.value().addValueObserver(stripObserver(idx))
     } else {
       val tv = strip.slider.targetValue()
       val hv = strip.slider.hasTargetValue

@@ -738,12 +738,15 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       override val subModes: Seq[SubModeLayer] = Vector(
         new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
-          override val barMode: BarMode = BarMode.SINGLE
+          override val barMode: BarMode = BarMode.DUAL
 
           j.stripBank.strips.forindex { case (strip, idx) =>
             strip.slider.isBeingTouched.markInterested()
             strip.slider.isBeingTouched.addValueObserver(v => if (isOn) touchPage.foreach(tp =>
               if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
+            val param = sliderParams(idx)
+            param.modulatedValue().markInterested()
+            param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
           }
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
