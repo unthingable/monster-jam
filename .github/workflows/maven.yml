@@ -23,7 +23,7 @@ jobs:
     - name: Build with Maven
       run: mvn -B package --file pom.xml
     - name: release
-      uses: uses: actions/create-release@v1
+      uses: actions/create-release@v1
       id: create_release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
