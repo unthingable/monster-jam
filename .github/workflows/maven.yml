@@ -9,12 +9,15 @@ on:
       - "v*"
 
 jobs:
-  build:
+  build-release:
 
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
     - name: Set up JDK 12
       uses: actions/setup-java@v2
       with:
@@ -22,6 +25,7 @@ jobs:
         distribution: 'adopt'
     - name: Build with Maven
       run: mvn -B package --file pom.xml
+
     - name: release
       uses: actions/create-release@v1
       id: create_release
@@ -29,16 +33,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.event.release.tag_name }}
+        release_name: Release ${{ steps.get_version.outputs.VERSION }}
         draft: false
         prerelease: false
         body: ${{ github.event.head_commit.message }}
+
     - name: upload artifact
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+      uses: csexton/release-asset-action@v2
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./target/MonsterJam-${{ github.event.release.tag_name }}.zip
-        asset_name: MonsterJam-${{ github.event.release.tag_name }}.zip
-        asset_content_type: application/zip
+        pattern: "target/MonsterJam-*.zip"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
