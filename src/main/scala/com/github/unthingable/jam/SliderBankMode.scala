@@ -42,7 +42,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     (v: Double) =>
       if (isOn) {
         j.stripBank.setValue(idx,
-          (1.0.min(v / paramRange(idx)._2) * 128).toInt)
+          (1.0.min(v / paramRange(idx)._2) * 127).toInt)
         paramValueCache.update(idx, v)
       }
 
@@ -136,7 +136,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
 
   private def sync(idx: Int, flush: Boolean = true): Unit = {
     j.stripBank.setValue(idx,
-      (paramValue(idx) * 128).toInt,
+      (paramValue(idx) * 127).toInt,
       flush)
   }
 
