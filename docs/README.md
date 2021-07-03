@@ -132,7 +132,8 @@ from the track, for additional fun and profit (like Maschine).
 
 ### Fine adjustment
 
-Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls. This works in all touchstrip modes.
+Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls. 
+This works in all touchstrip modes except user controls, because their implementation sucks.
 
 # Modes and notes
 
