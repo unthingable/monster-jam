@@ -755,8 +755,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         },
         new SliderBankMode[Parameter]("strips user bank", userBank.getControl, identity) {
           override val barMode: BarMode = BarMode.SINGLE
+          override val paramKnowsValue: Boolean = false
 
-          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+          override val modeBindings: Seq[Binding[_, _, _]]                                                                    = super.modeBindings ++ Vector(
             SupBooleanB(j.macroButton.light.isOn, () => true)
           )
         },
