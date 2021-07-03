@@ -26,8 +26,7 @@ trait TrackTracker {
 // assign ephemeral ids for up to 255 tracks using steganography on colors
 
 /**
- * TrackTracker attempts to
- * @param bank
+ * TrackTracker attempts to identify tracks by injecting identifiers into their color's Alpha channel.
  */
 class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends TrackTracker {
   import TrackTracker._
