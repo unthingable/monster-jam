@@ -113,13 +113,15 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }
 
         override def activate(): Unit = {
+          //updateLimits(None, bind = true)
           super.activate()
+          // clear values from whatever was happening before, let VU meters self update
           j.stripBank.strips.foreach(_.update(0))
         }
 
         override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
 
-        def updateLimits(maybeType: Option[(Int, String)]): Unit = {
+        def updateLimits(maybeType: Option[(Int, String)], bind: Boolean = true): Unit = {
           val max      = 1.259921049894873
           val zero     = 1.0
           val minusTen = 0.6812920690579614
@@ -138,8 +140,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
                 case "-10 dB" => minusTen / max
                 case _        => 1.0
               })
-              bindWithRange(idx)
-            case None => EIGHT.map(idx => Some((idx, trackBank.getItemAt(idx).trackType().get()))).foreach(updateLimits)
+              ext.host.println(s"$idx limit ${paramLimits(idx)}")
+              if (bind)
+                bindWithRange(idx)
+            case None => EIGHT.map(idx => Some((idx, trackBank.getItemAt(idx).trackType().get()))).foreach(updateLimits(_, bind))
           }
         }
       },
@@ -747,6 +751,12 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
             val param = sliderParams(idx)
             param.modulatedValue().markInterested()
             param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
+          }
+
+          override def activate(): Unit = {
+            sliderParams.forindex { case (param, idx) =>
+              j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)}
+            super.activate()
           }
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
