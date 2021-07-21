@@ -226,6 +226,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
     val play = new SimpleModeLayer("play") {
       ext.transport.isPlaying.markInterested()
+      ext.transport.isFillModeActive.markInterested()
 
       val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
         val isPlaying = ext.transport.isPlaying
@@ -256,6 +257,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       override val modeBindings = Vector(
         HB(j.play.pressedAction, "play pressed", playPressAction, tracked = false),
         SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
+        HB(j.noteRepeat.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
+        HB(j.noteRepeat.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
+        SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
       )
     }
 
