@@ -59,6 +59,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
 * **SONG**: **SuperScene** mode (see below)
 * **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
+* **NOTE REPEAT**: Fill mode
 
 ## Transport
 

@@ -21,7 +21,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
 
   val proxies     : Vector[P]                = j.stripBank.strips.indices.map(obj).toVector
   val sliderParams: Vector[Parameter]        = proxies.map(param)
-  val paramState  : mutable.ArrayBuffer[Any] = mutable.ArrayBuffer.fill(8)(State.Normal)
+  val paramState  : mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
   val barMode: BarMode
   val paramKnowsValue: Boolean             = true // UserControls don't and that's sad
@@ -34,7 +34,10 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
     if (force || paramState(idx) == State.Normal) { // check state when binding from outside
       val (min, max) = paramRange(idx)
+      //ext.host.println(s"$name binding $idx with $max")
       j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
+      // force update to account for value lag when scrolling bank
+      stripObserver(idx).valueChanged(sliderParams(idx).value().get())
     }
 
 
@@ -136,7 +139,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
 
   private def sync(idx: Int, flush: Boolean = true): Unit = {
     j.stripBank.setValue(idx,
-      (paramValue(idx) * 127).toInt,
+      (paramValue(idx) * 127 / paramRange(idx)._2).toInt,
       flush)
   }
 
@@ -174,7 +177,6 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       j.stripBank.flushValues()
 
     j.stripBank.strips.indices.foreach(bindWithRange(_))
-
     super.activate()
   }
 
@@ -203,9 +205,9 @@ object SliderBankMode {
     case object Normal extends State
   }
 
-  sealed trait TrackedValue
-  object TrackedValue {
-    case object ParamValue extends TrackedValue
-    case object TargetValue extends TrackedValue
+  sealed trait Value[A] { val value: A }
+  object Value {
+    case class Scaled[A](value: A) extends Value[A]
+    case class Unscaled[A](value: A) extends Value[A]
   }
 }

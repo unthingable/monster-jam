@@ -16,7 +16,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
 
   override def getAuthor = "unthingable"
 
-  override def getVersion = "5.1"
+  override def getVersion = "6.0"
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 
@@ -24,7 +24,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
 
   override def getHardwareModel = "Maschine JAM"
 
-  override def getRequiredAPIVersion = 13
+  override def getRequiredAPIVersion = 14
 
   override def getNumMidiInPorts = 1
 
