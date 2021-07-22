@@ -34,8 +34,10 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
     if (force || paramState(idx) == State.Normal) { // check state when binding from outside
       val (min, max) = paramRange(idx)
-      ext.host.println(s"$name binding $idx with $max")
+      //ext.host.println(s"$name binding $idx with $max")
       j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
+      // force update to account for value lag when scrolling bank
+      stripObserver(idx).valueChanged(sliderParams(idx).value().get())
     }
 
 
@@ -175,7 +177,6 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       j.stripBank.flushValues()
 
     j.stripBank.strips.indices.foreach(bindWithRange(_))
-
     super.activate()
   }
 

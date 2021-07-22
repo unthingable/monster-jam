@@ -113,7 +113,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }
 
         override def activate(): Unit = {
-          //updateLimits(None, bind = true)
+          updateLimits(None, bind = false)
           super.activate()
           // clear values from whatever was happening before, let VU meters self update
           j.stripBank.strips.foreach(_.update(0))
@@ -140,7 +140,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
                 case "-10 dB" => minusTen / max
                 case _        => 1.0
               })
-              ext.host.println(s"$idx limit ${paramLimits(idx)}")
+              ext.host.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")
               if (bind)
                 bindWithRange(idx)
             case None => EIGHT.map(idx => Some((idx, trackBank.getItemAt(idx).trackType().get()))).foreach(updateLimits(_, bind))
