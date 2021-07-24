@@ -113,10 +113,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }
 
         override def activate(): Unit = {
-          updateLimits(None, bind = false)
           super.activate()
-          // clear values from whatever was happening before, let VU meters self update
+          // clear meter values from whatever was happening before, let VU meters self update
           j.stripBank.strips.foreach(_.update(0))
+          updateLimits(None)
         }
 
         override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
