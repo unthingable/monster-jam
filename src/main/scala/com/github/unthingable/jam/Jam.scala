@@ -415,6 +415,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       track.mute().markInterested()
       track.solo().markInterested()
+      track.arm().markInterested()
 
       override val modeBindings: Seq[Binding[_, _, _]] = Vector(
         SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get()),
@@ -427,8 +428,10 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         HB(j.dpad.right.pressedAction, "ignore right", () => ()),
         SupBooleanB(j.solo.light.isOn, track.solo()),
         SupBooleanB(j.mute.light.isOn, track.mute()),
+        SupBooleanB(j.record.light.isOn, track.arm()),
         HB(j.solo.pressedAction, "track direct solo", track.solo().toggleAction()),
         HB(j.mute.pressedAction, "track direct mute", track.mute().toggleAction()),
+        HB(j.record.pressedAction, "track direct arm", track.arm().toggleAction()),
       )
     }
 
