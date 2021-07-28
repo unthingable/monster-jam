@@ -227,6 +227,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     val play = new SimpleModeLayer("play") {
       ext.transport.isPlaying.markInterested()
       ext.transport.isFillModeActive.markInterested()
+      ext.transport.isArrangerRecordEnabled.markInterested()
 
       val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
         val isPlaying = ext.transport.isPlaying
@@ -260,6 +261,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         HB(j.noteRepeat.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
         HB(j.noteRepeat.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
         SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
+        HB(j.record.pressedAction, "record pressed", ext.transport.recordAction()),
+        SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
       )
     }
 
@@ -553,36 +556,35 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         }
       }
 
-      def recall(scene: Int): Unit = {
-        (0 until maxTracks).foreach { track =>
-          val id = TrackId(track)
-          superScenes(scene).get(id) match {
+      def recall(sceneIdx: Int): Unit = {
+        (0 until maxTracks).map(TrackId).foreach { trackId =>
+          superScenes(sceneIdx).get(trackId) match {
             case Some(clip) =>
               // If a scene has a clip for a track id, attempt to launch it
-              tracker.getItemAt(id).foreach(_.clipLauncherSlotBank().launch(clip))
+              tracker.getItemAt(trackId).foreach(_.clipLauncherSlotBank().launch(clip))
             case None        =>
               // Otherwise attempt to stop
-              tracker.getItemAt(id).foreach(_.stop())
+              tracker.getItemAt(trackId).foreach(_.stop())
           }
         }
-        lastScene = Some(scene)
+        lastScene = Some(sceneIdx)
       }
 
-      def pressed(scene: Int): Unit = {
-        if (GlobalMode.Clear.isOn) superScenes.update(scene, Map.empty)
-        else if (superScenes(scene).isEmpty) {
-          superScenes.update(scene, scan().map(ct => ct.trackId -> ct.clip).toMap)
+      def pressed(sceneIdx: Int): Unit = {
+        if (GlobalMode.Clear.isOn) superScenes.update(sceneIdx, Map.empty)
+        else if (superScenes(sceneIdx).isEmpty) {
+          superScenes.update(sceneIdx, scan().map(ct => ct.trackId -> ct.clip).toMap)
 
           val ser = serialize(maxTracks, maxScenes)(superScenes)
           //ext.host.println(ser)
           sceneStore.set(ser)
         } else
-            recall(scene)
+            recall(sceneIdx)
       }
 
       def serialize(rows: Int, cols: Int)(o: Iterable[Map[TrackId, Int]]): String =
         o.take(rows).map { row =>
-          (0 until cols).map { idx => // danger zone: we depend on TrackId implementation being and int-based byte
+          (0 until cols).map { idx => // danger zone: we depend on TrackId implementation being an int-based byte
             f"${idx}%02x${row.get(TrackId(idx)).map(_ + 1).getOrElse(0)}%02x"
           }.mkString
         }.mkString
