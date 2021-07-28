@@ -228,6 +228,8 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       ext.transport.isPlaying.markInterested()
       ext.transport.isFillModeActive.markInterested()
       ext.transport.isArrangerRecordEnabled.markInterested()
+      ext.transport.isAutomationOverrideActive.markInterested()
+      ext.transport.isArrangerAutomationWriteEnabled.markInterested()
 
       val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
         val isPlaying = ext.transport.isPlaying
@@ -263,6 +265,19 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
         HB(j.record.pressedAction, "record pressed", ext.transport.recordAction()),
         SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
+
+        HB(j.auto.pressedAction, "auto pressed", () =>
+          if (ext.transport.isAutomationOverrideActive.get())
+            ext.transport.resetAutomationOverrides()
+          else
+            ext.transport.isArrangerAutomationWriteEnabled.toggle()
+        ),
+        SupBooleanB(j.auto.light.isOn, () =>
+          if (ext.transport.isAutomationOverrideActive.get())
+            j.Modifiers.blink
+          else
+            ext.transport.isArrangerAutomationWriteEnabled.get()
+        )
       )
     }
 
