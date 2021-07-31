@@ -64,6 +64,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 ## Transport
 
 * **PLAY**: Start/Stop playback
+* **REC**: Toggle recording
 * **SHIFT+PLAY** (RESTART): Rewind play position (stop if playing)
 * **SHIFT+RECORD**: Toggle launcher overdub
 * **SHIFT+PAGE LEFT**: Toggle the metronome
@@ -74,6 +75,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically 
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
+* **AUTO**: Toggle automation write. Flashing when automation override is active, press to restore.
 
 ## Track (A-H) and Scene (1-8) buttons
 
@@ -89,6 +91,7 @@ from the track, for additional fun and profit (like Maschine).
   * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit when this is possible.
   * **SOLO**: Solo/unsolo this track
   * **MUTE**: Mute/unmute this track
+  * **REC**: Arm track for recording
 * Doubleclick **TRACK(A-H)** on a group track to expand/collapse top-level groups.
   
 ## Clip Launcher
@@ -191,6 +194,9 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 ## Device Selector
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+
+Keep **CONTROL** pressed for a little longer and device selector will become sticky (it will stay on after CONTROL button is released).
+If you don't need device selector you can turn it off:
 
 * **CONTROL+SELECT**: Toggle device matrix
 
