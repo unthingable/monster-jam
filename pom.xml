@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>6.1</version>
+    <version>6.3</version>
 
     <repositories>
         <repository>
@@ -35,6 +35,42 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>windows-profile</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <bitwig.extension.directory>${env.USERPROFILE}/Documents/Bitwig Studio/Extensions</bitwig.extension.directory>
+            </properties>
+        </profile>
+        <profile>
+            <id>mac-profile</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <bitwig.extension.directory>${env.HOME}/Documents/Bitwig Studio/Extensions</bitwig.extension.directory>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-profile</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                </os>
+            </activation>
+            <properties>
+                <bitwig.extension.directory>${env.HOME}/Bitwig Studio/Extensions</bitwig.extension.directory>
+            </properties>
+        </profile>
+    </profiles>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test/scala</testSourceDirectory>
@@ -98,7 +134,7 @@
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0</version>
+                <version>1.0.1</version>
                 <executions>
                     <execution>
                         <id>rename-file</id>
@@ -113,6 +149,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0.1</version>
+                <executions>
+                    <execution>
+                        <id>install-extension</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/${project.build.finalName}.jar</sourceFile>
+                            <destinationFile>${bitwig.extension.directory}/MonsterJam.bwextension</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
