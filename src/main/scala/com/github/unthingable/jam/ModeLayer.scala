@@ -140,9 +140,14 @@ abstract class SubModeLayer(
 
 sealed trait CycleMode
 object CycleMode {
+  // Cycle through each sublayer on modebutton press
   case object Cycle extends CycleMode
+  // No cycling, select sublayers externally
   case object Select extends CycleMode
-  case object GateSelect extends CycleMode
+  // Active when button held down, no cycling
+  case object Gate extends CycleMode
+  // Like GateSelect, but sticks after a long press
+  case object Sticky extends CycleMode
 }
 
 abstract class ModeCycleLayer(
@@ -151,12 +156,14 @@ abstract class ModeCycleLayer(
   val cycleMode: CycleMode,
   val silent: Boolean = false,
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
+  private var activeAt: Instant = null
 
   val subModes: Seq[ModeLayer with IntActivatedLayer]
 
   var selected: Option[Int] = Some(0)
 
   override def activate(): Unit = {
+    activeAt = Instant.now()
     super.activate()
     selected.foreach(subModes(_).activateAction.invoke())
   }
@@ -178,21 +185,44 @@ abstract class ModeCycleLayer(
     if (isOn) mode.activateAction.invoke()
   }
 
+  def stickyPress(): Unit = {
+    (isOn, cycleMode: CycleMode) match {
+      case (false, _) => activateAction.invoke()
+      case (true, CycleMode.Sticky) => deactivateAction.invoke()
+      case _ => ()
+    }
+  }
+  def stickyRelease(): Unit = {
+    (isOn, cycleMode: CycleMode) match {
+      case (true, CycleMode.Gate) => deactivateAction.invoke()
+      case (true, CycleMode.Sticky) =>
+        lazy val operated = selected
+          .map(subModes)
+          .map(_.modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated))
+          .exists(identity)
+
+        if (!Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated)
+          deactivateAction.invoke()
+        else ()
+      case _ => ()
+    }
+  }
+
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
     HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
   ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, () => isOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
-    case CycleMode.Cycle      =>
+    case CycleMode.Cycle                   =>
       Vector(
         HB(modeButton.pressedAction, s"$name cycle", () => cycle(), tracked = false, behavior = BindingBehavior(exclusive = false))
       )
-    case CycleMode.GateSelect =>
+    case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.pressedAction, s"$name gate on", () => activateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false)),
-        HB(modeButton.releasedAction, s"$name gate off", () => deactivateAction.invoke(), tracked = false, behavior = BindingBehavior(exclusive = false))
+        HB(modeButton.pressedAction, s"$name gate on", () => stickyPress(), tracked = false, behavior = BindingBehavior(exclusive = false)),
+        HB(modeButton.releasedAction, s"$name gate off", () => stickyRelease(), tracked = false, behavior = BindingBehavior(exclusive = false))
       )
-    case _                    => Vector.empty
+    case _                                 => Vector.empty
   }
 }

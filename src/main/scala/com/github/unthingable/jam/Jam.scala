@@ -677,7 +677,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         ))
     }
 
-    val shiftPages = new ModeCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.GateSelect) {
+    val shiftPages = new ModeCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.Gate) {
       trackBank.itemCount().markInterested()
       trackBank.scrollPosition().markInterested()
       sceneBank.itemCount().markInterested()
@@ -818,7 +818,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
     }
 
-    val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.GateSelect, silent = true) {
+    val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.Sticky, silent = true) {
       val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
 
       override val subModes: Seq[ModeLayer with IntActivatedLayer] = Vector(
