@@ -285,9 +285,11 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       val loop   : SettableBooleanValue = ext.transport.isArrangerLoopEnabled
       val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
       val metro                         = ext.transport.isMetronomeEnabled
+      val auto                          = ext.transport.isClipLauncherAutomationWriteEnabled
       loop.markInterested()
       overdub.markInterested()
       metro.markInterested()
+      auto.markInterested()
 
       def b(button: OnOffButton, name: String, param: SettableBooleanValue) = Vector(
         HB(button.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
@@ -298,6 +300,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
         b(j.right, "loop", loop),
         b(j.record, "record", overdub),
         b(j.left, "metro", metro),
+        b(j.auto, "auto", auto)
       ).flatten ++ Vector(
         HB(j.tempo.pressedAction, "tap tempo", ext.transport.tapTempoAction())
       )
