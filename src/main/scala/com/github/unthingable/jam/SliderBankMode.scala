@@ -40,7 +40,6 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       stripObserver(idx).valueChanged(sliderParams(idx).value().get())
     }
 
-
   def stripObserver(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
       if (isOn) {
@@ -81,12 +80,14 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           startValue = None
           offsetObserver = { v: Double =>
             val offset = (v - startValue.getOrElse(v)) * 0.2
-            param.set(current + offset)
+            val floored = (current + offset).max(0).min(1)
+            param.set(floored)
             if (startValue.isEmpty) startValue = Some(v)
           }
           ShiftTracking
         case (true,_,StripR,ShiftTracking) =>
           offsetObserver = _ => ()
+          stripObserver(idx).valueChanged(param.value().get())
           ShiftTracking
         case (_,_,_:ReleaseEvent,ShiftTracking) =>
           offsetObserver = _ => ()
@@ -100,7 +101,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
 
     proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
 
-    // move slider
+    // move slider dot
     if (paramKnowsValue) {
       param.value().markInterested()
       param.value().addValueObserver(stripObserver(idx))
@@ -131,8 +132,8 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       Vector(
         HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
         HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.beginTouchAction, s"shift-strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.endTouchAction, s"shift-strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
+        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
+        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
       )
     else Vector.empty
   }
