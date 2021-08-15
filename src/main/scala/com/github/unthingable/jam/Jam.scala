@@ -21,8 +21,6 @@ Behavior definition for surface controls
 bugsies
 - superscene active selector does not clear
 - same, between projects
-- control+macro interaction, doesn't always activate (control timer is weird?)
-- user controls can inherit automated parameter values from control
  */
 
 class Jam(implicit ext: MonsterJamExt) extends BindingDSL {

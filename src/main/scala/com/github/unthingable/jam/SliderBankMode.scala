@@ -110,8 +110,8 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       val hv = strip.slider.hasTargetValue
       tv.markInterested()
       hv.markInterested()
-      tv.addValueObserver(v => if(hv.get()) stripObserver(idx).valueChanged(v))
-      hv.addValueObserver(v => if (v) stripObserver(idx).valueChanged(tv.get()))
+      tv.addValueObserver(v => if (hv.get()) stripObserver(idx).valueChanged(v))
+      hv.addValueObserver(v => stripObserver(idx).valueChanged(if (v) tv.get() else 0))
     }
 
     proxy match {
