@@ -70,7 +70,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
-        case (_,_,ShiftP, Normal) =>
+        case (_,_,ShiftP, _) =>
           strip.slider.clearBindings()
           ShiftTracking
         case (true, true, _:PressEvent, state) =>
@@ -150,7 +150,6 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     //ext.host.println(sliderParams.map(_.name().get()).mkString(","))
     //ext.host.println(sliderParams.map(_.value().get()).mkString(","))
 
-    paramState.mapInPlace(_ => State.Normal)
     j.stripBank.barMode = barMode
 
     j.stripBank.strips.forindex { case (strip, idx) =>

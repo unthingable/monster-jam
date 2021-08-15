@@ -17,6 +17,13 @@ import scala.util.Try
 Behavior definition for surface controls
  */
 
+/*
+bugsies
+- superscene active selector does not clear
+- same, between projects
+- control+macro interaction, doesn't always activate (control timer is weird)
+ */
+
 class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   implicit val j: JamSurface = new JamSurface()(ext)
@@ -826,7 +833,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
       override val subModes: Seq[ModeLayer with IntActivatedLayer] = Vector(
         // all device matrix
-        new SimpleModeLayer("matrixSelector") with IntActivatedLayer {
+        new SimpleModeLayer("matrixSelectorSub") with IntActivatedLayer {
           val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
           deviceBanks.foreach { bank =>
             bank.canScrollForwards.markInterested()
