@@ -21,7 +21,8 @@ Behavior definition for surface controls
 bugsies
 - superscene active selector does not clear
 - same, between projects
-- control+macro interaction, doesn't always activate (control timer is weird)
+- control+macro interaction, doesn't always activate (control timer is weird?)
+- user controls can inherit automated parameter values from control
  */
 
 class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
@@ -32,9 +33,9 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
 
   object GlobalMode {
     // These only set their isOn flags and nothing else
-    val Clear    : ModeButtonLayer = ModeButtonLayer("clear", j.clear, modeBindings = Seq.empty, GateMode.Gate)
-    val Duplicate: ModeButtonLayer = ModeButtonLayer("duplicate", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
-    val Select   : ModeButtonLayer = ModeButtonLayer("select", j.select, modeBindings = Seq.empty, GateMode.Gate)
+    val Clear    : ModeButtonLayer = ModeButtonLayer("CLEAR", j.clear, modeBindings = Seq.empty, GateMode.Gate)
+    val Duplicate: ModeButtonLayer = ModeButtonLayer("DUPLICATE", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
+    val Select   : ModeButtonLayer = ModeButtonLayer("SELECT", j.select, modeBindings = Seq.empty, GateMode.Gate)
   }
 
   val trackBank = ext.trackBank
@@ -71,14 +72,14 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
   //sceneBank.setIndication(true)
 
 
-  val auxLayer = new ModeCycleLayer("aux", j.aux, CycleMode.Select) with Util {
+  val auxLayer = new ModeCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
     override val subModes = EIGHT.map(idx =>
       new SliderBankMode[Send]("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity) {
         override val barMode: BarMode = BarMode.SINGLE
       })
   }
 
-  val auxGate = new ModeButtonLayer("strip aux gate", j.aux,
+  val auxGate = new ModeButtonLayer("strip AUX gate", j.aux,
     GateMode.Gate,
     silent = true
   ) {
@@ -99,7 +100,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       }
   }
 
-  val levelCycle = new ModeCycleLayer("level", j.level, CycleMode.Cycle) with Util {
+  val levelCycle = new ModeCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
     override val subModes = Vector(
       new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
         EIGHT.foreach { idx =>
@@ -750,7 +751,7 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
     }
 
     // devices!
-    val deviceLayer = new ModeCycleLayer("device", j.control, CycleMode.Select) {
+    val controlLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
       val touchFX                      = "MonsterFX"
       val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
       val page  : FilteredPage         = FilteredPage(
@@ -898,30 +899,34 @@ class Jam(implicit ext: MonsterJamExt) extends BindingDSL {
       )
       override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
         HB(j.select.pressedAction, "cycle device selectors", () => cycle()),
-        HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
+        //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
       )
     }
 
-    val stripGroup = Exclusive(levelCycle, auxLayer, deviceLayer)
+    val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer)
 
-    val macroLayer = new ModeButtonLayer("macroLayer", j.macroButton, GateMode.Gate, silent = true) {
+    val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
       var bumpedStrip: Option[IntActivatedLayer] = None
       var bumpedSubMode: Option[Int] = None
 
       override def activate(): Unit = {
         super.activate()
         // dirty hack to show user controls
-        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != deviceLayer)
-        if (!deviceLayer.selected.contains(1)) {
-          bumpedSubMode = deviceLayer.selected
-          deviceLayer.select(1)
+        if (j.control.isPressed())
+          controlLayer.cycle()
+        else {
+          bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != controlLayer)
+          if (!controlLayer.selected.contains(1)) {
+            bumpedSubMode = controlLayer.selected
+            controlLayer.select(1)
+          }
+          if (!controlLayer.isOn) controlLayer.activateAction.invoke()
         }
-        if (!deviceLayer.isOn) deviceLayer.activateAction.invoke()
       }
 
       override def deactivate(): Unit = {
         bumpedStrip.foreach(_.activateAction.invoke())
-        bumpedSubMode.foreach(deviceLayer.select)
+        bumpedSubMode.foreach(controlLayer.select)
         bumpedStrip = None
         bumpedSubMode = None
         super.deactivate()
