@@ -21,7 +21,6 @@ trait SceneL { this: Jam =>
       Vector(
         SupColorStateB(btn.light, () => JamColorState(scene.color().get(), 1)),
         HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
-
     }
 
     private def handlePress(scene: Scene): Unit = {
