@@ -6,7 +6,7 @@ import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeCycleLayer, SimpleModeLayer, SupColorStateB}
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 
-trait Shift { this: Jam =>
+trait Shift { this: Jam with SceneL =>
   /**
    * Shift matrix row
    */
@@ -84,22 +84,22 @@ trait Shift { this: Jam =>
           trackPages ++
           EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
             SupColorStateB(j.sceneButtons(idx).light, () =>
-              if (idx == superScene.pageIndex)
+              if (idx == superSceneSub.pageIndex)
                 JamColorState(JAMColorBase.WHITE, 3)
-              else if (superScene.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i)))
+              else if (superSceneSub.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i)))
                      JamColorState(JAMColorBase.LIME, 0)
-                   else if (superScene.page(idx).exists(_.nonEmpty))
+                   else if (superSceneSub.page(idx).exists(_.nonEmpty))
                           JamColorState(JAMColorBase.ORANGE, 0)
                         else JamColorState.empty
               , JamColorState.empty),
-            HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superScene.pageIndex = idx)
+            HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superSceneSub.pageIndex = idx)
           ))
         }
       }
     )
 
     override def activate(): Unit = {
-      selected = if (superScene.isOn) Some(1) else Some(0)
+      selected = if (superSceneSub.isOn) Some(1) else Some(0)
       super.activate()
     }
   }
