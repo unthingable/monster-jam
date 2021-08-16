@@ -53,7 +53,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
-* **KNOB turn**: Jog through the project timeline
+* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
 * **SHIFT-PAD (second row)**: Additional functions and settings
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
