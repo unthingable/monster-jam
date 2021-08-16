@@ -75,7 +75,8 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically 
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
-* **AUTO**: Toggle automation write. Flashing when automation override is active, press to restore.
+* **AUTO**: Toggle arranger automation write. Flashing when automation override is active, press to restore.
+* **SHIFT+AUTO**: Toggle launcher automation write
 
 ## Track (A-H) and Scene (1-8) buttons
 
