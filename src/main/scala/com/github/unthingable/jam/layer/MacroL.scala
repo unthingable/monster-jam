@@ -33,7 +33,7 @@ trait MacroL { this: Jam =>
     }
 
     override val modeBindings: Seq[Binding[_, _, _]] =
-      (0 until superBank.getCapacityOfBank).flatMap { superIdx =>
+      (0 until superBank.getCapacityOfBank.min(64)).flatMap { superIdx =>
         val track      = superBank.getItemAt(superIdx)
         val row        = superIdx / 8
         val col        = superIdx % 8

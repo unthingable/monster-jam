@@ -34,8 +34,8 @@ trait SceneL { this: Jam =>
   }
 
   lazy val superSceneSub = new SubModeLayer("superSceneSub") with Util {
-    val maxTracks              = 64 // can be up to 256 before serialization needs to be rethought
-    val maxScenes              = 64
+    val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
+    val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
     var pageIndex              = 0
     var lastScene: Option[Int] = None
