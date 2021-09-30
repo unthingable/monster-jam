@@ -85,8 +85,8 @@ trait TrackL { this: Jam =>
     track.arm().markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-      SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get()),
-      SupBooleanB(j.dpad.down.light.isOn, track.isGroup),
+      SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Modifiers.blink3),
+      SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Modifiers.blink3),
       SupBooleanB(j.dpad.left.light.isOn, () => false),
       SupBooleanB(j.dpad.right.light.isOn, () => false),
       HB(j.dpad.up.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),

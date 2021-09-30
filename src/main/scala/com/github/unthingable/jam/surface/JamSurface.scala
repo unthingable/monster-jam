@@ -24,13 +24,17 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       override val isPressed: () => Boolean   = () => button.isPressed
     }
 
-    var blink: Boolean = false
+    var blink : Boolean = false // on 50% of the time
+    var blink3: Boolean = false // on 75% of the time
 
-    private def goblink(): Unit = {
-      blink = !blink
-      ext.host.scheduleTask(() => goblink(), 200)
+    private def blinky(): Unit = {
+      blink = true
+      blink3 = true
+      ext.host.scheduleTask(() => blinky(), 400)
+      ext.host.scheduleTask(() => blink = false, 200)
+      ext.host.scheduleTask(() => blink3 = false, 300)
     }
-    ext.host.scheduleTask(() => goblink(), 100)
+    ext.host.scheduleTask(() => blinky(), 100)
   }
 
 
