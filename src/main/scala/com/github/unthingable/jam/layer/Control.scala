@@ -88,6 +88,11 @@ trait Control { this: Jam =>
           page.selectNext()
       super.activate()
     }
+
+    override def deactivate(): Unit = {
+      deviceSelector.deactivateAction.invoke() // if it was active we don't want it
+      super.deactivate()
+    }
   }
 
   lazy val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.Sticky, silent = true) {
