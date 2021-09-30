@@ -17,9 +17,15 @@ trait SceneL { this: Jam =>
       val scene: Scene        = sceneBank.getScene(i)
       scene.color.markInterested()
       scene.exists.markInterested()
+      scene.clipCount().markInterested()
 
       Vector(
-        SupColorStateB(btn.light, () => JamColorState(scene.color().get(), 1)),
+        SupColorStateB(btn.light, () => JamColorState(
+          if (scene.clipCount().get() > 0)
+            JamColorState.toColorIndex(scene.color().get())
+          else
+            JAMColorBase.OFF,
+          1)),
         HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
     }
 
