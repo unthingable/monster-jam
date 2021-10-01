@@ -31,7 +31,7 @@ class Jam(implicit val ext: MonsterJamExt)
   val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
-  val superBank: TrackBank = ext.host.createMainTrackBank(64, 8, 64)
+  val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
   //superBank.followCursorTrack(ext.cursorTrack)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()

@@ -25,6 +25,7 @@ trait ClipMatrix { this: Jam =>
         val btn  = j.matrix(row)(col)
         val clip = clips.getItemAt(row)
         clip.color().markInterested()
+        clip.hasContent.markInterested()
         clip.isPlaying.markInterested()
         clip.isSelected.markInterested()
         clip.isPlaybackQueued.markInterested()
@@ -74,7 +75,10 @@ trait ClipMatrix { this: Jam =>
              JamColorState(JAMColorBase.WHITE, if (j.Modifiers.blink) 3 else 1)
            else
              JamColorState(
-               clip.color().get(),
+               if (clip.hasContent.get())
+                 JamColorState.toColorIndex(clip.color().get())
+               else
+                 JAMColorBase.OFF,
                brightness = {
                  if (clip.isPlaying.get())
                    if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1

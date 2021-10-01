@@ -35,6 +35,12 @@ trait Control { this: Jam =>
 
     val userBank: UserControlBank = ext.host.createUserControls(8)
 
+    override def lightOn: BooleanSupplier = () =>
+      if (deviceSelector.isOn && deviceSelector.selected.contains(0))
+        j.Modifiers.blink
+      else
+        isOn
+
     override val subModes: Seq[SubModeLayer] = Vector(
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
@@ -87,6 +93,11 @@ trait Control { this: Jam =>
         else
           page.selectNext()
       super.activate()
+    }
+
+    override def deactivate(): Unit = {
+      deviceSelector.deactivateAction.invoke() // if it was active we don't want it
+      super.deactivate()
     }
   }
 

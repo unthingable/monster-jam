@@ -17,9 +17,15 @@ trait SceneL { this: Jam =>
       val scene: Scene        = sceneBank.getScene(i)
       scene.color.markInterested()
       scene.exists.markInterested()
+      scene.clipCount().markInterested()
 
       Vector(
-        SupColorStateB(btn.light, () => JamColorState(scene.color().get(), 1)),
+        SupColorStateB(btn.light, () => JamColorState(
+          if (scene.clipCount().get() > 0)
+            JamColorState.toColorIndex(scene.color().get())
+          else
+            JAMColorBase.OFF,
+          1)),
         HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
     }
 
@@ -34,8 +40,8 @@ trait SceneL { this: Jam =>
   }
 
   lazy val superSceneSub = new SubModeLayer("superSceneSub") with Util {
-    val maxTracks              = 64 // can be up to 256 before serialization needs to be rethought
-    val maxScenes              = 64
+    val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
+    val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
     var pageIndex              = 0
     var lastScene: Option[Int] = None

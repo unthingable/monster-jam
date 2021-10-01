@@ -4,7 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
-import com.github.unthingable.jam.{GateMode, HB, Jam, ModeButtonLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.jam.{BindingBehavior, GateMode, HB, Jam, ModeButtonLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB}
 
 trait TransportL { this: Jam =>
   lazy val position = SimpleModeLayer("position",
@@ -16,8 +16,10 @@ trait TransportL { this: Jam =>
     j.tempo,
     Vector(
       HB(j.encoder.turn, "tempo turn", ext.host.createRelativeHardwareControlStepTarget(
-        action("inc tempo", () => ext.transport.increaseTempo(1, 647)),
-        action("dec tempo", () => ext.transport.increaseTempo(-1, 647))))))
+        action("inc tempo", () => ext.transport.increaseTempo(1,
+          647 * (if (j.Modifiers.Shift.isPressed()) 20 else 1))),
+        action("dec tempo", () => ext.transport.increaseTempo(-1,
+          647 * (if (j.Modifiers.Shift.isPressed()) 20 else 1)))))))
 
   lazy val play = new SimpleModeLayer("play") {
     ext.transport.isPlaying.markInterested()
@@ -97,7 +99,9 @@ trait TransportL { this: Jam =>
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
     ).flatten ++ Vector(
-      HB(j.tempo.pressedAction, "tap tempo", ext.transport.tapTempoAction())
+      HB(j.tempo.pressedAction, "tap tempo", ext.transport.tapTempoAction(),
+        // not exclusive so that tap tempo doesn't mess with tempo layer
+        tracked = false, behavior = BindingBehavior(exclusive = false))
     )
   }
 

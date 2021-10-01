@@ -5,6 +5,7 @@ import com.github.unthingable.jam.BindingDSL._
 import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
 
 import java.time.{Duration, Instant}
+import java.util.function.BooleanSupplier
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -208,9 +209,12 @@ abstract class ModeCycleLayer(
     }
   }
 
+  // overrideable
+  def lightOn: BooleanSupplier = () => isOn
+
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
     HB(modeButton.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
-  ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, () => isOn)) else Vector.empty)
+  ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
