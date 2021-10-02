@@ -78,23 +78,30 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **AUTO**: Toggle arranger automation write. Flashing when automation override is active, press to restore.
 * **SHIFT+AUTO**: Toggle launcher automation write
 
-## Track (A-H) and Scene (1-8) buttons
+## Group navigation, track selection and manipulation
 
-Track and scene buttons are lit in the color of their respective tracks/scenes or blank if track/scene does not exist.
+Track buttons are lit in the color of their respective tracks or blank if track does not exist. Use DPAD left/right arrows to scroll tracks or SHIFT-TRACK to select one of first 8 track pages.
 
-* **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
 * **TRACK(A-H)**: Select the tracks in the current page of the track bank. Track buttons will light up on MIDI events
 from the track, for additional fun and profit (like Maschine).
-* **CLEAR+TRACK/SCENE**: Delete the track/scene
-* **DUPLICATE+TRACK/SCENE**: Duplicate the track/scene
+* **MST**: Selects the Master track, or the parent group track if inside a group
 * **TRACK(A-H)+...**: Hold track button for more functions:
-  * **ARROW DOWN**: If this track is a group track, enter it. Arrow button is lit when this is possible.
-  * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit when this is possible.
+  * **ARROW DOWN**: If this track is a group track, enter it. Arrow button is lit and flashing when this is possible.
+  * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit and flashing when this is possible.
   * **SOLO**: Solo/unsolo this track
   * **MUTE**: Mute/unmute this track
   * **REC**: Arm track for recording
 * Doubleclick **TRACK(A-H)** on a group track to expand/collapse top-level groups.
   
+## Launching scenes: Scene (1-8) buttons and clip buttons
+
+Scene buttons are lit in the color of their respective scenes or blank if scene does not exist. Use DPAD up/down arrows to scroll scenes and SHIFT-SCENE to select one of first 8 scene pages.
+
+* **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
+* **(PAD)**: On a group track, launch the group clip as a scene
+
+When inside a group, the SCENE buttons launch the group scenes, not the main ones.
+
 ## Clip Launcher
 
 * **(PAD)** on empty clip: record new clip
@@ -105,7 +112,7 @@ from the track, for additional fun and profit (like Maschine).
 * **CLEAR+(PAD)**: Delete the clip
 * **DUPLICATE**: To duplicate a clip keep the duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip with content); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 
-### Page navigation
+## Page navigation
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
 * **SHIFT+...** in regular mode: hold shift and then
@@ -196,7 +203,7 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
 
-Keep **CONTROL** pressed for a little longer and device selector will become sticky (it will stay on after CONTROL button is released).
+Keep **CONTROL** pressed for a little longer and device selector will become sticky (it will stay on after CONTROL button is released). **CONTROL** button will flash when device selector is active.
 If you don't need device selector you can turn it off:
 
 * **CONTROL+SELECT**: Toggle device matrix
