@@ -10,6 +10,8 @@ import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 import com.github.unthingable.jam.surface.{FakeAction, JamColorState}
 
+import java.time.Instant
+
 trait Clearable {
   // stop the binding from doing its thing
   def clear(): Unit
@@ -54,7 +56,7 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
   implicit val ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
-  var wasOperated: Boolean = false
+  var operatedAt: Option[Instant] = None
 }
 
 // Bind hardware elements to actions
@@ -88,14 +90,14 @@ case class HB(
     bindings.foreach(_.removeBinding())
     bindings.clear()
     //source.clearBindings() // one of these is probably unnecessary
-    wasOperated = false
+    operatedAt = None
     isActive = false
   }
 
   private val operatedActions = Vector(
-    action(() => s"$layerName: HB: unit operated", () => {wasOperated = true}),
-    action(() => s"$layerName: HB: double operated", _ => {wasOperated = true}),
-    ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
+    action(() => s"$layerName: HB: unit operated", () => {operatedAt = Some(Instant.now())}),
+    action(() => s"$layerName: HB: double operated", _ => {operatedAt = Some(Instant.now())}),
+    ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {operatedAt = Some(Instant.now())})
   )
 }
 

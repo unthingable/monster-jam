@@ -110,7 +110,7 @@ abstract class ModeButtonLayer(
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
-          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated)
+          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.operatedAt.nonEmpty)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
             deactivateAction.invoke()
@@ -156,6 +156,7 @@ abstract class ModeCycleLayer(
   val modeButton: OnOffButton,
   val cycleMode: CycleMode,
   val silent: Boolean = false,
+  val siblingOperatedModes: Seq[ModeLayer] = Vector(),
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   private var activeAt: Instant = null
 
@@ -197,9 +198,8 @@ abstract class ModeCycleLayer(
     (isOn, cycleMode: CycleMode) match {
       case (true, CycleMode.Gate) => deactivateAction.invoke()
       case (true, CycleMode.Sticky) =>
-        lazy val operated = selected
-          .map(subModes)
-          .map(_.modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated))
+        lazy val operated = (selected.map(subModes) ++ siblingOperatedModes)
+          .map(_.modeBindings.collect { case x: OutBinding[_, _] => x }.exists(_.operatedAt.exists(_.isAfter(activeAt))))
           .exists(identity)
 
         if (!Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated)

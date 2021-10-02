@@ -11,7 +11,7 @@ import java.util.function.BooleanSupplier
 
 trait Control { this: Jam =>
   // devices!
-  lazy val controlLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
+  lazy val controlLayer: ModeCycleLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
     val touchFX                      = "MonsterFX"
     val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
     val page  : FilteredPage         = FilteredPage(
@@ -101,7 +101,13 @@ trait Control { this: Jam =>
     }
   }
 
-  lazy val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.Sticky, silent = true) {
+  lazy val deviceSelector: ModeCycleLayer = new ModeCycleLayer(
+    "deviceSelector",
+    j.control,
+    CycleMode.Sticky,
+    silent = true,
+    siblingOperatedModes = controlLayer.subModes
+  ) {
     val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
 
     override val subModes    : Seq[ModeLayer with IntActivatedLayer] = Vector(
