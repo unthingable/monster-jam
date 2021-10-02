@@ -102,5 +102,14 @@ trait TrackL { this: Jam =>
     )
   }
 
+  def masterButton = new SimpleModeLayer("master button") {
+    val master = ext.host.createMasterTrack(8)
+    val equals = master.createEqualsValue(ext.cursorTrack)
+
+    override def modeBindings: Seq[Binding[_, _, _]] = Vector(
+      SupBooleanB(j.master.light.isOn, equals),
+      HB(j.master.pressedAction, "focus on master", () => ext.cursorTrack.selectChannel(master)),
+    )
+  }
 
 }

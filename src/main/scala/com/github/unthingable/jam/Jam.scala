@@ -87,6 +87,7 @@ class Jam(implicit val ext: MonsterJamExt)
     bottom -> stripGroup,
     bottom -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup -> Exclusive(EIGHT.map(trackGate): _*),
+    masterButton -> top,
     bottom -> Coexist(unmanaged),
   )
 }
