@@ -170,7 +170,7 @@ trait Control { this: Jam =>
 
     )
     override val modeBindings: Seq[Binding[_, _, _]]                 = super.modeBindings ++ Vector(
-      HB(j.select.pressedAction, "cycle device selectors", () => cycle()),
+      HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle()),
       //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )
   }
