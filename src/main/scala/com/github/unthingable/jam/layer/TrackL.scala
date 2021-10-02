@@ -1,10 +1,11 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.Action
+import com.bitwig.extension.controller.api.{Action, BooleanValue, MasterTrack, Track}
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Binding, GateMode, HB, Jam, ModeButtonLayer, SimpleModeLayer, SupBooleanB, SupColorStateB}
 
 import java.time.Instant
+import java.util.function.BooleanSupplier
 
 trait TrackL { this: Jam =>
   lazy val trackGroup = new SimpleModeLayer("trackGroup") {
@@ -103,12 +104,26 @@ trait TrackL { this: Jam =>
   }
 
   def masterButton = new SimpleModeLayer("master button") {
-    val master = ext.host.createMasterTrack(8)
-    val equals = master.createEqualsValue(ext.cursorTrack)
+    val first : Track = trackBank.getItemAt(0)
+    val parent: Track = first.createParentTrack(0,0)
+    val master: MasterTrack = ext.host.createMasterTrack(0)
+    val equalsMaster: BooleanValue = master.createEqualsValue(ext.cursorTrack)
+    val equalsParent: BooleanValue = parent.createEqualsValue(ext.cursorTrack)
+
+    parent.isGroup.markInterested()
+    equalsMaster.markInterested()
+    equalsParent.markInterested()
+
+    val equals: BooleanSupplier = () => if (parent.isGroup.get()) equalsParent.get() else equalsMaster.get()
+
+    val selectMaster: () => Unit = () => {
+      val localMaster = if (parent.isGroup.get()) parent else master
+      ext.cursorTrack.selectChannel(localMaster)
+    }
 
     override def modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
-      HB(j.master.pressedAction, "focus on master", () => ext.cursorTrack.selectChannel(master)),
+      HB(j.master.pressedAction, "focus on master", selectMaster),
     )
   }
 
