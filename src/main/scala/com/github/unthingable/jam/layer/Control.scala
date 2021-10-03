@@ -1,7 +1,7 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, UserControlBank}
-import com.github.unthingable.FilteredPage
+import com.github.unthingable.{FilteredPage, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -11,7 +11,7 @@ import java.util.function.BooleanSupplier
 
 trait Control { this: Jam =>
   // devices!
-  lazy val controlLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
+  lazy val controlLayer: ModeCycleLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
     val touchFX                      = "MonsterFX"
     val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
     val page  : FilteredPage         = FilteredPage(
@@ -101,12 +101,18 @@ trait Control { this: Jam =>
     }
   }
 
-  lazy val deviceSelector = new ModeCycleLayer("deviceSelector", j.control, CycleMode.Sticky, silent = true) {
+  lazy val deviceSelector: ModeCycleLayer = new ModeCycleLayer(
+    "deviceSelector",
+    j.control,
+    CycleMode.Sticky,
+    silent = true,
+    siblingOperatedModes = controlLayer.subModes
+  ) {
     val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
 
     override val subModes    : Seq[ModeLayer with IntActivatedLayer] = Vector(
       // all device matrix
-      new SimpleModeLayer("matrixSelectorSub") with IntActivatedLayer {
+      new SimpleModeLayer("device matrixSelector") with IntActivatedLayer {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
         deviceBanks.foreach { bank =>
           bank.canScrollForwards.markInterested()
@@ -115,10 +121,14 @@ trait Control { this: Jam =>
 
         def selectDevice(trackIdx: Int, device: Device): Unit = {
           if (device.exists().get()) {
-            ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
-            //cursorDevice.selectDevice(device)
-            device.selectInEditor()
-            //deviceBanks(trackIdx).scrollIntoView(device.position().get())
+            if (j.select.isPressed())
+              device.isEnabled.toggle()
+            else {
+              ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
+              //cursorDevice.selectDevice(device)
+              device.selectInEditor()
+              //deviceBanks(trackIdx).scrollIntoView(device.position().get())
+            }
           }
         }
 
@@ -130,7 +140,7 @@ trait Control { this: Jam =>
           case (true, "instrument")    => JAMColorBase.LIME
           case (true, "note-effect")   => JAMColorBase.PLUM
           case (_, s)                  =>
-            ext.host.println(s"unknown device $s")
+            Util.println(s"unknown device $s")
             JAMColorBase.RED
         }
 
@@ -139,6 +149,7 @@ trait Control { this: Jam =>
             val mButton = j.matrix(row)(col)
             val device  = bank.getItemAt(row)
             device.exists().markInterested()
+            device.isEnabled.markInterested()
             device.position().markInterested()
             device.deviceType().markInterested()
             device.isPlugin.markInterested()
@@ -150,7 +161,14 @@ trait Control { this: Jam =>
               HB(mButton.releasedAction, s"noop $col:$row", () => ()),
               SupColorStateB(mButton.light,
                 () => if (device.exists().get())
-                        JamColorState(deviceColor(device), if (isSelected.get()) 3 else 0)
+                        JamColorState(
+                          deviceColor(device),
+                          (isSelected.get(), device.isEnabled.get()) match {
+                            case (true, true) => if (j.Modifiers.blink3) 3 else 0
+                            case (true, false) => if (j.Modifiers.blink3) 2 else 0
+                            case (false, true) => 2
+                            case (false, false) => 0
+                          })
                       else JamColorState.empty,
                 JamColorState.empty),
             )
@@ -162,15 +180,14 @@ trait Control { this: Jam =>
           HB(j.dpad.down.pressedAction, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
         )
       },
-      // device navigator - maybe todo,
       // noop mode (disable device selector)
-      new SimpleModeLayer("noopSelector") with IntActivatedLayer {
+      new SimpleModeLayer("device noopSelector") with IntActivatedLayer {
         override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
       },
 
     )
-    override val modeBindings: Seq[Binding[_, _, _]]                 = super.modeBindings ++ Vector(
-      HB(j.select.pressedAction, "cycle device selectors", () => cycle()),
+    override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+      HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle()),
       //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )
   }

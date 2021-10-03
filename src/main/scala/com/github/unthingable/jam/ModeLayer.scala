@@ -1,6 +1,6 @@
 package com.github.unthingable.jam
 
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.BindingDSL._
 import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
 
@@ -110,7 +110,7 @@ abstract class ModeButtonLayer(
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
-          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated)
+          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.operatedAt.nonEmpty)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
             deactivateAction.invoke()
@@ -156,8 +156,10 @@ abstract class ModeCycleLayer(
   val modeButton: OnOffButton,
   val cycleMode: CycleMode,
   val silent: Boolean = false,
+  val siblingOperatedModes: Seq[ModeLayer] = Vector(),
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
   private var activeAt: Instant = null
+  private var isStuck: Boolean = false
 
   val subModes: Seq[ModeLayer with IntActivatedLayer]
 
@@ -181,7 +183,7 @@ abstract class ModeCycleLayer(
   def select(idx: Int): Unit = {
     if (isOn) selected.foreach(subModes(_).deactivateAction.invoke())
     val mode = subModes(idx)
-    ext.host.println((if (isOn) "activating" else "selecting") + s" submode ${mode.name}")
+    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.name}")
     selected = Some(idx)
     if (isOn) mode.activateAction.invoke()
   }
@@ -189,7 +191,6 @@ abstract class ModeCycleLayer(
   def stickyPress(): Unit = {
     (isOn, cycleMode: CycleMode) match {
       case (false, _) => activateAction.invoke()
-      case (true, CycleMode.Sticky) => deactivateAction.invoke()
       case _ => ()
     }
   }
@@ -197,14 +198,16 @@ abstract class ModeCycleLayer(
     (isOn, cycleMode: CycleMode) match {
       case (true, CycleMode.Gate) => deactivateAction.invoke()
       case (true, CycleMode.Sticky) =>
-        lazy val operated = selected
-          .map(subModes)
-          .map(_.modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.wasOperated))
+        lazy val operated =
+          (selected.map(subModes) ++ siblingOperatedModes)
+          .map(_.modeBindings.collect { case x: OutBinding[_, _] => x }.exists(_.operatedAt.exists(_.isAfter(activeAt))))
           .exists(identity)
 
-        if (!Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated)
+        if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
           deactivateAction.invoke()
-        else ()
+          isStuck = false
+        } else
+          isStuck = true
       case _ => ()
     }
   }

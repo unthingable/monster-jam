@@ -57,7 +57,7 @@ trait Level { this: Jam =>
                 case "-10 dB" => minusTen / max
                 case _        => 1.0
               })
-              ext.host.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")
+              Util.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")
               if (bind)
                 bindWithRange(idx)
             case None                   => EIGHT.map(idx => Some((idx, trackBank.getItemAt(idx).trackType().get()))).foreach(updateLimits(_, bind))

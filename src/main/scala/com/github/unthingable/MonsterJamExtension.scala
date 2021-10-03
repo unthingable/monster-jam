@@ -48,7 +48,8 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
   var ext: MonsterJamExt = null
 
-  Util.println = host.println
+  val printer = new Printer(host.println)
+  Util.println = printer.println
 
   val preferences: Preferences = host.getPreferences
 

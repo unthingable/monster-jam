@@ -3,12 +3,14 @@ package com.github.unthingable.jam
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
 import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, InternalHardwareLightState, MultiStateHardwareLight, Value}
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.BindingDSL.HBS
 
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 import com.github.unthingable.jam.surface.{FakeAction, JamColorState}
+
+import java.time.Instant
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -54,7 +56,7 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
   implicit val ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
-  var wasOperated: Boolean = false
+  var operatedAt: Option[Instant] = None
 }
 
 // Bind hardware elements to actions
@@ -88,14 +90,14 @@ case class HB(
     bindings.foreach(_.removeBinding())
     bindings.clear()
     //source.clearBindings() // one of these is probably unnecessary
-    wasOperated = false
+    operatedAt = None
     isActive = false
   }
 
   private val operatedActions = Vector(
-    action(() => s"$layerName: HB: unit operated", () => {wasOperated = true}),
-    action(() => s"$layerName: HB: double operated", _ => {wasOperated = true}),
-    ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {wasOperated = true})
+    action(() => s"$layerName: HB: unit operated", () => {operatedAt = Some(Instant.now())}),
+    action(() => s"$layerName: HB: double operated", _ => {operatedAt = Some(Instant.now())}),
+    ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {operatedAt = Some(Instant.now())})
   )
 }
 
@@ -158,13 +160,13 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 trait BindingDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
-      ext.host.println(s"! $name")
+      Util.println(s"! $name")
       f()
     }, () => name)
 
   def action(name: Supplier[String], f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
-      ext.host.println(s"! ${name.get()}")
+      Util.println(s"! ${name.get()}")
       f()
     }, name)
 
