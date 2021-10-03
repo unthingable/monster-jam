@@ -115,10 +115,15 @@ trait TrackL { this: Jam =>
     equalsMaster.markInterested()
     equalsParent.markInterested()
 
-    val equals: BooleanSupplier = () => if (parent.isGroup.get()) equalsParent.get() else equalsMaster.get()
+    parent.position().markInterested()
+
+    def inGroup: Boolean = parent.isGroup.get() && parent.position().get() >= 0
+    // if first track is not a group, parent will be "Project" track with index -1
+
+    val equals: BooleanSupplier = () => if (inGroup) equalsParent.get() else equalsMaster.get()
 
     val selectMaster: () => Unit = () => {
-      val localMaster = if (parent.isGroup.get()) parent else master
+      val localMaster = if (inGroup) parent else master
       ext.cursorTrack.selectChannel(localMaster)
     }
 
