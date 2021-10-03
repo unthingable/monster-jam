@@ -112,7 +112,7 @@ trait Control { this: Jam =>
 
     override val subModes    : Seq[ModeLayer with IntActivatedLayer] = Vector(
       // all device matrix
-      new SimpleModeLayer("matrixSelectorSub") with IntActivatedLayer {
+      new SimpleModeLayer("device matrixSelector") with IntActivatedLayer {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
         deviceBanks.foreach { bank =>
           bank.canScrollForwards.markInterested()
@@ -121,10 +121,14 @@ trait Control { this: Jam =>
 
         def selectDevice(trackIdx: Int, device: Device): Unit = {
           if (device.exists().get()) {
-            ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
-            //cursorDevice.selectDevice(device)
-            device.selectInEditor()
-            //deviceBanks(trackIdx).scrollIntoView(device.position().get())
+            if (j.select.isPressed())
+              device.isEnabled.toggle()
+            else {
+              ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
+              //cursorDevice.selectDevice(device)
+              device.selectInEditor()
+              //deviceBanks(trackIdx).scrollIntoView(device.position().get())
+            }
           }
         }
 
@@ -169,7 +173,7 @@ trait Control { this: Jam =>
         )
       },
       // noop mode (disable device selector)
-      new SimpleModeLayer("noopSelector") with IntActivatedLayer {
+      new SimpleModeLayer("device noopSelector") with IntActivatedLayer {
         override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
       },
 
