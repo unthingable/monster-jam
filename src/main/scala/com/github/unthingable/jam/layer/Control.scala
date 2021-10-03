@@ -149,6 +149,7 @@ trait Control { this: Jam =>
             val mButton = j.matrix(row)(col)
             val device  = bank.getItemAt(row)
             device.exists().markInterested()
+            device.isEnabled.markInterested()
             device.position().markInterested()
             device.deviceType().markInterested()
             device.isPlugin.markInterested()
@@ -160,7 +161,14 @@ trait Control { this: Jam =>
               HB(mButton.releasedAction, s"noop $col:$row", () => ()),
               SupColorStateB(mButton.light,
                 () => if (device.exists().get())
-                        JamColorState(deviceColor(device), if (isSelected.get()) 3 else 0)
+                        JamColorState(
+                          deviceColor(device),
+                          (isSelected.get(), device.isEnabled.get()) match {
+                            case (true, true) => if (j.Modifiers.blink3) 3 else 0
+                            case (true, false) => if (j.Modifiers.blink3) 2 else 0
+                            case (false, true) => 2
+                            case (false, false) => 0
+                          })
                       else JamColorState.empty,
                 JamColorState.empty),
             )

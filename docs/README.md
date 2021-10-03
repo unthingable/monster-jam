@@ -203,8 +203,8 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
 
-Keep **CONTROL** pressed for a little longer and device selector will become sticky (it will stay on after CONTROL button is released). **CONTROL** button will flash when device selector is active.
-If you don't need device selector you can turn it off:
+Keep **CONTROL** pressed for a little longer and Device Selector will become sticky (it will stay on after CONTROL button is released). **CONTROL** button will flash when Device Selector is active.
+If you don't need Device Selector you can turn it off with:
 
 * **CONTROL+SELECT**: Toggle device matrix
 
@@ -221,7 +221,14 @@ Devices are color coded:
   * Audio FX: magenta
   * Instrument: lime
   * Note FX: plum
+
+Disabled devices are lit more dimly than enabled. Currently selected device will flash.
   
+### Toggling devices
+
+When Device Selector is on, press **SELECT+PAD** to toggle a device. 
+Note that Device Selector must be in sticky mode so that CONTROL button is not held, otherwise SELECT will behave differently.
+
 ### Page navigation
 
 Use **ARROW** keys to:
