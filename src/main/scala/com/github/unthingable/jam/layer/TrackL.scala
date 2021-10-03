@@ -1,6 +1,7 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Action, BooleanValue, MasterTrack, Track}
+import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Binding, GateMode, HB, Jam, ModeButtonLayer, SimpleModeLayer, SupBooleanB, SupColorStateB}
 
@@ -40,7 +41,7 @@ trait TrackL { this: Jam =>
               id <- trackId
               pos <- tracker.positionForId(id)
             } yield {
-              ext.host.println(s"hunting track $id at $pos")
+              Util.println(s"hunting track $id at $pos")
               trackBank.scrollPosition().set(pos - idx)
             }
             ()
@@ -103,7 +104,7 @@ trait TrackL { this: Jam =>
     )
   }
 
-  def masterButton = new SimpleModeLayer("master button") {
+  lazy val masterButton = new SimpleModeLayer("master button") {
     val first : Track = trackBank.getItemAt(0)
     val parent: Track = first.createParentTrack(0,0)
     val master: MasterTrack = ext.host.createMasterTrack(0)

@@ -1,6 +1,6 @@
 package com.github.unthingable.jam
 
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.BindingDSL._
 import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
 

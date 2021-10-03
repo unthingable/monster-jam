@@ -3,7 +3,7 @@ package com.github.unthingable.jam
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
 import com.bitwig.extension.controller.api.{BooleanHardwareProperty, HardwareActionBindable, HardwareBindable, HardwareBinding, HardwareBindingSource, InternalHardwareLightState, MultiStateHardwareLight, Value}
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.BindingDSL.HBS
 
 import java.util.function.{BooleanSupplier, Supplier}
@@ -160,13 +160,13 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 trait BindingDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
-      ext.host.println(s"! $name")
+      Util.println(s"! $name")
       f()
     }, () => name)
 
   def action(name: Supplier[String], f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
-      ext.host.println(s"! ${name.get()}")
+      Util.println(s"! ${name.get()}")
       f()
     }, name)
 

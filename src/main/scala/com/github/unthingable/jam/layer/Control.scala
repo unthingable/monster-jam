@@ -1,7 +1,7 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, UserControlBank}
-import com.github.unthingable.FilteredPage
+import com.github.unthingable.{FilteredPage, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -136,7 +136,7 @@ trait Control { this: Jam =>
           case (true, "instrument")    => JAMColorBase.LIME
           case (true, "note-effect")   => JAMColorBase.PLUM
           case (_, s)                  =>
-            ext.host.println(s"unknown device $s")
+            Util.println(s"unknown device $s")
             JAMColorBase.RED
         }
 
@@ -168,14 +168,13 @@ trait Control { this: Jam =>
           HB(j.dpad.down.pressedAction, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
         )
       },
-      // device navigator - maybe todo,
       // noop mode (disable device selector)
       new SimpleModeLayer("noopSelector") with IntActivatedLayer {
         override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
       },
 
     )
-    override val modeBindings: Seq[Binding[_, _, _]]                 = super.modeBindings ++ Vector(
+    override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
       HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle()),
       //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )

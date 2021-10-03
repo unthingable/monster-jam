@@ -3,6 +3,7 @@ package com.github.unthingable
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.CursorRemoteControlsPage
 
+import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
 
 trait Util {
@@ -15,6 +16,21 @@ trait Util {
 
   def toColor(color: java.awt.Color): Color =
     Color.fromRGBA(color.getRed, color.getGreen, color.getBlue, color.getAlpha)
+}
+
+class Printer(printFun: String => Unit) {
+  import javax.swing.Timer
+
+  val timer = new Timer(100, (_: ActionEvent) => printFun(""))
+
+  timer.setRepeats(false)
+
+  def println(s: String): Unit = {
+    if (timer.isRunning)
+      timer.stop()
+    printFun(s)
+    timer.restart()
+  }
 }
 
 object Util {

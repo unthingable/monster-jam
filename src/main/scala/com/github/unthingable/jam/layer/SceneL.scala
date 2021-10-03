@@ -55,7 +55,7 @@ trait SceneL { this: Jam =>
       Try(deserialize(maxTracks, maxScenes)(s))
         .toEither
         .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-        .left.map { e => ext.host.println(s"Failed to deserialize superscenes: ${e}"); e }
+        .left.map { e => Util.println(s"Failed to deserialize superscenes: ${e}"); e }
         .getOrElse(Vector.fill(maxTracks)(Map.empty))
 
     ext.application.projectName().markInterested()

@@ -1,7 +1,7 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.controller.api.HardwareActionBindable
-import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.BindingDSL.{HBS, action, isFakeAction}
 
 import scala.collection.mutable
@@ -35,7 +35,7 @@ object Graph {
         val child  = indexLayer(b)
         val parent = indexLayer(a)
 
-        child.parent.foreach(p => ext.host.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
+        child.parent.foreach(p => Util.println(s"${child.layer.name} already has parent ${p.layer.name}, attempting ${parent.layer.name}"))
         assert(child.parent.isEmpty || child.layer.name == "-^-")
         child.parent = Some(parent)
         parent.children.add(child)
@@ -43,14 +43,14 @@ object Graph {
     }
 
     init.foreach { l =>
-      ext.host.println(s"adding init ${l.name}")
+      Util.println(s"adding init ${l.name}")
       indexLayer(l)
     }
 
     layerMap.keys.collect { case x: ModeCycleLayer => x }.foreach { cl =>
       val parent = layerMap.get(cl)
       cl.subModes.foreach { l =>
-        ext.host.println(s"adding submode ${l.name}")
+        Util.println(s"adding submode ${l.name}")
         val sub = indexLayer(l)
         sub.parent = parent
       }
@@ -69,13 +69,13 @@ object Graph {
       val bindings = node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
           case l: ActivatedLayer[HBS] with ListeningLayer =>
-            ext.host.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
+            Util.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
             l.loadBindings ++ Vector(
               HB(l.activateAction, s"${l.name} syn act", activateAction(child)),
               HB(l.deactivateAction, s"${l.name} syn deact", deactivateAction(child)),
             )
           case l: ActivatedLayer[HBS] =>
-            ext.host.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
+            Util.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
             Vector(
               HB(l.activateAction, s"${l.name} syn act", activateAction(child)),
               HB(l.deactivateAction, s"${l.name} syn deact", deactivateAction(child)),
@@ -86,7 +86,7 @@ object Graph {
         // ModeCycleLayer is its submodes' parent
         case layer: ModeCycleLayer => layer.subModes.flatMap { sm =>
           val smn = layerMap(sm)
-          ext.host.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
+          Util.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
           Vector(
             HB(sm.activateAction, s"${node.layer.name}->${sm.name} syn act", activateAction(smn), tracked = false),
             HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
@@ -129,7 +129,7 @@ object Graph {
     })
 
     def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} deactivate", () => {
-      ext.host.println(s">> deactivate action ${node.layer.name}")
+      Util.println(s">> deactivate action ${node.layer.name}")
 
       // why is it sometimes being fired twice? no idea, but let's protect:
       if (node.isActive)
@@ -137,7 +137,7 @@ object Graph {
     })
 
     private def activate(node: ModeNode): Unit = {
-      ext.host.println(s"activating node ${node.layer.name}")
+      Util.println(s"activating node ${node.layer.name}")
 
       // Deactivate exclusive
       val bumpedExc: Iterable[ModeNode] = exclusiveGroups.get(node).toVector
@@ -146,7 +146,7 @@ object Graph {
           .filter(_.isActive)
           .filter(_ != node) // this really shouldn't happen unless the node didn't properly deactivate
           .flatMap { n =>
-            ext.host.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
+            Util.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
             deactivate(n)
 
             //node.layer match {
@@ -174,7 +174,7 @@ object Graph {
 
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
-        ext.host.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString(",")}: ")
+        Util.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString(",")}: ")
         //bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
         //  ext.host.println(s" > $b <- ${bb.mkString(",")}")
         //}
@@ -196,11 +196,11 @@ object Graph {
         .view.mapValues(mutable.HashSet.from(_))
       )
       node.isActive = true
-      ext.host.println(s"-- activated ${node.layer.name} ---")
+      Util.println(s"-- activated ${node.layer.name} ---")
     }
 
     private def deactivate(node: ModeNode): Unit = {
-      ext.host.println(s"deactivating node ${node.layer.name}")
+      Util.println(s"deactivating node ${node.layer.name}")
       node.isActive = false
       node.layer.deactivate()
       node.nodeBindings.foreach(unbind)
@@ -210,7 +210,7 @@ object Graph {
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
-      ext.host.println(s"-- deactivated ${node.layer.name} ---")
+      Util.println(s"-- deactivated ${node.layer.name} ---")
     }
 
     def bind(binding: Binding[_,_,_]) = {
