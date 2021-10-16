@@ -73,7 +73,7 @@ class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends
         // otherwise we're in the middle of rescanning
         Util.println(s"genuine color change to track $pos with id $id")
         //printColor(track.color().get())
-        sign(track, posId(pos).toByte)
+        sign(track, id.toByte)
       }
     }, 100)
   }
@@ -135,7 +135,7 @@ class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends
 
   override def idForPosition(pos: Signature): Option[TrackId] = {
     val id = posId(pos)
-    if (id == -1) None else Some(TrackId(pos))
+    if (id == -1) None else Some(TrackId(id))
   }
 }
 
