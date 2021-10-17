@@ -2,6 +2,7 @@ package com.github.unthingable
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.CursorRemoteControlsPage
+import com.github.unthingable.jam.surface.JamColor.JAMColorBase.{CYAN, FUCHSIA, GREEN, LIME, MAGENTA, ORANGE, RED, YELLOW}
 
 import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
@@ -44,6 +45,7 @@ object Util {
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
   }
+  val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
 }
 
 case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {

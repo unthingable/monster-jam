@@ -14,12 +14,12 @@ trait MacroL { this: Jam =>
       super.activate()
       // dirty hack to show user controls
       if (j.control.isPressed())
-        if (controlLayer.selected.contains(0)) controlLayer.select(userPage + 1) else controlLayer.select(0)
+        if (!controlLayer.isUserSelected) controlLayer.selectUser(userPage) else controlLayer.select(0)
       else {
         bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != controlLayer)
-        if (controlLayer.selected.contains(0)) {
+        if (!controlLayer.isUserSelected) {
           bumpedSubMode = controlLayer.selected
-          controlLayer.select(userPage + 1)
+          controlLayer.selectUser(userPage)
         }
         if (!controlLayer.isOn) controlLayer.activateAction.invoke()
       }
@@ -54,7 +54,7 @@ trait MacroL { this: Jam =>
       } ++ EIGHT.flatMap(idx => Vector(
         HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
           userPage = idx
-          controlLayer.select(userPage + 1)
+          controlLayer.selectUser(userPage)
         }),
         SupColorStateB(j.groupButtons(idx).light, () =>
           if (userPage == idx)
