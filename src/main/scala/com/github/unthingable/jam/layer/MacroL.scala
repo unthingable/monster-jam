@@ -8,17 +8,25 @@ trait MacroL { this: Jam =>
   lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
     var bumpedStrip  : Option[IntActivatedLayer] = None
     var bumpedSubMode: Option[Int]               = None
+    var controlToggleSub: Option[Int] = None // more dirty hacks
 
     override def activate(): Unit = {
       super.activate()
       // dirty hack to show user controls
-      if (j.control.isPressed())
-        controlLayer.cycle()
+      if (j.control.isPressed()) {
+        // CONTROL is already active, just need to toggle
+        if (!controlLayer.isUserSelected) {
+          controlToggleSub = controlLayer.selected
+          controlLayer.selectUser()
+        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select)
+      }
       else {
-        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != controlLayer)
-        if (!controlLayer.selected.contains(1)) {
+        bumpedStrip = stripGroup.layers.find(_.isOn)
+          .collect { case x: IntActivatedLayer => x }
+          .filter(_ != controlLayer)
+        if (!controlLayer.isUserSelected) {
           bumpedSubMode = controlLayer.selected
-          controlLayer.select(1)
+          controlLayer.selectUser()
         }
         if (!controlLayer.isOn) controlLayer.activateAction.invoke()
       }

@@ -29,9 +29,14 @@ trait ModeLayer {
   implicit val ext: MonsterJamExt
 
   var isOn: Boolean = false
+  var activeAt: Instant = Instant.now()
 
   // called when layer is activated/deactivated by the container
-  def activate(): Unit = isOn = true
+  def activate(): Unit = {
+    activeAt = Instant.now()
+    isOn = true
+  }
+
   def deactivate(): Unit = isOn = false
 
   override def hashCode(): Int = name.hashCode
@@ -104,7 +109,7 @@ abstract class ModeButtonLayer(
       } else
         activateAction.invoke()
     },
-      tracked = false),
+      tracked = true),
     HB(modeButton.releasedAction, s"$name: mode button released", () => gateMode match {
       case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
       case GateMode.Toggle | GateMode.OneWay => ()
@@ -116,7 +121,7 @@ abstract class ModeButtonLayer(
             deactivateAction.invoke()
         }
     },
-      tracked = false)
+      tracked = true)
   ) ++ (modeButton match {
     case b: OnOffButton if !silent => Vector(SupBooleanB(b.light.isOn, () => isOn))
     case _                         => Vector.empty
@@ -158,7 +163,6 @@ abstract class ModeCycleLayer(
   val silent: Boolean = false,
   val siblingOperatedModes: Seq[ModeLayer] = Vector(),
 )(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
-  private var activeAt: Instant = null
   private var isStuck: Boolean = false
 
   val subModes: Seq[ModeLayer with IntActivatedLayer]
@@ -166,7 +170,6 @@ abstract class ModeCycleLayer(
   var selected: Option[Int] = Some(0)
 
   override def activate(): Unit = {
-    activeAt = Instant.now()
     super.activate()
     selected.foreach(subModes(_).activateAction.invoke())
   }
@@ -194,14 +197,16 @@ abstract class ModeCycleLayer(
       case _ => ()
     }
   }
+
+  // bindings to inspect when unsticking
+  def operatedBindings: Iterable[Binding[_, _, _]] = (selected.map(subModes) ++ siblingOperatedModes).flatMap(_.modeBindings)
+
   def stickyRelease(): Unit = {
     (isOn, cycleMode: CycleMode) match {
       case (true, CycleMode.Gate) => deactivateAction.invoke()
       case (true, CycleMode.Sticky) =>
         lazy val operated =
-          (selected.map(subModes) ++ siblingOperatedModes)
-          .map(_.modeBindings.collect { case x: OutBinding[_, _] => x }.exists(_.operatedAt.exists(_.isAfter(activeAt))))
-          .exists(identity)
+          operatedBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt)))
 
         if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
           deactivateAction.invoke()

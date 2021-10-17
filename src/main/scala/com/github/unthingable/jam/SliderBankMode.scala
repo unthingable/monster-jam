@@ -1,7 +1,7 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
-import com.bitwig.extension.controller.api.{Channel, ObjectProxy, Parameter, RemoteControl, Send}
+import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -10,14 +10,16 @@ import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchSt
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val obj: Int => P, val param: P => Parameter)
+abstract class SliderBankMode[P <: ObjectProxy](
+  override val name: String,
+  val obj: Int => P,
+  val param: P => Parameter,
+  val stripColor: Option[Int => Int] = None
+)
   (implicit ext: MonsterJamExt, j: JamSurface)
   extends SubModeLayer(name) with Util {
 
-  import JAMColorBase._
   import SliderBankMode._
-
-  val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
 
   val proxies     : Vector[P]                = j.stripBank.strips.indices.map(obj).toVector
   val sliderParams: Vector[Parameter]        = proxies.map(param)
@@ -125,6 +127,7 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
           if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case _: RemoteControl =>
       case _: Parameter => ()
+      case _: Device => ()
     }
 
     import Event._
@@ -132,8 +135,8 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
       Vector(
         HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
         HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = false, BindingBehavior(exclusive = false)),
+        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, BindingBehavior(exclusive = false)),
+        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = true, BindingBehavior(exclusive = false)),
       )
     else Vector.empty
   }
@@ -155,17 +158,19 @@ abstract class SliderBankMode[P <: ObjectProxy](override val name: String, val o
     j.stripBank.strips.forindex { case (strip, idx) =>
       val proxy = proxies(idx)
 
-      (proxy match {
-        case channel: Channel =>
-          Some(JamColorState.toColorIndex(channel.color().get()))
-        case send: Send       =>
-          Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
-        case _: RemoteControl =>
-          Some(rainbow(idx))
-        case _: Parameter =>
-          // a random parameter we know nothing about (probably from UserControlBank)
-          Some(JAMColorBase.RED)
-      }).foreach(c => j.stripBank.setColor(idx, c))
+      stripColor
+        .map(_(idx))
+        .orElse(proxy match {
+          case channel: Channel =>
+            Some(JamColorState.toColorIndex(channel.color().get()))
+          case send: Send       =>
+            Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
+          case _: RemoteControl =>
+            Some(Util.rainbow(idx))
+          case _: Parameter     =>
+            // a random parameter we know nothing about (probably from UserControlBank)
+            Some(JAMColorBase.RED)
+        }).foreach(c => j.stripBank.setColor(idx, c))
 
       j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
     }

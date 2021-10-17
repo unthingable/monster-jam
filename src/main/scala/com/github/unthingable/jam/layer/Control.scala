@@ -1,22 +1,32 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, UserControlBank}
+import com.bitwig.extension.controller.api.{CursorDevice, CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, Track, UserControlBank}
 import com.github.unthingable.{FilteredPage, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SubModeLayer, SupBooleanB, SupColorStateB}
 
+import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 
-trait Control { this: Jam =>
+trait Control { this: Jam with MacroL =>
   // devices!
-  lazy val controlLayer: ModeCycleLayer = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) {
+  trait UserControlPages {
+    def selectUser(): Unit
+    def isUserSelected: Boolean
+  }
+
+  lazy val controlLayer: ModeCycleLayer with UserControlPages = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) with UserControlPages {
     val touchFX                      = "MonsterFX"
     val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
     val page  : FilteredPage         = FilteredPage(
       device.createCursorRemoteControlsPage(8),
       _ != touchFX)
+    var currentUserPage: Int         = 0
+    val userOffset: Int = 9 // 1 normal slider bank + 8 slices
+    var currentSlice: Int = 0
+    var previousSlice: Int = 0
 
     device.hasNext.markInterested()
     device.hasPrevious.markInterested()
@@ -33,15 +43,20 @@ trait Control { this: Jam =>
       secondCursor
     })
 
-    val userBank: UserControlBank = ext.host.createUserControls(8)
+    val userBank: UserControlBank = ext.host.createUserControls(64)
 
+    /* User mode */
     override def lightOn: BooleanSupplier = () =>
       if (deviceSelector.isOn && deviceSelector.selected.contains(0))
         j.Modifiers.blink
       else
         isOn
 
-    override val subModes: Seq[SubModeLayer] = Vector(
+    def selectUser(): Unit = select(currentUserPage + userOffset)
+
+    def isUserSelected: Boolean = selected.exists(_ >= userOffset)
+
+    override val subModes: Seq[SubModeLayer] = (
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -64,26 +79,121 @@ trait Control { this: Jam =>
         override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
           SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
           SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
-          HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
-          HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
+          HB(j.left.releasedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
+          HB(j.right.releasedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
+          HB(j.left.pressedAction, "left", () => if (j.right.isPressed()) select(currentSlice + 1)),
+          HB(j.right.pressedAction, "right", () => if (j.left.isPressed()) select(currentSlice + 1)),
         )
-      },
-      new SliderBankMode[Parameter]("strips user bank", userBank.getControl, identity) {
-        override val barMode        : BarMode = BarMode.SINGLE
-        override val paramKnowsValue: Boolean = false
+      } +:
+        EIGHT.map(idx => new SliderBankMode[CursorDevice](
+          s"strips slice $idx",
+          obj = i => trackBank.getItemAt(i).createCursorDevice(),
+          param = _.createCursorRemoteControlsPage(8).getParameter(idx),
+          stripColor = Some(_ => Util.rainbow(idx))
+        ) {
+          override val barMode: BarMode = BarMode.DUAL
 
-        override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-          SupBooleanB(j.macroButton.light.isOn, () => true)
-        )
-      },
-    )
+          j.stripBank.strips.forindex { case (strip, stripIdx) =>
+            strip.slider.isBeingTouched.markInterested()
 
+            // find touch pages
+            val cursor = obj(stripIdx).createCursorRemoteControlsPage(touchFX, 8, "")
+            var localTouchPage: Option[CursorRemoteControlsPage] = None
+            cursor.pageNames().markInterested()
+            cursor.selectedPageIndex().markInterested()
+
+            cursor.pageNames().addValueObserver { names =>
+              localTouchPage = names
+                .zipWithIndex.find(_._1 == touchFX).map { case (_, page) =>
+                cursor.selectedPageIndex().set(page)
+                cursor
+              }
+            }
+
+            strip.slider.isBeingTouched.addValueObserver(v => if (isOn) localTouchPage.foreach(tp =>
+              if (idx < tp.getParameterCount) tp.getParameter(idx).value().set(if (v) 1 else 0)))
+
+            val param = sliderParams(stripIdx)
+            param.modulatedValue().markInterested()
+            param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
+          }
+
+          var (pressL, pressR) = (false, false)
+
+          override def activate(): Unit = {
+            currentSlice = idx
+            sliderParams.forindex { case (param, idx) =>
+              j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
+            }
+            pressL = false
+            pressR = false
+            super.activate()
+          }
+
+          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+            SupBooleanB(j.left.light.isOn, () => true),
+            SupBooleanB(j.right.light.isOn, () => true),
+            // must press both and then release to deactivate, so that releases don't end up in remote layer
+            HB(j.left.pressedAction, "slice left press", () => pressL = true),
+            HB(j.right.pressedAction, "slice right press", () => pressR = true),
+            HB(j.left.releasedAction, "slice left release", () => if (pressL && !j.right.isPressed()) select(0)),
+            HB(j.right.releasedAction, "slice right release", () => if (pressR && !j.left.isPressed()) select(0)),
+          ) ++ EIGHT.flatMap { idx =>
+            val button = j.groupButtons(idx)
+            Vector(
+              HB(button.pressedAction, s"control slice $idx", () => selectSlice(idx)),
+              HB(button.releasedAction, s"control slice $idx release", () =>
+                if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
+                  selectSlice(previousSlice)
+              ),
+              SupColorStateB(button.light, () => JamColorState(
+                if (selected.contains(idx + 1)) JAMColorBase.WHITE else Util.rainbow(idx),
+                if (selected.contains(idx + 1)) 3 else 0
+              ))
+          )}
+        })
+      ) ++ EIGHT.map { idx =>
+        new SliderBankMode[Parameter](s"strips user bank $idx", i => userBank.getControl(i + idx), identity) {
+          override val barMode        : BarMode = BarMode.SINGLE
+          override val paramKnowsValue: Boolean = false
+          var previousUserPage: Int = 0
+
+          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+            SupBooleanB(j.macroButton.light.isOn, () => true)
+          ) ++ EIGHT.flatMap(idx => Vector(
+            HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
+              previousUserPage = currentUserPage
+              currentUserPage = idx
+              selectUser()
+            }),
+            HB(j.groupButtons(idx).releasedAction, s"user bank $idx release", () =>
+              if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt)))) {
+                currentUserPage = previousUserPage
+                selectUser()
+              }
+            ),
+            SupColorStateB(j.groupButtons(idx).light, () =>
+              if (currentUserPage == idx)
+                JamColorState(JAMColorBase.WHITE, 3)
+              else
+                JamColorState(JAMColorBase.WHITE, 0))
+          ))
+        }
+      }
+
+    /* Control mode */
     def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
       () => if (modeButton.isPressed()) modePressed() else default()
 
     def m(default: () => Unit, modePressed: () => Unit): () => Unit =
       () => if (modeButton.isPressed()) modePressed() else default()
 
+    def selectSlice(slice: Int): Unit = {
+      previousSlice = currentSlice
+      select(slice + 1)
+    }
+
+    /* Main */
     override def activate(): Unit = {
       val idx       = page.c.selectedPageIndex().get()
       val pageNames = page.c.pageNames().get()
@@ -109,6 +219,8 @@ trait Control { this: Jam =>
     siblingOperatedModes = controlLayer.subModes
   ) {
     val cursorDevice: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
+
+    override def operatedBindings: Iterable[Binding[_, _, _]] = super.operatedBindings ++ macroLayer.loadBindings
 
     override val subModes    : Seq[ModeLayer with IntActivatedLayer] = Vector(
       // all device matrix

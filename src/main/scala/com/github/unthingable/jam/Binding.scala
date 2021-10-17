@@ -197,6 +197,11 @@ trait BindingDSL {
     case a: FakeAction => true // !a.masquerade
     case _             => false
   }
+
+  implicit class BindingOps(bindings: Iterable[Binding[_,_,_]]) {
+    def inBindings: Iterable[InBinding[_,_]] = bindings.collect { case x: InBinding[_,_] => x}
+    def outBindings: Iterable[OutBinding[_,_]] = bindings.collect { case x: OutBinding[_,_] => x}
+  }
 }
 
 object BindingDSL extends BindingDSL
