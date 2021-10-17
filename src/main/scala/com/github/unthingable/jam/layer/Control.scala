@@ -33,7 +33,7 @@ trait Control { this: Jam =>
       secondCursor
     })
 
-    val userBank: UserControlBank = ext.host.createUserControls(8)
+    val userBank: UserControlBank = ext.host.createUserControls(64)
 
     override def lightOn: BooleanSupplier = () =>
       if (deviceSelector.isOn && deviceSelector.selected.contains(0))
@@ -41,7 +41,7 @@ trait Control { this: Jam =>
       else
         isOn
 
-    override val subModes: Seq[SubModeLayer] = Vector(
+    override val subModes: Seq[SubModeLayer] =
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -67,16 +67,16 @@ trait Control { this: Jam =>
           HB(j.left.pressedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
           HB(j.right.pressedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
         )
-      },
-      new SliderBankMode[Parameter]("strips user bank", userBank.getControl, identity) {
-        override val barMode        : BarMode = BarMode.SINGLE
-        override val paramKnowsValue: Boolean = false
+      } +: EIGHT.map { idx =>
+        new SliderBankMode[Parameter](s"strips user bank $idx", i => userBank.getControl(i + idx), identity) {
+          override val barMode        : BarMode = BarMode.SINGLE
+          override val paramKnowsValue: Boolean = false
 
-        override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-          SupBooleanB(j.macroButton.light.isOn, () => true)
-        )
-      },
-    )
+          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+            SupBooleanB(j.macroButton.light.isOn, () => true)
+          )
+        }
+      }
 
     def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
       () => if (modeButton.isPressed()) modePressed() else default()

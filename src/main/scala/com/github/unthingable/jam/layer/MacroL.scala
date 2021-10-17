@@ -8,17 +8,18 @@ trait MacroL { this: Jam =>
   lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
     var bumpedStrip  : Option[IntActivatedLayer] = None
     var bumpedSubMode: Option[Int]               = None
+    var userPage: Int = 0
 
     override def activate(): Unit = {
       super.activate()
       // dirty hack to show user controls
       if (j.control.isPressed())
-        controlLayer.cycle()
+        if (controlLayer.selected.contains(0)) controlLayer.select(userPage + 1) else controlLayer.select(0)
       else {
         bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != controlLayer)
-        if (!controlLayer.selected.contains(1)) {
+        if (controlLayer.selected.contains(0)) {
           bumpedSubMode = controlLayer.selected
-          controlLayer.select(1)
+          controlLayer.select(userPage + 1)
         }
         if (!controlLayer.isOn) controlLayer.activateAction.invoke()
       }
@@ -50,6 +51,16 @@ trait MacroL { this: Jam =>
           HB(btn.pressedAction, "direct select track", () => ext.cursorTrack.selectChannel(track)),
           HB(btn.releasedAction, "direct select release", () => ()),
         )
-      }
+      } ++ EIGHT.flatMap(idx => Vector(
+        HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
+          userPage = idx
+          controlLayer.select(userPage + 1)
+        }),
+        SupColorStateB(j.groupButtons(idx).light, () =>
+          if (userPage == idx)
+            JamColorState(JAMColorBase.WHITE, 3)
+          else
+            JamColorState(JAMColorBase.WHITE, 0))
+      ))
   }
 }

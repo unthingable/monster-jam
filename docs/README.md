@@ -2,7 +2,7 @@
 
 Support for Native Instruments Maschine JAM. 
 
-This only works on Mac and Windows.
+This only works on Mac and Windows (because it needs NI drivers for the Jam controller).
 
 # Installation
 
@@ -140,7 +140,7 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
-  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red)
+  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
 
 ### Fine adjustment
 
@@ -251,12 +251,14 @@ Holding **MACRO** also switches control strips to user control mode.
 
 ## User controls
 
-A bank of 8 user controls available for general global mapping, controlled by the touch strips.
+A bank of 64 user controls available for general global mapping, controlled by the touch strips.
 
 User controls are accessible in two ways:
 
 * Momentarily, by holding **MACRO**
 * In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
+
+The 64 controls are grouped in 8 pages. To select a page, hold **MACRO** and use the track buttons.
 
 # Preferences
 
