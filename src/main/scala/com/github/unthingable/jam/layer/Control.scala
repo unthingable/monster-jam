@@ -7,6 +7,7 @@ import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SubModeLayer, SupBooleanB, SupColorStateB}
 
+import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 
 trait Control { this: Jam with MacroL =>
@@ -22,7 +23,7 @@ trait Control { this: Jam with MacroL =>
     val page  : FilteredPage         = FilteredPage(
       device.createCursorRemoteControlsPage(8),
       _ != touchFX)
-    var userPage: Int = 0
+    var currentUserPage: Int         = 0
     val userOffset: Int = 9 // 1 normal slider bank + 8 slices
     var currentSlice: Int = 0
     var previousSlice: Int = 0
@@ -51,7 +52,7 @@ trait Control { this: Jam with MacroL =>
       else
         isOn
 
-    def selectUser(): Unit = select(userPage + userOffset)
+    def selectUser(): Unit = select(currentUserPage + userOffset)
 
     def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
@@ -142,7 +143,7 @@ trait Control { this: Jam with MacroL =>
             Vector(
               HB(button.pressedAction, s"control slice $idx", () => selectSlice(idx)),
               HB(button.releasedAction, s"control slice $idx release", () =>
-                if (modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
+                if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
                   selectSlice(previousSlice)
               ),
               SupColorStateB(button.light, () => JamColorState(
@@ -155,16 +156,24 @@ trait Control { this: Jam with MacroL =>
         new SliderBankMode[Parameter](s"strips user bank $idx", i => userBank.getControl(i + idx), identity) {
           override val barMode        : BarMode = BarMode.SINGLE
           override val paramKnowsValue: Boolean = false
+          var previousUserPage: Int = 0
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.macroButton.light.isOn, () => true)
           ) ++ EIGHT.flatMap(idx => Vector(
             HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
-              userPage = idx
-              controlLayer.selectUser()
+              previousUserPage = currentUserPage
+              currentUserPage = idx
+              selectUser()
             }),
+            HB(j.groupButtons(idx).releasedAction, s"user bank $idx release", () =>
+              if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt)))) {
+                currentUserPage = previousUserPage
+                selectUser()
+              }
+            ),
             SupColorStateB(j.groupButtons(idx).light, () =>
-              if (userPage == idx)
+              if (currentUserPage == idx)
                 JamColorState(JAMColorBase.WHITE, 3)
               else
                 JamColorState(JAMColorBase.WHITE, 0))
