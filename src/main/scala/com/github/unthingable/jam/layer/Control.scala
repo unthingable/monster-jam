@@ -12,7 +12,7 @@ import java.util.function.BooleanSupplier
 trait Control { this: Jam with MacroL =>
   // devices!
   trait UserControlPages {
-    def selectUser(page: Int): Unit
+    def selectUser(): Unit
     def isUserSelected: Boolean
   }
 
@@ -22,6 +22,7 @@ trait Control { this: Jam with MacroL =>
     val page  : FilteredPage         = FilteredPage(
       device.createCursorRemoteControlsPage(8),
       _ != touchFX)
+    var userPage: Int = 0
     val userOffset: Int = 9 // 1 normal slider bank + 8 slices
     var currentSlice: Int = 0
     var previousSlice: Int = 0
@@ -50,7 +51,7 @@ trait Control { this: Jam with MacroL =>
       else
         isOn
 
-    def selectUser(page: Int): Unit = select(page + userOffset)
+    def selectUser(): Unit = select(userPage + userOffset)
 
     def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
@@ -128,7 +129,6 @@ trait Control { this: Jam with MacroL =>
             super.activate()
           }
 
-
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.left.light.isOn, () => true),
             SupBooleanB(j.right.light.isOn, () => true),
@@ -158,7 +158,17 @@ trait Control { this: Jam with MacroL =>
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.macroButton.light.isOn, () => true)
-          )
+          ) ++ EIGHT.flatMap(idx => Vector(
+            HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
+              userPage = idx
+              controlLayer.selectUser()
+            }),
+            SupColorStateB(j.groupButtons(idx).light, () =>
+              if (userPage == idx)
+                JamColorState(JAMColorBase.WHITE, 3)
+              else
+                JamColorState(JAMColorBase.WHITE, 0))
+          ))
         }
       }
 

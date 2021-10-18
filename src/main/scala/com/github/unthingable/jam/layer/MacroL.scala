@@ -8,18 +8,25 @@ trait MacroL { this: Jam =>
   lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
     var bumpedStrip  : Option[IntActivatedLayer] = None
     var bumpedSubMode: Option[Int]               = None
-    var userPage: Int = 0
+    var controlToggleSub: Option[Int] = None // more dirty hacks
 
     override def activate(): Unit = {
       super.activate()
       // dirty hack to show user controls
-      if (j.control.isPressed())
-        if (!controlLayer.isUserSelected) controlLayer.selectUser(userPage) else controlLayer.select(0)
+      if (j.control.isPressed()) {
+        // CONTROL is already active, just need to toggle
+        if (!controlLayer.isUserSelected) {
+          controlToggleSub = controlLayer.selected
+          controlLayer.selectUser()
+        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select)
+      }
       else {
-        bumpedStrip = stripGroup.layers.find(_.isOn).collect { case x: IntActivatedLayer => x }.filter(_ != controlLayer)
+        bumpedStrip = stripGroup.layers.find(_.isOn)
+          .collect { case x: IntActivatedLayer => x }
+          .filter(_ != controlLayer)
         if (!controlLayer.isUserSelected) {
           bumpedSubMode = controlLayer.selected
-          controlLayer.selectUser(userPage)
+          controlLayer.selectUser()
         }
         if (!controlLayer.isOn) controlLayer.activateAction.invoke()
       }
@@ -51,16 +58,6 @@ trait MacroL { this: Jam =>
           HB(btn.pressedAction, "direct select track", () => ext.cursorTrack.selectChannel(track)),
           HB(btn.releasedAction, "direct select release", () => ()),
         )
-      } ++ EIGHT.flatMap(idx => Vector(
-        HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
-          userPage = idx
-          controlLayer.selectUser(userPage)
-        }),
-        SupColorStateB(j.groupButtons(idx).light, () =>
-          if (userPage == idx)
-            JamColorState(JAMColorBase.WHITE, 3)
-          else
-            JamColorState(JAMColorBase.WHITE, 0))
-      ))
+      }
   }
 }
