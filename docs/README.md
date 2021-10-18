@@ -141,11 +141,30 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
   * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
+  * **LEFT+RIGHT**: Toggle Control Slice mode (see below)
 
 ### Fine adjustment
 
 Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls. 
 This works in all touchstrip modes except user controls, because their implementation sucks.
+
+### Control Slice
+
+Imagine the device controls laid out on a 8x8 knob controller, where each vertical column corresponds to the 8 device
+parameters per track. In Control mode you control a single column at a time with the touch strips. 
+
+In Control Slice mode you control a single row: one device parameter per each track. This is similar to how AUX sends
+operate and you can use them as such. This mode is most useful if you put relevant parameters in the same position 
+across your devices, e.g. parameter 1 -> filter cutoff, parameter 2 -> compressor attack, etc.
+
+To activate: press **LEFT+RIGHT** in regular Control mode (not User Control, **MACRO** not lit).
+
+To select a parameter: use **TRACK(1-8)** buttons. The currently selected parameter is lit in white. Note that selectors
+are self-gating: if you press and hold a track button, operate any touchstrip or just wait long enough, it will return
+to the previously selected parameter when track button is released. This is useful for momentary adjustments.
+
+To select a device and a page: whichever device was selected last on a track will be the device controlled in Slice mode.
+Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
 
 # Modes and notes
 
@@ -155,7 +174,10 @@ A quick press on a mode button turns it on, but hold the button and
 make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
 and performance.
 
-Solo, Mute, and TEMPO are like this, more to come.
+Some modes that are like this:
+* Solo, Mute, and TEMPO
+* User control pages
+* Control slice selectors
 
 ## Launch grid quantization
 
@@ -203,7 +225,9 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
 
-Keep **CONTROL** pressed for a little longer and Device Selector will become sticky (it will stay on after CONTROL button is released). **CONTROL** button will flash when Device Selector is active.
+Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
+it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
+**CONTROL** button will flash when Device Selector is active.
 If you don't need Device Selector you can turn it off with:
 
 * **CONTROL+SELECT**: Toggle device matrix
@@ -258,7 +282,7 @@ User controls are accessible in two ways:
 * Momentarily, by holding **MACRO**
 * In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
 
-The 64 controls are grouped in 8 pages. To select a page, hold **MACRO** and use the track buttons.
+The 64 controls are grouped in 8 pages. To select a page use the track buttons, currently selected page is brightly lit.
 
 # Preferences
 
