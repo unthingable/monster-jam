@@ -142,6 +142,7 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
   * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
   * **LEFT+RIGHT**: Toggle Control Slice mode (see below)
+* **CLEAR+strip**: Reset parameter value
 
 ### Fine adjustment
 

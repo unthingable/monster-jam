@@ -44,7 +44,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
 
   def stripObserver(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
-      if (isOn) {
+      if (isOn && !j.clear.isPressed()) {
         j.stripBank.setValue(idx,
           (1.0.min(v / paramRange(idx)._2) * 127).toInt)
         paramValueCache.update(idx, v)
@@ -72,7 +72,16 @@ abstract class SliderBankMode[P <: ObjectProxy](
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
-        case (_,_,ShiftP, _) =>
+        case (_,_,ClearP,_) =>
+          strip.slider.clearBindings()
+          Normal
+        case (_,_,ClearR,_) =>
+          bindWithRange(idx, force = true)
+          Normal
+        case (_,_,StripP,_) if j.clear.isPressed() =>
+          param.reset()
+          Normal
+        case (_,_,ShiftP,_) =>
           strip.slider.clearBindings()
           ShiftTracking
         case (true, true, _:PressEvent, state) =>
@@ -94,6 +103,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
         case (_,_,_:ReleaseEvent,ShiftTracking) =>
           offsetObserver = _ => ()
           bindWithRange(idx, force = true)
+          stripObserver(idx).valueChanged(param.value().get())
           Normal
         case _ =>
           Normal
@@ -133,6 +143,8 @@ abstract class SliderBankMode[P <: ObjectProxy](
     import Event._
     if (paramKnowsValue)
       Vector(
+        HB(j.clear.pressedAction, s"clear $idx pressed", () => engage(ClearP), tracked = false, BindingBehavior(exclusive = false)),
+        HB(j.clear.releasedAction, s"clear $idx released", () => engage(ClearR), tracked = false, BindingBehavior(exclusive = false)),
         HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
         HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
         HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, BindingBehavior(exclusive = false)),
@@ -202,6 +214,8 @@ object SliderBankMode {
     case object ShiftR extends ShiftEvent with ReleaseEvent
     case object StripP extends StripEvent with PressEvent
     case object StripR extends StripEvent with ReleaseEvent
+    case object ClearP extends StripEvent with PressEvent
+    case object ClearR extends StripEvent with ReleaseEvent
   }
 
   sealed trait State
