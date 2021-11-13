@@ -88,10 +88,12 @@ from the track, for additional fun and profit (like Maschine).
 * **TRACK(A-H)+...**: Hold track button for more functions:
   * **ARROW DOWN**: If this track is a group track, enter it. Arrow button is lit and flashing when this is possible.
   * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit and flashing when this is possible.
+  * **ARROW LEFT**: Scroll current track all the way to the left (to position 1 on the controller)
+  * **ARROW RIGHT**: Scroll current track all the way to the right (to position 8 on the controller)
   * **SOLO**: Solo/unsolo this track
   * **MUTE**: Mute/unmute this track
   * **REC**: Arm track for recording
-* Doubleclick **TRACK(A-H)** on a group track to expand/collapse top-level groups.
+* Doubleclick **TRACK(A-H)** on a group track to expand/collapse this group.
   
 ## Launching scenes: Scene (1-8) buttons and clip buttons
 

@@ -10,8 +10,8 @@ import java.util.function.BooleanSupplier
 
 trait TrackL { this: Jam =>
   lazy val trackGroup = new SimpleModeLayer("trackGroup") {
-    val foldToggleTop: Action = ext.application.getAction("toggle_top_level_track_groups_expanded")
-    val foldToggleAll: Action = ext.application.getAction("toggle_all_track_groups_expanded")
+    //val foldToggleTop: Action = ext.application.getAction("toggle_top_level_track_groups_expanded")
+    //val foldToggleAll: Action = ext.application.getAction("toggle_all_track_groups_expanded")
     ext.cursorTrack.position().markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
@@ -35,21 +35,22 @@ trait TrackL { this: Jam =>
         val now = Instant.now()
         if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
 
-          val trackId  = tracker.trackId(track)
-          val callback = () => {
-            for {
-              id <- trackId
-              pos <- tracker.positionForId(id)
-            } yield {
-              Util.println(s"hunting track $id at $pos")
-              trackBank.scrollPosition().set(pos - idx)
-            }
-            ()
-          }
+          //val trackId  = tracker.trackId(track)
+          //val callback = () => {
+          //  for {
+          //    id <- trackId
+          //    pos <- tracker.positionForId(id)
+          //  } yield {
+          //    Util.println(s"hunting track $id at $pos")
+          //    trackBank.scrollPosition().set(pos - idx)
+          //  }
+          //  ()
+          //}
+          //
+          //tracker.addRescanCallback(callback)
 
-          tracker.addRescanCallback(callback)
-
-          foldToggleTop.invoke()
+          track.isGroupExpanded.toggle()
+          //foldToggleTop.invoke()
 
         } else if (GlobalMode.Clear.isOn) track.deleteObject()
                else if (GlobalMode.Duplicate.isOn) track.duplicate()
@@ -89,12 +90,12 @@ trait TrackL { this: Jam =>
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Modifiers.blink3),
       SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Modifiers.blink3),
-      SupBooleanB(j.dpad.left.light.isOn, () => false),
-      SupBooleanB(j.dpad.right.light.isOn, () => false),
+      SupBooleanB(j.dpad.left.light.isOn, () => true),
+      SupBooleanB(j.dpad.right.light.isOn, () => true),
       HB(j.dpad.up.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),
       HB(j.dpad.down.pressedAction, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
-      HB(j.dpad.left.pressedAction, "ignore left", () => ()),
-      HB(j.dpad.right.pressedAction, "ignore right", () => ()),
+      HB(j.dpad.left.pressedAction, "scroll left", () => trackBank.scrollPosition().set(idx)),
+      HB(j.dpad.right.pressedAction, "scroll right", () => trackBank.scrollPosition().set(0.max(idx-7))),
       SupBooleanB(j.solo.light.isOn, track.solo()),
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
