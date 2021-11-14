@@ -1,8 +1,12 @@
 package com.github.unthingable.jam.layer
 
+import com.bitwig.extension.controller.api.Track
+import com.github.unthingable.Util.Timed
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Binding, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, SupColorStateB}
+
+import java.time.Instant
 
 trait MacroL { this: Jam =>
   lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
@@ -48,6 +52,21 @@ trait MacroL { this: Jam =>
         val btn        = j.matrix(row)(col)
         val isSelected = ext.cursorTrack.createEqualsValue(track)
         isSelected.markInterested()
+        track.isGroup.markInterested()
+
+        var lastPress: Option[Timed[Track]] = None
+
+        def select(track: Track): Unit = {
+          val now = Instant.now()
+          if (lastPress.exists(v =>
+            v.value == track &&
+            v.instant.isAfter(now.minusMillis(200)))
+              && track.isGroup.get())
+            track.isGroupExpanded.toggle()
+          else
+            ext.cursorTrack.selectChannel(track)
+          lastPress = Some(Timed(track, now))
+        }
 
         Vector(
           SupColorStateB(btn.light, () =>
@@ -55,7 +74,7 @@ trait MacroL { this: Jam =>
               JamColorState(JAMColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
-          HB(btn.pressedAction, "direct select track", () => ext.cursorTrack.selectChannel(track)),
+          HB(btn.pressedAction, "direct select track", () => select(track)),
           HB(btn.releasedAction, "direct select release", () => ()),
         )
       }

@@ -280,6 +280,8 @@ Hold **MACRO** to see track selector. Clip matrix displays 64 consecutive tracks
 in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
 to select a track, currently selected track is bright white.
 
+Double-clicking a group track toggles expansion.
+
 Holding **MACRO** also switches control strips to user control mode.
 
 ## User controls
