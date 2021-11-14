@@ -226,11 +226,12 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 ## Device Selector
 
-Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
 
 Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
 it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
 **CONTROL** button will flash when Device Selector is active.
+
 If you don't need Device Selector you can turn it off with:
 
 * **CONTROL+SELECT**: Toggle device matrix
@@ -250,7 +251,12 @@ Devices are color coded:
   * Note FX: plum
 
 Disabled devices are lit more dimly than enabled. Currently selected device will flash.
-  
+
+Additionally:
+
+* **CLEAR+PAD**: Delete device
+* **DUPLICATE+PAD**: Copy device to another slot, same as with clips
+
 ### Toggling devices
 
 When Device Selector is on, press **SELECT+PAD** to toggle a device. 
