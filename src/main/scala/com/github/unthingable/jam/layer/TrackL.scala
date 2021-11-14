@@ -86,6 +86,13 @@ trait TrackL { this: Jam =>
     track.mute().markInterested()
     track.solo().markInterested()
     track.arm().markInterested()
+    trackBank.scrollPosition().markInterested()
+
+    /*
+    Workaround for weird TrackBank.scrollBy() behavior - if next page is empty it won't scroll right,
+    instead it will always jump to (last track index - bank size) [117008]
+     */
+    def scrollBy(n: Int): Unit = trackBank.scrollPosition().set(trackBank.scrollPosition().get() + n)
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Modifiers.blink3),
@@ -94,8 +101,8 @@ trait TrackL { this: Jam =>
       SupBooleanB(j.dpad.right.light.isOn, () => true),
       HB(j.dpad.up.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),
       HB(j.dpad.down.pressedAction, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
-      HB(j.dpad.left.pressedAction, "scroll left", () => trackBank.scrollPosition().set(idx)),
-      HB(j.dpad.right.pressedAction, "scroll right", () => trackBank.scrollPosition().set(0.max(idx-7))),
+      HB(j.dpad.left.pressedAction, "scroll left", () => scrollBy(idx - 7)),
+      HB(j.dpad.right.pressedAction, "scroll right", () => scrollBy(idx)),
       SupBooleanB(j.solo.light.isOn, track.solo()),
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
