@@ -226,21 +226,30 @@ trait Control { this: Jam with MacroL =>
       // all device matrix
       new SimpleModeLayer("device matrixSelector") with IntActivatedLayer {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
+        var sourceDevice: Option[Util.Timed[Device]] = None
+
         deviceBanks.foreach { bank =>
           bank.canScrollForwards.markInterested()
           bank.canScrollBackwards.markInterested()
         }
 
         def selectDevice(trackIdx: Int, device: Device): Unit = {
-          if (device.exists().get()) {
-            if (j.select.isPressed())
-              device.isEnabled.toggle()
-            else {
+          device.exists().get() match {
+            case true if GlobalMode.Select.isOn => device.isEnabled.toggle()
+            case true if GlobalMode.Clear.isOn  => device.deleteObject()
+            case exists if GlobalMode.Duplicate.isOn =>
+              sourceDevice match {
+                case Some(Util.Timed(source, instant)) if instant.isAfter(GlobalMode.Duplicate.activeAt) =>
+                  if (exists) device.beforeDeviceInsertionPoint().copyDevices(source)
+                  else trackBank.getItemAt(trackIdx).endOfDeviceChainInsertionPoint().copyDevices(source)
+                  sourceDevice = None
+                case _ => sourceDevice = Some(Util.Timed(device, Instant.now()))
+              }
+            case _ =>
               ext.cursorTrack.selectChannel(trackBank.getItemAt(trackIdx))
               //cursorDevice.selectDevice(device)
               device.selectInEditor()
-              //deviceBanks(trackIdx).scrollIntoView(device.position().get())
-            }
+            //deviceBanks(trackIdx).scrollIntoView(device.position().get())
           }
         }
 

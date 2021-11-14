@@ -6,6 +6,7 @@ import com.github.unthingable.jam.surface.JamColor.JAMColorBase.{CYAN, FUCHSIA, 
 
 import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
+import java.time.Instant
 
 trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
@@ -17,6 +18,8 @@ trait Util {
 
   def toColor(color: java.awt.Color): Color =
     Color.fromRGBA(color.getRed, color.getGreen, color.getBlue, color.getAlpha)
+
+  case class Timed[A](value: A, instant: Instant)
 }
 
 class Printer(printFun: String => Unit) {
@@ -34,7 +37,7 @@ class Printer(printFun: String => Unit) {
   }
 }
 
-object Util {
+object Util extends Util {
   var println: String => Unit = null
   //var ext: MonsterJamExt = null
 

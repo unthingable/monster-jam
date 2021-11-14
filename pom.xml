@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>6.8</version>
+    <version>7.0</version>
 
     <repositories>
         <repository>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.bitwig</groupId>
             <artifactId>extension-api</artifactId>
-            <version>14</version>
+            <version>15</version>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>

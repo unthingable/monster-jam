@@ -88,10 +88,12 @@ from the track, for additional fun and profit (like Maschine).
 * **TRACK(A-H)+...**: Hold track button for more functions:
   * **ARROW DOWN**: If this track is a group track, enter it. Arrow button is lit and flashing when this is possible.
   * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit and flashing when this is possible.
+  * **ARROW LEFT**: Scroll bank left so that current track all the way to the right (to position 8 on Jam)
+  * **ARROW RIGHT**: Scroll bank right so that current track all the way to the left (to position 1 on Jam)
   * **SOLO**: Solo/unsolo this track
   * **MUTE**: Mute/unmute this track
   * **REC**: Arm track for recording
-* Doubleclick **TRACK(A-H)** on a group track to expand/collapse top-level groups.
+* Doubleclick **TRACK(A-H)** on a group track to expand/collapse this group.
   
 ## Launching scenes: Scene (1-8) buttons and clip buttons
 
@@ -224,11 +226,12 @@ SuperScene will launch the _entire_ last (bottom-most) scene of that group track
 
 ## Device Selector
 
-Allows directly selecting devices in **CONTROL** mode. Keep **CONTROL** pressed to access this.
+Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
 
 Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
 it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
 **CONTROL** button will flash when Device Selector is active.
+
 If you don't need Device Selector you can turn it off with:
 
 * **CONTROL+SELECT**: Toggle device matrix
@@ -248,7 +251,12 @@ Devices are color coded:
   * Note FX: plum
 
 Disabled devices are lit more dimly than enabled. Currently selected device will flash.
-  
+
+Additionally:
+
+* **CLEAR+PAD**: Delete device
+* **DUPLICATE+PAD**: Copy device to another slot, same as with clips
+
 ### Toggling devices
 
 When Device Selector is on, press **SELECT+PAD** to toggle a device. 
@@ -271,6 +279,8 @@ the 1 device while the other 20 are scrolling.
 Hold **MACRO** to see track selector. Clip matrix displays 64 consecutive tracks, as they appear
 in Bitwig (effectively, the matrix is 8 TRACK button rows for 8 pages of track bank). Press pad
 to select a track, currently selected track is bright white.
+
+Double-clicking a group track toggles expansion.
 
 Holding **MACRO** also switches control strips to user control mode.
 
