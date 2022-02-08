@@ -5,7 +5,7 @@ import com.github.unthingable.{FilteredPage, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SubModeLayer, SupBooleanB, SupColorStateB}
+import com.github.unthingable.jam.{Binding, BindingBehavior, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SubModeLayer, SupBooleanB, SupColorStateB}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -234,6 +234,7 @@ trait Control { this: Jam with MacroL =>
         }
 
         def selectDevice(trackIdx: Int, device: Device): Unit = {
+          Util.println(s"** select/clear/dup " + Seq(GlobalMode.Select, GlobalMode.Clear, GlobalMode.Duplicate).map(_.isOn).mkString("/"))
           device.exists().get() match {
             case true if GlobalMode.Select.isOn => device.isEnabled.toggle()
             case true if GlobalMode.Clear.isOn  => device.deleteObject()
@@ -308,7 +309,9 @@ trait Control { this: Jam with MacroL =>
 
     )
     override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-      HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle()),
+      HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle(),
+        tracked = false,
+        behavior = BindingBehavior(exclusive = false)),
       //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )
   }
