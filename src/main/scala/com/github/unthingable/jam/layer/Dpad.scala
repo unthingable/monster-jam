@@ -3,6 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{BooleanValue, HardwareActionBindable, Scrollable}
 import com.github.unthingable.jam.surface.JamOnOffButton
 import com.github.unthingable.jam.{Binding, HB, Jam, SimpleModeLayer, SupBooleanB}
+import com.github.unthingable.JamSettings.DpadScroll
 
 trait Dpad { this: Jam =>
   lazy val dpad = new SimpleModeLayer("dpad") {
@@ -19,7 +20,7 @@ trait Dpad { this: Jam =>
 
     def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
       ext.host.createAction(() =>
-        (j.Modifiers.Shift.isPressed(), forward) match {
+        (j.Modifiers.Shift.isPressed() ^ (ext.preferences.shiftDpad.get() == DpadScroll.RegularOne), forward) match {
           case (false, true)  => target.scrollPageForwards()
           case (false, false) => target.scrollPageBackwards()
           case (true, true)   => target.scrollForwards()

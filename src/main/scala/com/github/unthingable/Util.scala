@@ -1,7 +1,7 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.CursorRemoteControlsPage
+import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Preferences, SettableBooleanValue, SettableEnumValue, Settings}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase.{CYAN, FUCHSIA, GREEN, LIME, MAGENTA, ORANGE, RED, YELLOW}
 
 import java.awt.event.ActionEvent
@@ -75,7 +75,43 @@ case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
 
 }
 
-object ShowHide extends Enumeration {
-  type ShowHide = Value
-  val Show, Hide = Value
+object JamSettings {
+  object ShowHide extends Enumeration {
+    val Show, Hide = Value
+  }
+
+  object LimitLevels extends Enumeration {
+    val None = Value
+    val Zero = Value("0dB")
+    val MinusTen = Value("-10dB")
+    val Smart = Value
+  }
+
+  object DpadScroll extends Enumeration {
+    val RegularOne = Value("single/page")
+    val RegularPage = Value("page/single")
+  }
+
+  trait EnumSetting[E <: Enumeration] {
+    def outerEnum: E
+    def setting: SettableEnumValue
+    def set(v: E#Value): Unit
+    def get(): E#Value
+    def addValueObserver(f: E#Value => Unit): Unit
+  }
+
+  def enumSetting[A <: Enumeration: ValueOf](p: Settings, s: String, category: String, init: A#Value) =
+    new EnumSetting[A] {
+      val outerEnum: A = valueOf[A]
+
+      // side effect expected on creation
+      val setting: SettableEnumValue = p.getEnumSetting(s, category, outerEnum.values.toArray.map(_.toString), init.toString)
+      setting.markInterested()
+
+      def set(v: A#Value): Unit = setting.set(v.toString)
+
+      def get(): A#Value = outerEnum.withName(setting.get())
+
+      def addValueObserver(f: A#Value => Unit): Unit = setting.addValueObserver(v => f(outerEnum.withName(v)))
+    }
 }

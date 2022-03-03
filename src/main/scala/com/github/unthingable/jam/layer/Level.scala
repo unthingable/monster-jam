@@ -17,7 +17,6 @@ trait Level { this: Jam =>
           track.trackType().markInterested()
           track.trackType().addValueObserver(v => if (isOn) updateLimits(Some(idx, v)))
         }
-        ext.preferences.limitLevel.markInterested()
         ext.preferences.limitLevel.addValueObserver(_ => if (isOn) updateLimits(None))
 
         val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
@@ -45,16 +44,17 @@ trait Level { this: Jam =>
 
           maybeType match {
             case Some((idx, trackType)) =>
+              import com.github.unthingable.JamSettings.LimitLevels
               paramLimits.update(idx, ext.preferences.limitLevel.get() match {
-                case "None"   => 1.0
-                case "Smart"  =>
+                case LimitLevels.None   => 1.0
+                case LimitLevels.Smart  =>
                   trackType match {
                     case "Group" => zero / max
                     //case "Effect" | "Master" => 1.0
                     case _ => minusTen / max
                   }
-                case "0 dB"   => zero / max
-                case "-10 dB" => minusTen / max
+                case LimitLevels.Zero     => zero / max
+                case LimitLevels.MinusTen => minusTen / max
                 case _        => 1.0
               })
               Util.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")

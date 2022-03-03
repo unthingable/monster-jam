@@ -118,7 +118,7 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
 * **SHIFT+...** in regular mode: hold shift and then
-  * Arrow keys: scroll by 1 track/scene
+  * Arrow keys: scroll by 1 track/scene (SHIFT function is flippable in preferences)
   * **SCENE(1-8)**: directly select from the first 8 pages of scenes
   * **TRACK(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
   * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
@@ -302,6 +302,7 @@ The 64 controls are grouped in 8 pages. To select a page use the track buttons, 
 * **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
 * **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
+* **DPAD scroll (regular/SHIFT)**: Flip **DPAD** function with and without **SHIFT**: arrows scroll by page/SHIFT-arrow by single row, or vice versa.
 * **Limit level sliders**: slider range when controlling track levels
   * _None_: sliders behave as shown in the app (i.e., +6 dB is maximum)
   * _0 dB_: slider maximum is 0 dB for all tracks
