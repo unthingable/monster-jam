@@ -2,6 +2,8 @@ package com.github.unthingable
 
 import com.bitwig.extension.controller.ControllerExtension
 import com.bitwig.extension.controller.api._
+import com.github.unthingable.JamSettings.{EnumSetting, enumSetting}
+import com.github.unthingable.JamSettings
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
@@ -9,12 +11,13 @@ import com.github.unthingable.jam.surface.XmlMap.loadMap
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
   shiftGroup: SettableBooleanValue,
-  limitLevel: SettableEnumValue,
+  shiftDpad: EnumSetting[JamSettings.DpadScroll.type],
+  limitLevel: EnumSetting[JamSettings.LimitLevels.type],
   smartTracker: SettableBooleanValue,
 )
 
 case class MonsterDocPrefs(
-  hideDisabled: SettableEnumValue
+  hideDisabled: EnumSetting[JamSettings.ShowHide.type]
 )
 
 case class MonsterJamExt(
@@ -69,11 +72,12 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Options", true),
         preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Options", true),
-        preferences.getEnumSetting("Limit level sliders", "Options", Array("None", "0 dB", "-10 dB", "Smart"), "None"),
+        enumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.RegularPage),
+        enumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
       ),
       MonsterDocPrefs(
-        host.getDocumentState.getEnumSetting("Tracks", "Hide disabled", ShowHide.values.map(_.toString).toArray, ShowHide.Show.toString),
+        enumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
       ),
       loadMap(host)
     )

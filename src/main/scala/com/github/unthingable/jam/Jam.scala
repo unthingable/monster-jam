@@ -1,7 +1,8 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.{MonsterJamExt, ShowHide, Util}
+import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
@@ -53,9 +54,8 @@ class Jam(implicit val ext: MonsterJamExt)
 
   trackBank.cursorIndex().markInterested()
 
-  ext.docPrefs.hideDisabled.markInterested()
   ext.docPrefs.hideDisabled.addValueObserver { v =>
-    val skip = (ShowHide.withName(v) != ShowHide.Show)
+    val skip = (v != ShowHide.Show)
     trackBank.setSkipDisabledItems(skip)
     superBank.setSkipDisabledItems(skip)
   }

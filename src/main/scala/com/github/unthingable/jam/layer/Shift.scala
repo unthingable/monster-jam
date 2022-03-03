@@ -1,7 +1,7 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Bank, Clip}
-import com.github.unthingable.ShowHide
+import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeCycleLayer, SimpleModeLayer, SupColorStateB}
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
@@ -36,15 +36,15 @@ trait Shift { this: Jam with SceneL =>
       }
        ++ (if (ext.preferences.shiftRow.get()) Vector(
         SupColorStateB(j.matrix(1)(0).light, () =>
-          if (ShowHide.withName(ext.docPrefs.hideDisabled.get()) == ShowHide.Hide)
+          if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
             JamColorState(JAMColorBase.RED, 0)
           else JamColorState(JAMColorBase.YELLOW, 0)
         )) else Vector.empty)
        ++ Vector(
         HB(j.matrix(1)(0).pressedAction, "toggle hide disabled", () => {
-          if (ShowHide.withName(ext.docPrefs.hideDisabled.get()) == ShowHide.Hide)
-            ext.docPrefs.hideDisabled.set(ShowHide.Show.toString)
-          else ext.docPrefs.hideDisabled.set(ShowHide.Hide.toString)
+          if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
+            ext.docPrefs.hideDisabled.set(ShowHide.Show)
+          else ext.docPrefs.hideDisabled.set(ShowHide.Hide)
         })
       ))
   }
