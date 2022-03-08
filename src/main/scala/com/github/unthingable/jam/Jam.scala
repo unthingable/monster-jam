@@ -7,12 +7,6 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
-
-/*
-Behavior definition for surface controls
- */
-
-
 class Jam(implicit val ext: MonsterJamExt)
   extends BindingDSL
   with Aux with TransportL with Level with Dpad with TrackL
@@ -33,7 +27,6 @@ class Jam(implicit val ext: MonsterJamExt)
   trackBank.followCursorTrack(ext.cursorTrack)
 
   val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
-  //superBank.followCursorTrack(ext.cursorTrack)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
 
@@ -59,7 +52,6 @@ class Jam(implicit val ext: MonsterJamExt)
     trackBank.setSkipDisabledItems(skip)
     superBank.setSkipDisabledItems(skip)
   }
-  //sceneBank.setIndication(true)
 
   {
     // meters

@@ -51,11 +51,6 @@ trait ActivatedLayer[+A <: HBS] {
 }
 
 /**
- * (De)activation is triggered by external actions
- */
-trait ExtActivatedLayer extends ActivatedLayer[HBS]
-
-/**
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
 trait IntActivatedLayer extends ActivatedLayer[FakeAction] {
