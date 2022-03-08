@@ -82,9 +82,6 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       loadMap(host)
     )
 
-    //ext.application.getActions.foreach(a => ext.host.println(s"${a.getName}, ${a.getId}"))
-
-    //Util.ext = ext
     new Jam()(ext)
 
     host.showPopupNotification("MonsterJam Initialized")

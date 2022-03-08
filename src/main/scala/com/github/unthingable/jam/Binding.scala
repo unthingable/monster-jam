@@ -173,8 +173,10 @@ trait BindingDSL {
   }
 
   implicit class BindingOps(bindings: Iterable[Binding[_,_,_]]) {
-    def inBindings: Iterable[InBinding[_,_]] = bindings.collect { case x: InBinding[_,_] => x}
+    def inBindings: Iterable[InBinding[_,_]]   = bindings.collect { case x: InBinding[_,_] => x}
     def outBindings: Iterable[OutBinding[_,_]] = bindings.collect { case x: OutBinding[_,_] => x}
+    def operatedAfter(instant: Instant): Boolean = 
+      bindings.outBindings.exists(_.operatedAt.exists(_.isAfter(instant)))
   }
 }
 

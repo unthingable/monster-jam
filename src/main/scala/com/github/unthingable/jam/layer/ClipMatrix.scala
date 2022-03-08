@@ -39,7 +39,6 @@ trait ClipMatrix { this: Jam =>
         )
       }
     } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
-      //ext.host.println("boom")
       source = None
     }, tracked = false, behavior = BindingBehavior(managed = false))
 

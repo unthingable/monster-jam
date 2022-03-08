@@ -22,11 +22,11 @@ import java.util.function.BooleanSupplier
  * @param modeBindings active bindings for this mode
  */
 
-trait ModeLayer {
+trait ModeLayer extends IntActivatedLayer {
   val name: String
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_,_,_]]
-  implicit val ext: MonsterJamExt
+  implicit def ext: MonsterJamExt
 
   var isOn: Boolean = false
   var activeAt: Instant = Instant.now()
@@ -54,6 +54,9 @@ trait ActivatedLayer[+A <: HBS] {
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
 trait IntActivatedLayer extends ActivatedLayer[FakeAction] {
+  /* FIXME: actions are bindable and are called before (de)activate().
+  However, the call to (de)activate() is wrapped in another action and wired in ModeGraph, can be confusing.
+  */
   override final val activateAction  : FakeAction = FakeAction()
   override final val deactivateAction: FakeAction = FakeAction()
 }
@@ -91,7 +94,7 @@ abstract class ModeButtonLayer(
   val modeButton: Button,
   val gateMode: GateMode = GateMode.Auto,
   val silent: Boolean = false
-)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
+)(implicit val ext: MonsterJamExt) extends ModeLayer with ListeningLayer {
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
@@ -135,10 +138,6 @@ object ModeButtonLayer {
   }
 }
 
-abstract class SubModeLayer(
-  val name: String
-)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer
-
 sealed trait CycleMode
 object CycleMode {
   // Cycle through each sublayer on modebutton press
@@ -153,14 +152,10 @@ object CycleMode {
 
 abstract class ModeCycleLayer(
   val name: String,
-  val modeButton: OnOffButton,
-  val cycleMode: CycleMode,
-  val silent: Boolean = false,
-  val siblingOperatedModes: Seq[ModeLayer] = Vector(),
-)(implicit val ext: MonsterJamExt) extends ModeLayer with IntActivatedLayer with ListeningLayer {
-  private var isStuck: Boolean = false
+)(implicit val ext: MonsterJamExt) extends ModeLayer {
+  protected var isStuck: Boolean = false
 
-  val subModes: Seq[ModeLayer with IntActivatedLayer]
+  val subModes: Seq[ModeLayer]
 
   var selected: Option[Int] = Some(0)
 
@@ -185,6 +180,15 @@ abstract class ModeCycleLayer(
     selected = Some(idx)
     if (isOn) mode.activateAction.invoke()
   }
+}
+
+abstract class ModeButtonCycleLayer(
+  name: String,
+  val modeButton: OnOffButton,
+  val cycleMode: CycleMode,
+  val silent: Boolean = false,
+  val siblingOperatedModes: Seq[ModeLayer] = Vector(),
+)(implicit override val ext: MonsterJamExt) extends ModeCycleLayer(name) with ListeningLayer {
 
   def stickyPress(): Unit = {
     (isOn, cycleMode: CycleMode) match {
@@ -201,8 +205,8 @@ abstract class ModeCycleLayer(
       case (true, CycleMode.Gate) => deactivateAction.invoke()
       case (true, CycleMode.Sticky) =>
         lazy val operated =
-          operatedBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt)))
-
+          operatedBindings.operatedAfter(activeAt)
+          
         if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
           deactivateAction.invoke()
           isStuck = false

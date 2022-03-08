@@ -133,7 +133,7 @@ trait TrackL { this: Jam =>
       ext.cursorTrack.selectChannel(localMaster)
     }
 
-    override def modeBindings: Seq[Binding[_, _, _]] = Vector(
+    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
       HB(j.master.pressedAction, "focus on master", selectMaster),
     )

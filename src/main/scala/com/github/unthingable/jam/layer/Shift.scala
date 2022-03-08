@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{Bank, Clip}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
-import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeCycleLayer, SimpleModeLayer, SupColorStateB}
+import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeButtonCycleLayer, SimpleModeLayer, SupColorStateB}
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 
 trait Shift { this: Jam with SceneL =>
@@ -49,7 +49,7 @@ trait Shift { this: Jam with SceneL =>
       ))
   }
 
-  lazy val shiftPages = new ModeCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.Gate) {
+  lazy val shiftPages = new ModeButtonCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.Gate) {
     trackBank.itemCount().markInterested()
     trackBank.scrollPosition().markInterested()
     sceneBank.itemCount().markInterested()
@@ -75,11 +75,11 @@ trait Shift { this: Jam with SceneL =>
         Vector.empty
 
     override val subModes = Vector(
-      new SimpleModeLayer("scene pages") with IntActivatedLayer {
+      new SimpleModeLayer("scene pages") {
         override val modeBindings: Vector[Binding[_, _, _]] =
           EIGHT.flatMap(bankB(sceneBank, j.sceneButtons, _)) ++ trackPages
       },
-      new SimpleModeLayer("superscene pages") with IntActivatedLayer {
+      new SimpleModeLayer("superscene pages") {
         override val modeBindings: Vector[Binding[_, _, _]] = {
           trackPages ++
           EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
@@ -99,8 +99,9 @@ trait Shift { this: Jam with SceneL =>
     )
 
     override def activate(): Unit = {
-      selected = if (superSceneSub.isOn) Some(1) else Some(0)
+      //selected = if (superSceneSub.isOn) Some(1) else Some(0)
       super.activate()
+      select(if (superSceneSub.isOn) 1 else 0)
     }
   }
 

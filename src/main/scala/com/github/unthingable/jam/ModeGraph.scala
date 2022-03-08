@@ -92,7 +92,7 @@ object Graph {
             HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
           )
         }
-        case _                     => Vector.empty
+        case _                           => Vector.empty
       })
       val (managed, unmanaged) = bindings.partition(_.behavior.managed)
 

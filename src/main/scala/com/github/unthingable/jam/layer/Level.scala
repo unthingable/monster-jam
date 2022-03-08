@@ -4,12 +4,12 @@ import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamTouchStrip
-import com.github.unthingable.jam.{CycleMode, Jam, ModeCycleLayer, SliderBankMode}
+import com.github.unthingable.jam.{CycleMode, Jam, ModeButtonCycleLayer, SliderBankMode}
 
 import scala.collection.mutable
 
 trait Level { this: Jam =>
-  lazy val levelCycle = new ModeCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
+  lazy val levelCycle = new ModeButtonCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
     override val subModes = Vector(
       new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
         EIGHT.foreach { idx =>
