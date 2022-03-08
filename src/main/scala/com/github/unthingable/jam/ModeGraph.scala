@@ -92,7 +92,7 @@ object Graph {
             HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
           )
         }
-        case _                     => Vector.empty
+        case _                           => Vector.empty
       })
       val (managed, unmanaged) = bindings.partition(_.behavior.managed)
 
@@ -148,13 +148,6 @@ object Graph {
           .flatMap { n =>
             Util.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
             deactivate(n)
-
-            //node.layer match {
-            //  case l: ModeButtonLayer if l.gateMode == GateMode.OneWay => None
-            //  case l: ModeCycleLayer if l.cycleMode == G => None
-            //  case _ if init.contains(n.layer) => Some(n)
-            //  case _ => None
-            //}
             None
           })
 

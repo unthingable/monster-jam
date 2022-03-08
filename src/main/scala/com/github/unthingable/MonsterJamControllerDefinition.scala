@@ -16,7 +16,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
 
   override def getAuthor = "unthingable"
 
-  override def getVersion = "7.2"
+  override def getVersion = "7.3"
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 

@@ -17,7 +17,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
   val stripColor: Option[Int => Int] = None
 )
   (implicit ext: MonsterJamExt, j: JamSurface)
-  extends SubModeLayer(name) with Util {
+  extends SimpleModeLayer(name) with Util {
 
   import SliderBankMode._
 

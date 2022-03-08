@@ -1,17 +1,20 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Scene, SettableStringValue, Setting}
+import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Setting}
 import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SubModeLayer, SupBooleanB, SupColorB, SupColorStateB, TrackId}
+import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeCycleLayer, ModeLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB, TrackId}
 
+import java.time.Instant
 import scala.collection.mutable
 import scala.util.Try
 
 trait SceneL { this: Jam =>
-  lazy val sceneSub: SubModeLayer = new SubModeLayer("sceneSub") {
+
+
+  lazy val sceneSub: ModeLayer = new SimpleModeLayer("sceneSub") {
     override val modeBindings: Seq[Binding[_, _, _]] = j.sceneButtons.indices.flatMap { i =>
       val btn  : JamRgbButton = j.sceneButtons(i)
       val scene: Scene        = sceneBank.getScene(i)
@@ -39,7 +42,7 @@ trait SceneL { this: Jam =>
     }
   }
 
-  lazy val superSceneSub = new SubModeLayer("superSceneSub") with Util {
+  lazy val superSceneSub = new SimpleModeLayer("superSceneSub") with Util {
     val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
@@ -145,14 +148,69 @@ trait SceneL { this: Jam =>
     }
   }
 
-  lazy val sceneLayer = new ModeCycleLayer("sceneCycle", j.song, CycleMode.Cycle, silent = true) {
-    override val subModes: Seq[ModeLayer with IntActivatedLayer] = Vector(
+  lazy val pageMatrix = new SimpleModeLayer("pageMatrix") {
+    private var trackPos: Int = -1
+    private var scenePos: Int = -1
+    private var trackLen: Int = -1
+    private var sceneLen: Int = -1
+
+    trackBank.scrollPosition().addValueObserver(v => trackPos = v)
+    sceneBank.scrollPosition().addValueObserver(v => scenePos = v)
+    trackBank.itemCount().addValueObserver(v => trackLen = v / 8)
+    sceneBank.itemCount().addValueObserver(v => sceneLen = v / 8)
+
+    override val modeBindings: Seq[Binding[_, _, _]] =
+      (for (row <- EIGHT; col <- EIGHT) yield {
+        val btn: JamRgbButton = j.matrix(row)(col)
+
+        def hasContent = trackLen >= col && sceneLen >= row
+        def ourPage = Seq(scenePos, scenePos+7).map(_/8).contains(row) && Seq(trackPos, trackPos+7).map(_/8).contains(col)
+
+        Vector(
+          SupColorStateB(btn.light, () =>
+            if (hasContent)
+              if (ourPage)
+                JamColorState(JAMColorBase.WHITE, 2)
+              else
+                JamColorState(JAMColorBase.WARM_YELLOW, 0)
+            else JamColorState.empty
+            , JamColorState.empty),
+          HB(btn.pressedAction, "shift-scroll page $idx", () => {
+            trackBank.scrollPosition().set(col * 8)
+            sceneBank.scrollPosition().set(row * 8)}))
+      }).flatten
+  }
+
+  // a hybrid: both a cycle layer for scene buttons and a controller for page matrix
+  lazy val sceneLayer = new ModeCycleLayer("sceneCycle") {
+    override val subModes: Seq[ModeLayer] = Vector(
       sceneSub,
       superSceneSub
     )
 
-    override def modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-      SupBooleanB(j.song.light.isOn, () => selected.contains(1)),
+    private var pressedAt: Option[Instant] = None
+
+    def press(): Unit = {
+      pressedAt = Some(Instant.now())
+      ext.host.scheduleTask(() => if (j.song.isPressed()) pageMatrix.activateAction.invoke(), 50)
+    }
+
+    def release(): Unit = {
+      if (pageMatrix.isOn)
+        pageMatrix.deactivateAction.invoke()
+
+      if (pressedAt.exists(instant =>
+        instant.plusMillis(400).isAfter(Instant.now())
+        || pageMatrix.modeBindings.operatedAfter(instant)))
+        cycle()
+
+      pressedAt = None
+    }
+
+    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+      SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
+      HB(j.song.pressedAction, "sceneCycle pressed", () => press()),
+      HB(j.song.releasedAction, "sceneCycle released", () => release()),
     )
   }
 }

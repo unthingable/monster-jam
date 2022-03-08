@@ -5,10 +5,10 @@ import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, Jam, ModeButtonLayer, ModeCycleLayer, SliderBankMode, SupColorStateB}
+import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, Jam, ModeButtonLayer, ModeButtonCycleLayer, SliderBankMode, SupColorStateB}
 
 trait Aux { this: Jam =>
-  lazy val auxLayer = new ModeCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
+  lazy val auxLayer = new ModeButtonCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
     override val subModes = EIGHT.map(idx =>
       new SliderBankMode[Send]("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity) {
         override val barMode: BarMode = BarMode.SINGLE

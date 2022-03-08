@@ -5,7 +5,7 @@ import com.github.unthingable.{FilteredPage, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, BindingBehavior, CycleMode, HB, IntActivatedLayer, Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SubModeLayer, SupBooleanB, SupColorStateB}
+import com.github.unthingable.jam.{Binding, BindingBehavior, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SupBooleanB, SupColorStateB}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -17,7 +17,7 @@ trait Control { this: Jam with MacroL =>
     def isUserSelected: Boolean
   }
 
-  lazy val controlLayer: ModeCycleLayer with UserControlPages = new ModeCycleLayer("CONTROL", j.control, CycleMode.Select) with UserControlPages {
+  lazy val controlLayer: ModeButtonCycleLayer with UserControlPages = new ModeButtonCycleLayer("CONTROL", j.control, CycleMode.Select) with UserControlPages {
     val touchFX                      = "MonsterFX"
     val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
     val page  : FilteredPage         = FilteredPage(
@@ -56,7 +56,7 @@ trait Control { this: Jam with MacroL =>
 
     def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
-    override val subModes: Seq[SubModeLayer] = (
+    override val subModes: Seq[ModeLayer] = (
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -211,7 +211,7 @@ trait Control { this: Jam with MacroL =>
     }
   }
 
-  lazy val deviceSelector: ModeCycleLayer = new ModeCycleLayer(
+  lazy val deviceSelector: ModeButtonCycleLayer = new ModeButtonCycleLayer(
     "deviceSelector",
     j.control,
     CycleMode.Sticky,
@@ -222,9 +222,9 @@ trait Control { this: Jam with MacroL =>
 
     override def operatedBindings: Iterable[Binding[_, _, _]] = super.operatedBindings ++ macroLayer.loadBindings
 
-    override val subModes    : Seq[ModeLayer with IntActivatedLayer] = Vector(
+    override val subModes    : Seq[ModeLayer] = Vector(
       // all device matrix
-      new SimpleModeLayer("device matrixSelector") with IntActivatedLayer {
+      new SimpleModeLayer("device matrixSelector") {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
         var sourceDevice: Option[Util.Timed[Device]] = None
 
@@ -303,7 +303,7 @@ trait Control { this: Jam with MacroL =>
         )
       },
       // noop mode (disable device selector)
-      new SimpleModeLayer("device noopSelector") with IntActivatedLayer {
+      new SimpleModeLayer("device noopSelector") {
         override val modeBindings: Seq[Binding[_, _, _]] = Vector.empty
       },
 

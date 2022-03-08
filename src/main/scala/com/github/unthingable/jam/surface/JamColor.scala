@@ -21,15 +21,5 @@ object JamColor {
     val FUCHSIA = 64 //16
     val WHITE = 68 //17
   }
-
-  // brightness values are simple enough to use directly
-/*
-  object JAMColorState extends Enumeration {
-    val DIM = Value(0)
-    val DIMFLASH = Value(1)
-    val BRIGHT = Value(2)
-    val BRIGHTFLASH = Value(3)
-  }
-*/
 }
 

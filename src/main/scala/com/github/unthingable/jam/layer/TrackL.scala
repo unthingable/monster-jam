@@ -10,8 +10,6 @@ import java.util.function.BooleanSupplier
 
 trait TrackL { this: Jam =>
   lazy val trackGroup = new SimpleModeLayer("trackGroup") {
-    //val foldToggleTop: Action = ext.application.getAction("toggle_top_level_track_groups_expanded")
-    //val foldToggleAll: Action = ext.application.getAction("toggle_all_track_groups_expanded")
     ext.cursorTrack.position().markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
@@ -135,7 +133,7 @@ trait TrackL { this: Jam =>
       ext.cursorTrack.selectChannel(localMaster)
     }
 
-    override def modeBindings: Seq[Binding[_, _, _]] = Vector(
+    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
       HB(j.master.pressedAction, "focus on master", selectMaster),
     )

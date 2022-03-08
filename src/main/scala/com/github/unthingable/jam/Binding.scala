@@ -135,28 +135,6 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
   override def clear(): Unit = target.setValueSupplier(() => false)
 }
 
-//
-//class ObserverB[S, T, C](val source: S, val target: T, binder: (S, C) => Unit, receiver: C, empty: C)
-//  extends InBinding[S, T] {
-//  // observers are not removable, so
-//  private var action: C = empty
-//  binder(source, action)
-//
-//  override def bind(): Unit = action = receiver
-//
-//  override def clear(): Unit = action = empty
-//}
-//
-//// not working?
-//case class ValObserverB[A <: ValueChangedCallback, T](value: Value[A], receiver: A, override val target: T)
-//  (implicit emp: EmptyCB[A])
-//  extends ObserverB[Value[A], T, A](value, target, _.addValueObserver(_), receiver, emp.empty)
-//
-//case class LoadActions(
-//  activate: HBS,
-//  deactivate: HBS,
-//)
-
 trait BindingDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
@@ -175,11 +153,7 @@ trait BindingDSL {
 
   def action(name: Supplier[String], f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(f(_), name)
-
-  //implicit class PolyAction(a: HardwareAction)(implicit ext: MonsterJamExt) {
-  //  def addBinding(f: () => Unit): HardwareActionBinding = a.addBinding(action("", () => f()))
-  //}
-
+  
   type HBS = HardwareBindingSource[_ <: HardwareBinding]
 
   trait EmptyCB[A <: ValueChangedCallback] { def empty: A }
@@ -199,8 +173,10 @@ trait BindingDSL {
   }
 
   implicit class BindingOps(bindings: Iterable[Binding[_,_,_]]) {
-    def inBindings: Iterable[InBinding[_,_]] = bindings.collect { case x: InBinding[_,_] => x}
+    def inBindings: Iterable[InBinding[_,_]]   = bindings.collect { case x: InBinding[_,_] => x}
     def outBindings: Iterable[OutBinding[_,_]] = bindings.collect { case x: OutBinding[_,_] => x}
+    def operatedAfter(instant: Instant): Boolean = 
+      bindings.outBindings.exists(_.operatedAt.exists(_.isAfter(instant)))
   }
 }
 

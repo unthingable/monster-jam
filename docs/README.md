@@ -127,6 +127,7 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
   * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
 * **MACRO** lets you jump directly to one of 64 tracks using pad buttons
+* **SONG** (hold): clip pads become page selectors, same logic as SHIFT+SCENE/TRACK
 
 ## Touch Strips
 

@@ -7,12 +7,6 @@ import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
-
-/*
-Behavior definition for surface controls
- */
-
-
 class Jam(implicit val ext: MonsterJamExt)
   extends BindingDSL
   with Aux with TransportL with Level with Dpad with TrackL
@@ -29,11 +23,10 @@ class Jam(implicit val ext: MonsterJamExt)
     val Select   : ModeButtonLayer = ModeButtonLayer("SELECT", j.select, modeBindings = Seq.empty, GateMode.Gate)
   }
 
-  val trackBank = ext.trackBank
+  lazy val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
-  val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
-  //superBank.followCursorTrack(ext.cursorTrack)
+  lazy val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
 
@@ -45,8 +38,8 @@ class Jam(implicit val ext: MonsterJamExt)
       new DumbTracker(superBank)
   }
 
-  val sceneBank  : SceneBank   = trackBank.sceneBank()
-  val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
+  lazy val sceneBank  : SceneBank   = trackBank.sceneBank()
+  lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
 
   sceneBank.canScrollForwards.markInterested()
   sceneBank.canScrollBackwards.markInterested()
@@ -59,7 +52,6 @@ class Jam(implicit val ext: MonsterJamExt)
     trackBank.setSkipDisabledItems(skip)
     superBank.setSkipDisabledItems(skip)
   }
-  //sceneBank.setIndication(true)
 
   {
     // meters
@@ -75,7 +67,7 @@ class Jam(implicit val ext: MonsterJamExt)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
   new ModeDGraph(
-    init = Vector(levelCycle, sceneLayer),
+    init = Vector(levelCycle, sceneLayer, clipMatrix),
     dpad -> top,
     play -> top,
     position -> Coexist(tempoLayer),
@@ -83,7 +75,7 @@ class Jam(implicit val ext: MonsterJamExt)
     bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, globalShift, shiftPages),
     bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup -> Exclusive(solo, mute),
-    clipMatrix -> top,
+    bottom -> Coexist(clipMatrix, pageMatrix),
     bottom -> stripGroup,
     bottom -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup -> Exclusive(EIGHT.map(trackGate): _*),
