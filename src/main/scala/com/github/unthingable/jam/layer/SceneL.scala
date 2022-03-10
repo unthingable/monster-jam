@@ -156,8 +156,8 @@ trait SceneL { this: Jam =>
 
     trackBank.scrollPosition().addValueObserver(v => trackPos = v)
     sceneBank.scrollPosition().addValueObserver(v => scenePos = v)
-    trackBank.itemCount().addValueObserver(v => trackLen = v / 8)
-    sceneBank.itemCount().addValueObserver(v => sceneLen = v / 8)
+    trackBank.itemCount().addValueObserver(v => trackLen = (v - 1) / 8)
+    sceneBank.itemCount().addValueObserver(v => sceneLen = (v - 1) / 8)
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       (for (row <- EIGHT; col <- EIGHT) yield {
