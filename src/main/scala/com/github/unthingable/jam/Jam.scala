@@ -11,7 +11,8 @@ import com.github.unthingable.jam.layer._
 class Jam(implicit val ext: MonsterJamExt)
   extends BindingDSL
   with Aux with TransportL with Level with Dpad with TrackL
-  with ClipMatrix with Shift with Control with MacroL with SceneL {
+  with ClipMatrix with Shift with Control with MacroL with SceneL
+  with StepSequencer {
 
   implicit val j: JamSurface = new JamSurface()
 
@@ -30,6 +31,15 @@ class Jam(implicit val ext: MonsterJamExt)
   lazy val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
+
+  lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
+
+  (0 until 256).foreach { i =>
+    val t = superBank.getItemAt(i)
+    t.clipLauncherSlotBank().addIsSelectedObserver((idx, selected) =>
+      if (selected)
+        selectedClipTrack.selectChannel(t))
+  }
 
   ext.preferences.smartTracker.markInterested()
   implicit val tracker: TrackTracker = {
@@ -76,7 +86,7 @@ class Jam(implicit val ext: MonsterJamExt)
     bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, globalShift, shiftPages),
     bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup -> Exclusive(solo, mute),
-    bottom -> Coexist(clipMatrix, pageMatrix),
+    bottom -> Coexist(clipMatrix, pageMatrix, stepSequencer),
     bottom -> stripGroup,
     bottom -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup -> Exclusive(EIGHT.map(trackGate): _*),

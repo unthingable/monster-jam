@@ -32,6 +32,8 @@ trait ModeLayer extends IntActivatedLayer {
   var isOn: Boolean = false
   var activeAt: Instant = Instant.now()
 
+  def ifOn(f: => Unit): () => Unit = () => if (isOn) f
+
   // called when layer is activated/deactivated by the container
   def activate(): Unit = {
     activeAt = Instant.now()
@@ -40,7 +42,19 @@ trait ModeLayer extends IntActivatedLayer {
 
   def deactivate(): Unit = isOn = false
 
+  override def toggleAction: FakeAction = if (isOn) deactivateAction else activateAction
+
   override def hashCode(): Int = name.hashCode
+
+  //def standardPress(b: Button with Info, press: () => Unit, release: () => Unit): Seq[HB] =
+  //  Vector(
+  //    HB(b.pressedAction, s"$name: ${b.info.id} pressed", press),
+  //    HB(b.releasedAction, s"$name: ${b.info.id} released", release),
+  //  )
+  //
+  //def standardPress(b: Button with Info, press: FakeAction, release: FakeAction): Seq[HB] =
+  //  standardPress(b, () => press.invoke(), () => release.invoke())
+
 }
 
 /**
