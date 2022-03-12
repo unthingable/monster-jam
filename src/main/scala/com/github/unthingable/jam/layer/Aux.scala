@@ -2,10 +2,11 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Send
 import com.github.unthingable.Util
+import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, Jam, ModeButtonLayer, ModeButtonCycleLayer, SliderBankMode, SupColorStateB}
+import com.github.unthingable.jam.{CycleMode, GateMode, Jam, ModeButtonCycleLayer, ModeButtonLayer, SliderBankMode}
 
 trait Aux { this: Jam =>
   lazy val auxLayer = new ModeButtonCycleLayer("AUX", j.aux, CycleMode.Select) with Util {

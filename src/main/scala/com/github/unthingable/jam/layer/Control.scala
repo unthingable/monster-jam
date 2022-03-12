@@ -1,11 +1,13 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{CursorDevice, CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, Track, UserControlBank}
-import com.github.unthingable.{FilteredPage, Util}
+import com.bitwig.extension.controller.api._
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, BindingBehavior, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SupBooleanB, SupColorStateB}
+import com.github.unthingable.jam._
+import com.github.unthingable.jam.binding.HB.BindingOps
+import com.github.unthingable.{FilteredPage, Util}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier

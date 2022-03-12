@@ -2,9 +2,10 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util.Timed
+import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, SupColorStateB}
+import com.github.unthingable.jam.{GateMode, IntActivatedLayer, Jam, ModeButtonLayer}
 
 import java.time.Instant
 

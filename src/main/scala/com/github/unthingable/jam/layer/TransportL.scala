@@ -2,9 +2,11 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
+import com.github.unthingable.jam.binding.HB.action
+import com.github.unthingable.jam.binding._
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
-import com.github.unthingable.jam.{BindingBehavior, GateMode, HB, Jam, ModeButtonLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
 
 trait TransportL { this: Jam =>
   lazy val position = SimpleModeLayer("position",

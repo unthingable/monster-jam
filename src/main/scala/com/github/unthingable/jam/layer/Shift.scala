@@ -3,8 +3,9 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{Bank, Clip}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
-import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeButtonCycleLayer, SimpleModeLayer, SupColorStateB}
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
+import com.github.unthingable.jam._
+import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
 
 trait Shift { this: Jam with SceneL =>
   /**

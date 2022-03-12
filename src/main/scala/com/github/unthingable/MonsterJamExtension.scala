@@ -50,6 +50,7 @@ case class MonsterJamExt(
 class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {
 
   var ext: MonsterJamExt = null
+  private var jam: Jam = null
 
   val printer = new Printer(host.println)
   Util.println = printer.println
@@ -82,7 +83,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       loadMap(host)
     )
 
-    new Jam()(ext)
+    jam = new Jam()(ext)
 
     host.showPopupNotification("MonsterJam Initialized")
   }

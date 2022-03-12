@@ -3,9 +3,11 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Setting}
 import com.github.unthingable.Util
+import com.github.unthingable.jam.binding.HB.BindingOps
+import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeCycleLayer, ModeLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB, TrackId}
+import com.github.unthingable.jam.{Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, TrackId}
 
 import java.time.Instant
 import scala.collection.mutable

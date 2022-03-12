@@ -1,9 +1,10 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{BooleanValue, HardwareActionBindable, Scrollable}
-import com.github.unthingable.jam.surface.JamOnOffButton
-import com.github.unthingable.jam.{Binding, HB, Jam, SimpleModeLayer, SupBooleanB}
 import com.github.unthingable.JamSettings.DpadScroll
+import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB}
+import com.github.unthingable.jam.surface.JamOnOffButton
+import com.github.unthingable.jam.{Jam, SimpleModeLayer}
 
 trait Dpad { this: Jam =>
   lazy val dpad = new SimpleModeLayer("dpad") {

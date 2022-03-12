@@ -2,9 +2,10 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
-import com.bitwig.extension.controller.api.{BooleanValue, HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
+import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
+import com.github.unthingable.jam.binding.HB
+import com.github.unthingable.jam.surface
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.{HB, surface}
 
 
 /* Surface model with all the controls, wired to MIDI */

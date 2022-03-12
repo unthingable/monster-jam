@@ -1,7 +1,8 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{ClipLauncherSlot, ClipLauncherSlotBank, Track}
-import com.github.unthingable.jam.{Binding, BindingBehavior, HB, Jam, SimpleModeLayer, SupColorStateB}
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, SupColorStateB}
+import com.github.unthingable.jam.{Jam, SimpleModeLayer}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
 

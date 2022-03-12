@@ -4,6 +4,7 @@ import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.jam.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
@@ -66,7 +67,7 @@ class Jam(implicit val ext: MonsterJamExt)
   val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
-  new ModeDGraph(
+  val graph = new ModeDGraph(
     init = Vector(levelCycle, sceneLayer, clipMatrix),
     dpad -> top,
     play -> top,

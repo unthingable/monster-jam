@@ -1,8 +1,9 @@
 package com.github.unthingable.jam
 
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, OutBinding, SupBooleanB}
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.BindingDSL._
-import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
+import com.github.unthingable.jam.binding.BindingDSL._
+import com.github.unthingable.jam.surface.{Button, FakeAction, Info, JamButton, OnOffButton}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -46,8 +47,9 @@ trait ModeLayer extends IntActivatedLayer {
  * Layer whose (de)activation is controlled by actions
  */
 trait ActivatedLayer[+A <: HBS] {
-  val activateAction  : A
-  val deactivateAction: A
+  def activateAction  : A
+  def deactivateAction: A
+  def toggleAction: A
 }
 
 /**
@@ -150,12 +152,26 @@ object CycleMode {
   case object Sticky extends CycleMode
 }
 
-abstract class ModeCycleLayer(
+// duplicates ModeGraph functionality, some day will need a rewrite
+abstract class MultiModeLayer(
   val name: String,
 )(implicit val ext: MonsterJamExt) extends ModeLayer {
-  protected var isStuck: Boolean = false
-
   val subModes: Seq[ModeLayer]
+
+  override def activate(): Unit = {
+    super.activate()
+  }
+
+  override def deactivate(): Unit = {
+    subModes.filter(_.isOn).foreach(_.deactivateAction.invoke())
+    super.deactivate()
+  }
+}
+
+abstract class ModeCycleLayer(
+  override val name: String,
+)(implicit override val ext: MonsterJamExt) extends MultiModeLayer(name) {
+  protected var isStuck: Boolean = false
 
   var selected: Option[Int] = Some(0)
 

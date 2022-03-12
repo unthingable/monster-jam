@@ -2,6 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
 import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase

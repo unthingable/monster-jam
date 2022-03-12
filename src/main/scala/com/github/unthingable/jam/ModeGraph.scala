@@ -1,8 +1,9 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.controller.api.HardwareActionBindable
+import com.github.unthingable.jam.binding.{Binding, HB}
+import com.github.unthingable.jam.binding.HB.{HBS, action, isFakeAction}
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.BindingDSL.{HBS, action, isFakeAction}
 
 import scala.collection.mutable
 
@@ -47,7 +48,7 @@ object Graph {
       indexLayer(l)
     }
 
-    layerMap.keys.collect { case x: ModeCycleLayer => x }.foreach { cl =>
+    layerMap.keys.collect { case x: MultiModeLayer => x }.foreach { cl =>
       val parent = layerMap.get(cl)
       cl.subModes.foreach { l =>
         Util.println(s"adding submode ${l.name}")
@@ -83,8 +84,8 @@ object Graph {
           case _                     => Vector.empty
         }
       } ++ (node.layer match {
-        // ModeCycleLayer is its submodes' parent
-        case layer: ModeCycleLayer => layer.subModes.flatMap { sm =>
+        // MultiModeLayer is its submodes' parent
+        case layer: MultiModeLayer => layer.subModes.flatMap { sm =>
           val smn = layerMap(sm)
           Util.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
           Vector(

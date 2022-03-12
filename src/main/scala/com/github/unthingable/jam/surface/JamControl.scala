@@ -3,8 +3,8 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.jam.HB
-import com.github.unthingable.jam.HB.HBS
+import com.github.unthingable.jam.binding.HB
+import com.github.unthingable.jam.binding.HB.HBS
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
@@ -26,12 +26,15 @@ trait Button extends JamControl {
 
   val isPressed: () => Boolean
 }
+
 trait Light[L <: HardwareLight] { val light: L }
 trait RgbLight extends Light[MultiStateHardwareLight]
 trait OnOffLight extends Light[OnOffHardwareLight]
 trait OnOffButton extends Button with OnOffLight
 
-case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button {
+trait Info { val info: MidiInfo }
+
+case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button with Info {
   protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
   val (on, off) = JamButton.infoActionMatchers(info)
@@ -61,7 +64,7 @@ object JamButton {
     }
 }
 
-case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight {
+case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight with Info {
   import JamColorState._
   val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
   var updatedColorState: JamColorState = JamColorState.empty
@@ -103,7 +106,7 @@ object JamColorState {
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
 }
 
-case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) {
+case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends Info {
   val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
   light.onUpdateHardware { () =>
     info.event match {
@@ -124,7 +127,8 @@ case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) {
   light.isOn.setValue(false)
 }
 
-case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJamExt) extends Button with RgbLight {
+case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJamExt) extends Button with RgbLight with Info {
+  val info = infoB
   val jamButton: JamButton = JamButton(infoB)
   val jamLight: JamRgbLight = JamRgbLight(infoL)
 
@@ -137,7 +141,7 @@ case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJ
   override val isPressed     : () => Boolean = button.isPressed.get
 }
 
-case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends OnOffButton {
+case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends OnOffButton with Info {
   val jamButton: JamButton = JamButton(info)
   val jamLight: JamOnOffLight = JamOnOffLight(info)
 
