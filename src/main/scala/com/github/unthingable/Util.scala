@@ -92,12 +92,12 @@ object JamSettings {
     val RegularPage = Value("page/single")
   }
 
-  trait EnumSetting[E <: Enumeration] {
-    def outerEnum: E
+  trait EnumSetting[A <: Enumeration] {
+    def outerEnum: A
     def setting: SettableEnumValue
-    def set(v: E#Value): Unit
-    def get(): E#Value
-    def addValueObserver(f: E#Value => Unit): Unit
+    def set(v: A#Value): Unit
+    def get(): A#Value
+    def addValueObserver(f: A#Value => Unit): Unit
   }
 
   def enumSetting[A <: Enumeration: ValueOf](p: Settings, s: String, category: String, init: A#Value) =

@@ -4,11 +4,11 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.NoteStep.State
 import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
 import com.github.unthingable.Util
-import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.jam.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Jam, ListeningLayer, SimpleModeLayer}
+import com.github.unthingable.jam.{Jam, ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
@@ -19,7 +19,7 @@ object StepMode extends Enumeration {
 
 trait StepSequencer { this: Jam =>
 
-  lazy val stepSequencer = new SimpleModeLayer("STEP") with ListeningLayer {
+  lazy val stepSequencer = new MultiModeLayer("STEP") with ListeningLayer {
     val rows = 8
     val cols = 128
     val clip   : PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(cols, rows)
@@ -29,6 +29,7 @@ trait StepSequencer { this: Jam =>
 
     devices.itemCount().addValueObserver(v => Util.println(v.toString))
     clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
+    clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
     // follow track selection
     ext.cursorTrack.position().addValueObserver(v => if (isOn) selectedClipTrack.selectChannel(ext.cursorTrack))
@@ -41,6 +42,7 @@ trait StepSequencer { this: Jam =>
       clip.getLoopStart,
       clip.getLoopLength,
       clip.playingStep(),
+      clip.color(),
       selectedClipTrack.color,
       ext.transport.isPlaying,
       devices.itemCount(), // hopefully this gets updated
@@ -49,15 +51,16 @@ trait StepSequencer { this: Jam =>
     // state
     var velocity: Int = 100
     var stepSize = 0.25
-    var patLength = 4
     var drumDevice: Option[Device] = None
     var stepMode: StepMode.Value = StepMode.One
     var noteOffset = 0
+    var stepOffset = 0
 
     // a mirror of the bitwig clip
     val steps: mutable.ArraySeq[mutable.ArraySeq[NoteStep]] = ArraySeq.fill(cols)(ArraySeq.fill(rows)(null))
 
     clip.setStepSize(stepSize)
+    clip.scrollToKey(12 * 3)
 
     //def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
@@ -72,17 +75,38 @@ trait StepSequencer { this: Jam =>
       case Eight => ???
     }
 
+    def scrollX(offset: Int) = {
+      clip.scrollToStep(offset)
+      stepOffset = offset
+    }
+
+    override val subModes: Seq[ModeLayer] = Vector(
+      new SimpleModeLayer("pat length") {
+        override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
+          JB(name,
+            j.matrix(idx / 8)(idx % 8),
+            () => clip.getPlayStop.set(idx),
+            () => (),
+            () => if (clip.getPlayStop.get() > idx)
+                    JamColorState(clip.color().get(), 2)
+                  else
+                    JamColorState.empty
+          )
+        }
+      }
+    )
+
     override val modeBindings: Seq[Binding[_, _, _]] =
       (for (col <- (0 until 8); row <- (0 until 4)) yield {
         val (stepNum, x, y) = stepView(row, col)
         Vector(
           SupColorStateB(j.matrix(row)(col).light, () => {
             // chasing light
-            if (ext.transport.isPlaying.get() && clip.playingStep().get() == col) // not right yet
+            if (ext.transport.isPlaying.get() && clip.playingStep().get() == x + stepOffset) // not right yet
               JamColorState(JAMColorBase.WHITE, 1)
             else {
               Option(steps(x)(y)).map(_.state() match {
-                case State.NoteOn      => JamColorState(JAMColorBase.RED, 1)
+                case State.NoteOn      => JamColorState(clip.color().get(), 1)
                 case State.NoteSustain => JamColorState(JAMColorBase.WHITE, 0)
                 case State.Empty       => JamColorState.empty
               }).getOrElse(JamColorState.empty)
@@ -95,8 +119,8 @@ trait StepSequencer { this: Jam =>
         def hasContent = clip.getPlayStop.get() > i * 32 * stepSize
 
         Vector(
-          HB(btn.pressedAction, "", () => if (hasContent) clip.scrollToStep(i * 32)),
-          SupColorB(btn.light, () => if (hasContent) selectedClipTrack.color().get() else Color.blackColor())
+          HB(btn.pressedAction, "", () => if (hasContent) scrollX(i * 32)),
+          SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor())
         )
       }
 
