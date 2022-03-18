@@ -170,4 +170,32 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       case x => "Unhandled sysex from controller: " + ext.host.println(x)
     }
   }
+
+  // key chords
+  object Combo {
+    case class JC(btn: Button*) {
+      btn.foreach { b =>
+        b.pressedAction.addBinding(a(onPress(b)))
+        b.releasedAction.addBinding(a(onRelease(b)))
+      }
+
+      val pressed     = FakeAction()
+      val releasedOne = FakeAction()
+      val releasedAll = FakeAction()
+
+      val isPressed: () => Boolean = () => btn.forall(_.isPressed())
+
+      private def notMe(b: Button): Seq[Button] = btn.filterNot(_ == b)
+      private def onPress(b: Button): Unit =
+        if (btn.forall(_.isPressed())) pressed.invoke()
+      private def onRelease(b: Button): Unit =
+        if (btn.forall(_.isPressed())) releasedOne.invoke()
+        else if (btn.forall(!_.isPressed())) releasedAll.invoke()
+
+      private def a(f: => Unit) = ext.host.createAction(() => f, () => "")
+    }
+
+    val ShiftDup = JC(Modifiers.Shift, duplicate)
+    val ShiftSolo = JC(Modifiers.Shift, solo)
+  }
 }

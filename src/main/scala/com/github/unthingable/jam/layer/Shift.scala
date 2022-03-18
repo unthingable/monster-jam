@@ -105,12 +105,4 @@ trait Shift { this: Jam with SceneL =>
       select(if (superSceneSub.isOn) 1 else 0)
     }
   }
-
-  lazy val globalShift = new ModeButtonLayer("globalShift", j.Modifiers.Shift, GateMode.Gate) {
-    val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
-    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.duplicate.pressedAction, "shift dup clip content", () => clip.duplicateContent())
-    )
-  }
-
 }

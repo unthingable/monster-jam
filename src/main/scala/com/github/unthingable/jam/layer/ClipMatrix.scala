@@ -1,6 +1,6 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{ClipLauncherSlot, ClipLauncherSlotBank, Track}
+import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, SupColorStateB}
 import com.github.unthingable.jam.{Jam, SimpleModeLayer}
 import com.github.unthingable.jam.surface.JamColor.JAMColorBase
@@ -12,6 +12,7 @@ import scala.collection.mutable
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)
+    val clip: Clip = ext.host.createLauncherCursorClip(0, 0)
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
@@ -22,7 +23,7 @@ trait ClipMatrix { this: Jam =>
 
       val pressedAt: mutable.Seq[PressedAt] = mutable.ArraySeq.fill(8)(PressedAt(Instant.now()))
 
-      (0 to 7).flatMap { row =>
+      EIGHT.flatMap { row =>
         val btn  = j.matrix(row)(col)
         val clip = clips.getItemAt(row)
         clip.color().markInterested()
@@ -39,9 +40,13 @@ trait ClipMatrix { this: Jam =>
           HB(btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
-    } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
-      source = None
-    }, tracked = false, behavior = BindingBehavior(managed = false))
+    } ++ Vector(
+      HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
+        source = None
+      }, tracked = false, behavior = BindingBehavior(managed = false)),
+      HB(j.Combo.ShiftDup.pressed, "shift dup clip content", () => clip.duplicateContent())
+    )
+
 
     // for duplication
     private var source: Option[ClipLauncherSlot] = None
