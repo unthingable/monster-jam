@@ -6,7 +6,7 @@ import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, Pinnab
 import com.github.unthingable.Util
 import com.github.unthingable.jam.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Jam, ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
 
@@ -103,11 +103,11 @@ trait StepSequencer { this: Jam =>
           SupColorStateB(j.matrix(row)(col).light, () => {
             // chasing light
             if (ext.transport.isPlaying.get() && clip.playingStep().get() == x + stepOffset) // not right yet
-              JamColorState(JAMColorBase.WHITE, 1)
+              JamColorState(JamColorBase.WHITE, 1)
             else {
               Option(steps(x)(y)).map(_.state() match {
                 case State.NoteOn      => JamColorState(clip.color().get(), 1)
-                case State.NoteSustain => JamColorState(JAMColorBase.WHITE, 0)
+                case State.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
                 case State.Empty       => JamColorState.empty
               }).getOrElse(JamColorState.empty)
             }

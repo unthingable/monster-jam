@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, SupColorStateB}
 import com.github.unthingable.jam.{Jam, SimpleModeLayer}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 
 import java.time.{Duration, Instant}
@@ -75,15 +75,15 @@ trait ClipMatrix { this: Jam =>
 
     private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
       if (GlobalMode.Select.isOn && clip.isSelected.get())
-        JamColorState(JAMColorBase.WHITE, 3)
+        JamColorState(JamColorBase.WHITE, 3)
       else if (!GlobalMode.Select.isOn && source.contains(clip))
-             JamColorState(JAMColorBase.WHITE, if (j.Modifiers.blink) 3 else 1)
+             JamColorState(JamColorBase.WHITE, if (j.Modifiers.blink) 3 else 1)
            else
              JamColorState(
                if (clip.hasContent.get())
                  JamColorState.toColorIndex(clip.color().get())
                else
-                 JAMColorBase.OFF,
+                 JamColorBase.OFF,
                brightness = {
                  if (clip.isPlaying.get())
                    if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1

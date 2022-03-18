@@ -4,7 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
 import com.github.unthingable.jam.binding.HB.action
 import com.github.unthingable.jam.binding._
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
 import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
 
@@ -156,6 +156,6 @@ trait TransportL { this: Jam =>
   }
   )
 
-  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JAMColorBase.YELLOW)
-  lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JAMColorBase.ORANGE)
+  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }

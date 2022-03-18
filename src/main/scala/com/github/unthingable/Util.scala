@@ -2,7 +2,7 @@ package com.github.unthingable
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Preferences, SettableBooleanValue, SettableEnumValue, Settings}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase.{CYAN, FUCHSIA, GREEN, LIME, MAGENTA, ORANGE, RED, YELLOW}
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.{CYAN, FUCHSIA, GREEN, LIME, MAGENTA, ORANGE, RED, YELLOW}
 
 import java.awt.event.ActionEvent
 import java.nio.ByteBuffer

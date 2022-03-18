@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam._
 import com.github.unthingable.jam.binding.HB.BindingOps
@@ -149,7 +149,7 @@ trait Control { this: Jam with MacroL =>
                   selectSlice(previousSlice)
               ),
               SupColorStateB(button.light, () => JamColorState(
-                if (selected.contains(idx + 1)) JAMColorBase.WHITE else Util.rainbow(idx),
+                if (selected.contains(idx + 1)) JamColorBase.WHITE else Util.rainbow(idx),
                 if (selected.contains(idx + 1)) 3 else 0
               ))
           )}
@@ -176,9 +176,9 @@ trait Control { this: Jam with MacroL =>
             ),
             SupColorStateB(j.groupButtons(idx).light, () =>
               if (currentUserPage == idx)
-                JamColorState(JAMColorBase.WHITE, 3)
+                JamColorState(JamColorBase.WHITE, 3)
               else
-                JamColorState(JAMColorBase.WHITE, 0))
+                JamColorState(JamColorBase.WHITE, 0))
           ))
         }
       }
@@ -257,15 +257,15 @@ trait Control { this: Jam with MacroL =>
         }
 
         def deviceColor(device: Device): Int = (device.isPlugin.get(), device.deviceType().get()) match {
-          case (false, "audio-effect") => JAMColorBase.ORANGE
-          case (false, "instrument")   => JAMColorBase.WARM_YELLOW
-          case (false, "note-effect")  => JAMColorBase.CYAN
-          case (true, "audio-effect")  => JAMColorBase.MAGENTA
-          case (true, "instrument")    => JAMColorBase.LIME
-          case (true, "note-effect")   => JAMColorBase.PLUM
+          case (false, "audio-effect") => JamColorBase.ORANGE
+          case (false, "instrument")   => JamColorBase.WARM_YELLOW
+          case (false, "note-effect")  => JamColorBase.CYAN
+          case (true, "audio-effect")  => JamColorBase.MAGENTA
+          case (true, "instrument")    => JamColorBase.LIME
+          case (true, "note-effect")   => JamColorBase.PLUM
           case (_, s)                  =>
             Util.println(s"unknown device $s")
-            JAMColorBase.RED
+            JamColorBase.RED
         }
 
         override val modeBindings: Seq[Binding[_, _, _]] = deviceBanks.zipWithIndex.flatMap { case (bank, col) =>

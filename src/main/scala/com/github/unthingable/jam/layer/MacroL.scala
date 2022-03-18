@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util.Timed
 import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{GateMode, IntActivatedLayer, Jam, ModeButtonLayer}
 
@@ -72,7 +72,7 @@ trait MacroL { this: Jam =>
         Vector(
           SupColorStateB(btn.light, () =>
             if (isSelected.get())
-              JamColorState(JAMColorBase.WHITE, 3)
+              JamColorState(JamColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
           HB(btn.pressedAction, "direct select track", () => select(track)),

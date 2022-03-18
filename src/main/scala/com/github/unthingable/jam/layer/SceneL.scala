@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Se
 import com.github.unthingable.Util
 import com.github.unthingable.jam.binding.HB.BindingOps
 import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorStateB}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 import com.github.unthingable.jam.{Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, TrackId}
 
@@ -29,7 +29,7 @@ trait SceneL { this: Jam =>
           if (scene.clipCount().get() > 0)
             JamColorState.toColorIndex(scene.color().get())
           else
-            JAMColorBase.OFF,
+            JamColorBase.OFF,
           1)),
         HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
     }
@@ -142,8 +142,8 @@ trait SceneL { this: Jam =>
         SupColorStateB(j.sceneButtons(idx).light, () =>
           JamColorState(
             if (superScenes(pageOffset + idx).isEmpty)
-              JAMColorBase.OFF
-            else if (lastScene.contains(pageOffset + idx)) JAMColorBase.WHITE
+              JamColorBase.OFF
+            else if (lastScene.contains(pageOffset + idx)) JamColorBase.WHITE
                  else (((pageOffset + idx) % 16) + 1) * 4,
             if (lastScene.contains(pageOffset + idx)) 2 else 0), JamColorState.empty),
       )
@@ -172,9 +172,9 @@ trait SceneL { this: Jam =>
           SupColorStateB(btn.light, () =>
             if (hasContent)
               if (ourPage)
-                JamColorState(JAMColorBase.WHITE, 2)
+                JamColorState(JamColorBase.WHITE, 2)
               else
-                JamColorState(JAMColorBase.WARM_YELLOW, 0)
+                JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
           HB(btn.pressedAction, "shift-scroll page $idx", () => {

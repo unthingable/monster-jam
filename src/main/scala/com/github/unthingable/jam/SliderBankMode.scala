@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parame
 import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
 
 import scala.collection.mutable
@@ -182,7 +182,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
             Some(Util.rainbow(idx))
           case _: Parameter     =>
             // a random parameter we know nothing about (probably from UserControlBank)
-            Some(JAMColorBase.RED)
+            Some(JamColorBase.RED)
         }).foreach(c => j.stripBank.setColor(idx, c))
 
       j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)

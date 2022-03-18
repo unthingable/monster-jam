@@ -1,7 +1,7 @@
 package com.github.unthingable.jam.surface
 
 object JamColor {
-  object JAMColorBase {
+  object JamColorBase {
     val OFF = 0
     val RED = 4 //1
     val ORANGE = 8 //2
