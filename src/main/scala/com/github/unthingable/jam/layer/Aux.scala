@@ -27,7 +27,7 @@ trait Aux { this: Jam =>
         color.markInterested()
 
         Vector(
-          HB(b.btn.pressedAction, s"aux select $idx", () => auxLayer.select(idx)),
+          HB(b.btn.pressed, s"aux select $idx", () => auxLayer.select(idx)),
           SupColorStateB(b.light, () =>
             (if (auxLayer.selected.contains(idx))
                JamColorState(JamColorBase.WHITE, 3)

@@ -11,8 +11,6 @@ import com.github.unthingable.{MonsterJamExt, Util}
 
 /* Surface model with all the controls, wired to MIDI */
 
-trait HasButton { val button: FakeButton }
-
 class JamSurface(implicit ext: MonsterJamExt) extends Util {
   implicit private val surfaceState = new SurfaceState {}
 
@@ -20,26 +18,15 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     val info = ext.xmlMap.button(id)
     val button = JamControl.button(info)
     val led = JamControl.onOffLight(info)
-    JamOnOffButton(button.asHas, led)
+    JamOnOffButton(id, button.asHas, led)
   }
 
   object Mod {
-    var Shift: OnOffButton with HasButton with HasName = new OnOffButton with HasButton with HasName {
-      val name = "SHIFT"
-      override val button: FakeButton         = FakeButton()
+    var Shift = new OnOffButton with HasId {
+      val id         = "SHIFT"
+      val fakeButton = new FakeButton()
       override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
-      override val pressedAction: HB.HBS      = button.pressedAction
-      override val releasedAction: HB.HBS     = button.releasedAction
-      override val isPressed: () => Boolean   = () => button.isPressed
-
-      // an inelegant repetition of JamButton, but this is the pattern we've got
-      override val pressedNC = FakeAction()
-      override val releasedNC = FakeAction()
-
-      button.pressedAction.addBinding(ext.a(if (shouldFire) pressedNC.invoke()))
-      button.releasedAction.addBinding(ext.a(if (shouldFire) releasedNC.invoke()))
-
-      private def shouldFire: Boolean = surfaceState.comboMap.get(name).exists(_.exists(_.isPressedAny()))
+      override val btn: ButtonActionSupplier  = fakeButton.asHas
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -89,10 +76,11 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
   object dpad {
     private def b(idx: Int) = {
-      val info = ext.xmlMap.button(s"BtnDpad$idx")
+      val id = s"BtnDpad$idx"
+      val info = ext.xmlMap.button(id)
       val button = JamControl.button(info)
       val led = JamControl.onOffLight(info)
-      JamOnOffButton(button.asHas, led)
+      JamOnOffButton(id, button.asHas, led)
     }
 
     val up: JamOnOffButton = b(1)
@@ -104,7 +92,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   /* Main section */
 
   val sceneButtons: Seq[JamRgbButton] = (1 to 8).map { idx =>
-    val btnInfo = ext.xmlMap.button(s"BtnScene${idx}")
+    val id = s"BtnScene${idx}"
+    val btnInfo = ext.xmlMap.button(id)
     // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
     val btnLedInfo = ext.xmlMap.led(s"BtnScene${idx}IDX").copy(channel = btnInfo.channel)
 
@@ -113,23 +102,25 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     button.setIndexInGroup(idx)
 
-    JamRgbButton(button.asHas, led)
+    JamRgbButton(id, button.asHas, led)
   }
 
   val matrix: Seq[Seq[JamRgbButton]] = (1 to 8).map { row =>
     ('A' to 'H').map { col =>
-      val btnInfo = ext.xmlMap.button(s"Btn$col$row", ext.xmlMap.matrixElems)
+      val id = s"Btn$col$row"
+      val btnInfo = ext.xmlMap.button(id, ext.xmlMap.matrixElems)
       val ledInfo = ext.xmlMap.led(s"Btn$col${row}IDX", ext.xmlMap.matrixElems)
 
       val button = JamControl.button(btnInfo)
       val led = JamControl.rgbLight(ledInfo)
 
-      JamRgbButton(button.asHas, led)
+      JamRgbButton(id, button.asHas, led)
     }
   }
 
   val groupButtons: Seq[JamRgbButton] = ('A' to 'H').map { idx =>
-    val btnInfo = ext.xmlMap.button(s"BtnGroup${idx}")
+    val id = id
+    val btnInfo = ext.xmlMap.button(id)
     // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
     val ledInfo = ext.xmlMap.led(s"BtnGroup${idx}IDX").copy(channel = btnInfo.channel)
 
@@ -138,7 +129,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     button.setIndexInGroup(idx)
 
-    JamRgbButton(button.asHas, led)
+    JamRgbButton(id, button.asHas, led)
   }
 
   // Touchstrips
@@ -187,9 +178,9 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        Mod.Shift.button.pressedAction.invoke()
+        Mod.Shift.fakeButton.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        Mod.Shift.button.releasedAction.invoke()
+        Mod.Shift.fakeButton.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()
@@ -208,8 +199,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   //private val onlyCache: mutable.Map[Button, Button] = mutable.Map.empty
 
 
-  import Combo.JC
-
-  val ShiftDup = JC(Mod.Shift, duplicate)
-  val ShiftSolo = JC(Mod.Shift, solo)
+  //import Combo.JC
+  //
+  //val ShiftDup = JC(Mod.Shift, duplicate)
+  //val ShiftSolo = JC(Mod.Shift, solo)
 }

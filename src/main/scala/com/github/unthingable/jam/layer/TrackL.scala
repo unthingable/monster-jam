@@ -97,16 +97,16 @@ trait TrackL { this: Jam =>
       SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Mod.blink3),
       SupBooleanB(j.dpad.left.light.isOn, () => true),
       SupBooleanB(j.dpad.right.light.isOn, () => true),
-      HB(j.dpad.up.btn.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),
-      HB(j.dpad.down.btn.pressedAction, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
-      HB(j.dpad.left.btn.pressedAction, "scroll left", () => scrollBy(idx - 7)),
-      HB(j.dpad.right.btn.pressedAction, "scroll right", () => scrollBy(idx)),
+      HB(j.dpad.up.btn.pressed, "exit group", () => ext.application.navigateToParentTrackGroup()),
+      HB(j.dpad.down.btn.pressed, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
+      HB(j.dpad.left.btn.pressed, "scroll left", () => scrollBy(idx - 7)),
+      HB(j.dpad.right.btn.pressed, "scroll right", () => scrollBy(idx)),
       SupBooleanB(j.solo.light.isOn, track.solo()),
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
       HB(j.only(j.solo).pressedAction, "track direct solo", track.solo().toggleAction()),
-      HB(j.mute.btn.pressedAction, "track direct mute", track.mute().toggleAction()),
-      HB(j.record.btn.pressedAction, "track direct arm", track.arm().toggleAction()),
+      HB(j.mute.btn.pressed, "track direct mute", track.mute().toggleAction()),
+      HB(j.record.btn.pressed, "track direct arm", track.arm().toggleAction()),
     )
   }
 
@@ -135,7 +135,7 @@ trait TrackL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
-      HB(j.master.btn.pressedAction, "focus on master", selectMaster),
+      HB(j.master.btn.pressed, "focus on master", selectMaster),
     )
   }
 

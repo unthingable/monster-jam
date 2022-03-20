@@ -250,19 +250,19 @@ abstract class ModeButtonCycleLayer(
   def lightOn: BooleanSupplier = () => isOn
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.btn.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
+    HB(modeButton.btn.pressed, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
   ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        HB(modeButton.btn.pressedAction, s"$name cycle", () => cycle(), tracked = false, exclusive = false)
+        HB(modeButton.btn.pressed, s"$name cycle", () => cycle(), tracked = false, exclusive = false)
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.btn.pressedAction, s"$name gate on", () => stickyPress(), tracked = false, exclusive = false),
-        HB(modeButton.btn.releasedAction, s"$name gate off", () => stickyRelease(), tracked = false, exclusive = false)
+        HB(modeButton.btn.pressed, s"$name gate on", () => stickyPress(), tracked = false, exclusive = false),
+        HB(modeButton.btn.released, s"$name gate off", () => stickyRelease(), tracked = false, exclusive = false)
       )
     case _                                 => Vector.empty
   }

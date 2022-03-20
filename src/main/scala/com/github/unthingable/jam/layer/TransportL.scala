@@ -57,15 +57,15 @@ trait TransportL { this: Jam =>
     }
 
     override val modeBindings = Vector(
-      HB(j.play.btn.pressedAction, "play pressed", playPressAction, tracked = false),
+      HB(j.play.btn.pressed, "play pressed", playPressAction, tracked = false),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
-      HB(j.noteRepeat.btn.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
-      HB(j.noteRepeat.btn.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
+      HB(j.noteRepeat.btn.pressed, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
+      HB(j.noteRepeat.btn.released, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
-      HB(j.record.btn.pressedAction, "record pressed", ext.transport.recordAction()),
+      HB(j.record.btn.pressed, "record pressed", ext.transport.recordAction()),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
 
-      HB(j.auto.btn.pressedAction, "auto pressed", () =>
+      HB(j.auto.btn.pressed, "auto pressed", () =>
         if (ext.transport.isAutomationOverrideActive.get())
           ext.transport.resetAutomationOverrides()
         else
@@ -91,7 +91,7 @@ trait TransportL { this: Jam =>
     auto.markInterested()
 
     def b(button: OnOffButton, name: String, param: SettableBooleanValue) = Vector(
-      HB(button.btn.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
+      HB(button.btn.pressed, s"shiftTransport $name pressed", () => param.toggle()),
       SupBooleanB(button.light.isOn, param)
     )
 
@@ -101,7 +101,7 @@ trait TransportL { this: Jam =>
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
     ).flatten ++ Vector(
-      HB(j.tempo.btn.pressedAction, "tap tempo", ext.transport.tapTempoAction(),
+      HB(j.tempo.btn.pressed, "tap tempo", ext.transport.tapTempoAction(),
         // not exclusive so that tap tempo doesn't mess with tempo layer
         tracked = false, behavior = BindingBehavior(exclusive = false))
     )
@@ -120,7 +120,7 @@ trait TransportL { this: Jam =>
       Vector(
         SupColorB(sceneButton.light, () =>
           if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-        HB(sceneButton.btn.pressedAction, "global quant grid", action(s"grid $idx", () => {
+        HB(sceneButton.btn.pressed, "global quant grid", action(s"grid $idx", () => {
           if (quant.get == enumValues(idx))
             quant.set("none")
           else
@@ -144,7 +144,7 @@ trait TransportL { this: Jam =>
     val gButton = group(idx)
 
     Vector(
-      HB(gButton.btn.pressedAction, s"group $idx pressed: $name", () => propValue.toggle()),
+      HB(gButton.btn.pressed, s"group $idx pressed: $name", () => propValue.toggle()),
       SupColorStateB(gButton.light, () => {
         (existsValue.get(), propValue.get()) match {
           case (false, _) => JamColorState.empty

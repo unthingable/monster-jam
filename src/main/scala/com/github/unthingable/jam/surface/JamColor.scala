@@ -1,5 +1,8 @@
 package com.github.unthingable.jam.surface
 
+import com.bitwig.extension.api.Color
+import com.bitwig.extension.controller.api.{HardwareLightVisualState, InternalHardwareLightState}
+
 object JamColor {
   object JamColorBase {
     val OFF = 0
@@ -23,3 +26,16 @@ object JamColor {
   }
 }
 
+case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
+  override def getVisualState: HardwareLightVisualState = null
+  val value: Int = if (brightness >= 0) color + brightness else 0
+}
+
+object JamColorState {
+  val empty: JamColorState = JamColorState(0, 0)
+
+  def apply(color: Color, brightness: Int): JamColorState = JamColorState(toColorIndex(color), brightness)
+
+  def toColorIndex(color: Color): Int =
+    NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
+}

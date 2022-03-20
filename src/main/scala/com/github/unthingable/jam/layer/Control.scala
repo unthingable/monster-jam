@@ -136,15 +136,15 @@ trait Control { this: Jam with MacroL =>
             SupBooleanB(j.left.light.isOn, () => true),
             SupBooleanB(j.right.light.isOn, () => true),
             // must press both and then release to deactivate, so that releases don't end up in remote layer
-            HB(j.left.btn.pressedAction, "slice left press", () => pressL = true),
-            HB(j.right.btn.pressedAction, "slice right press", () => pressR = true),
-            HB(j.left.btn.releasedAction, "slice left release", () => if (pressL && !j.right.btn.isPressed()) select(0)),
-            HB(j.right.btn.releasedAction, "slice right release", () => if (pressR && !j.left.btn.isPressed()) select(0)),
+            HB(j.left.btn.pressed, "slice left press", () => pressL = true),
+            HB(j.right.btn.pressed, "slice right press", () => pressR = true),
+            HB(j.left.btn.released, "slice left release", () => if (pressL && !j.right.btn.isPressed()) select(0)),
+            HB(j.right.btn.released, "slice right release", () => if (pressR && !j.left.btn.isPressed()) select(0)),
           ) ++ EIGHT.flatMap { idx =>
             val button = j.groupButtons(idx)
             Vector(
-              HB(button.btn.pressedAction, s"control slice $idx", () => selectSlice(idx)),
-              HB(button.btn.releasedAction, s"control slice $idx release", () =>
+              HB(button.btn.pressed, s"control slice $idx", () => selectSlice(idx)),
+              HB(button.btn.released, s"control slice $idx release", () =>
                 if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
                   selectSlice(previousSlice)
               ),

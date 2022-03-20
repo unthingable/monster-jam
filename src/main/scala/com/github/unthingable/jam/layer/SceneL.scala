@@ -177,7 +177,7 @@ trait SceneL { this: Jam =>
                 JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
-          HB(btn.btn.pressedAction, "shift-scroll page $idx", () => {
+          HB(btn.btn.pressed, "shift-scroll page $idx", () => {
             trackBank.scrollPosition().set(col * 8)
             sceneBank.scrollPosition().set(row * 8)}))
       }).flatten
@@ -211,8 +211,8 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      HB(j.song.btn.pressedAction, "sceneCycle pressed", () => press()),
-      HB(j.song.btn.releasedAction, "sceneCycle released", () => release()),
+      HB(j.song.btn.pressed, "sceneCycle pressed", () => press()),
+      HB(j.song.btn.released, "sceneCycle released", () => release()),
     )
   }
 }

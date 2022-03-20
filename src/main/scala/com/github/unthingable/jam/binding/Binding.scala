@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.Graph
 import com.github.unthingable.jam.binding.HB.HBS
-import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
+import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton, RgbButton}
 
 import java.time.Instant
 import java.util.function.{BooleanSupplier, Supplier}
@@ -130,19 +130,19 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 }
 
 object JB extends BindingDSL {
-  def apply(name: String, b: JamRgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+  def apply(name: String, b: RgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (implicit ext: MonsterJamExt) =
     Vector(
       SupColorStateB(b.light, color),
-      HB(b.btn.pressedAction, s"$name press", press),
-      HB(b.btn.releasedAction, s"$name release", release),
+      HB(b.btn.pressed, s"$name press", press),
+      HB(b.btn.released, s"$name release", release),
     )
 
-  def apply(name: String, b: JamOnOffButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+  def apply(name: String, b: OnOffButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
     (implicit ext: MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
-      HB(b.btn.pressedAction, s"$name press", press),
-      HB(b.btn.releasedAction, s"$name release", release),
+      HB(b.btn.pressed, s"$name press", press),
+      HB(b.btn.released, s"$name release", release),
     )
 }

@@ -75,8 +75,8 @@ trait MacroL { this: Jam =>
               JamColorState(JamColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
-          HB(btn.btn.pressedAction, "direct select track", () => select(track)),
-          HB(btn.btn.releasedAction, "direct select release", () => ()),
+          HB(btn.btn.pressed, "direct select track", () => select(track)),
+          HB(btn.btn.released, "direct select release", () => ()),
         )
       }
   }

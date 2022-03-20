@@ -36,8 +36,8 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          HB(btn.btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          HB(btn.btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          HB(btn.btn.pressed, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
+          HB(btn.btn.released, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
     } ++ Vector(

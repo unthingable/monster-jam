@@ -30,10 +30,10 @@ trait Dpad { this: Jam =>
     }
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.dpad.left.btn.pressedAction, "page left", scroll(false, trackBank)),
-      HB(j.dpad.right.btn.pressedAction, "page right", scroll(true, trackBank)),
-      HB(j.dpad.up.btn.pressedAction, "page up", scroll(false, sceneBank)),
-      HB(j.dpad.down.btn.pressedAction, "page down", scroll(true, sceneBank)),
+      HB(j.dpad.left.btn.pressed, "page left", scroll(false, trackBank)),
+      HB(j.dpad.right.btn.pressed, "page right", scroll(true, trackBank)),
+      HB(j.dpad.up.btn.pressed, "page up", scroll(false, sceneBank)),
+      HB(j.dpad.down.btn.pressed, "page down", scroll(true, sceneBank)),
     ) ++ actionMap.map { case (b: JamOnOffButton, e: BooleanValue) =>
       SupBooleanB(b.light.isOn, e)
     }
