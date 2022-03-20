@@ -36,15 +36,15 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          HB(btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          HB(btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          HB(btn.btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
+          HB(btn.btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
     } ++ Vector(
       HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
         source = None
-      }, tracked = false, behavior = BindingBehavior(managed = false)),
-      HB(j.Combo.ShiftDup.pressed, "shift dup clip content", () => clip.duplicateContent())
+      }, tracked = false, managed = false),
+      HB(j.ShiftDup.pressed, "shift dup clip content", () => clip.duplicateContent())
     )
 
 
@@ -77,7 +77,7 @@ trait ClipMatrix { this: Jam =>
       if (GlobalMode.Select.isOn && clip.isSelected.get())
         JamColorState(JamColorBase.WHITE, 3)
       else if (!GlobalMode.Select.isOn && source.contains(clip))
-             JamColorState(JamColorBase.WHITE, if (j.Modifiers.blink) 3 else 1)
+             JamColorState(JamColorBase.WHITE, if (j.Mod.blink) 3 else 1)
            else
              JamColorState(
                if (clip.hasContent.get())
@@ -86,9 +86,9 @@ trait ClipMatrix { this: Jam =>
                  JamColorBase.OFF,
                brightness = {
                  if (clip.isPlaying.get())
-                   if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
+                   if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
                    else 3
-                 else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
+                 else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
                       else 0
                }
              )

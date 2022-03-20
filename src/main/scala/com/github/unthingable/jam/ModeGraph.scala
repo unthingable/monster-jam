@@ -113,10 +113,10 @@ object Graph {
     ext.host.scheduleTask(() =>
     {
       // activate entry nodes
-      entryNodes.foreach(activate)
+      entryNodes.foreach(activate("init entry"))
 
       // activate init layers
-      init.flatMap(layerMap.get).foreach(activate)
+      init.flatMap(layerMap.get).foreach(activate("init"))
     }, 100)
 
     def indexLayer(l: ModeLayer): ModeNode = {
@@ -126,19 +126,15 @@ object Graph {
     }
 
     def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} activate", () => {
-      activate(node)
+      activate("by action")(node)
     })
 
     def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.name} deactivate", () => {
-      Util.println(s">> deactivate action ${node.layer.name}")
-
-      // why is it sometimes being fired twice? no idea, but let's protect:
-      if (node.isActive)
-        deactivate(node)
+      deactivate("by action")(node)
     })
 
-    private def activate(node: ModeNode): Unit = {
-      Util.println(s"activating node ${node.layer.name}")
+    private def activate(reason: String)(node: ModeNode): Unit = {
+      Util.println(s"activating node ${node.layer.name}: $reason")
 
       // Deactivate exclusive
       val bumpedExc: Iterable[ModeNode] = exclusiveGroups.get(node).toVector
@@ -148,7 +144,7 @@ object Graph {
           .filter(_ != node) // this really shouldn't happen unless the node didn't properly deactivate
           .flatMap { n =>
             Util.println(s"exc: ${node.layer.name} deactivates ${n.layer.name}")
-            deactivate(n)
+            deactivate(s"bumped by ${node.layer.name}")(n)
             None
           })
 
@@ -193,14 +189,14 @@ object Graph {
       Util.println(s"-- activated ${node.layer.name} ---")
     }
 
-    private def deactivate(node: ModeNode): Unit = {
-      Util.println(s"deactivating node ${node.layer.name}")
+    private def deactivate(reason: String)(node: ModeNode): Unit = {
+      Util.println(s"deactivating node ${node.layer.name}: $reason")
       node.isActive = false
       node.layer.deactivate()
       node.nodeBindings.foreach(unbind)
 
       // restore base
-      node.nodesToRestore.foreach(activate)
+      node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.name}"))
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()

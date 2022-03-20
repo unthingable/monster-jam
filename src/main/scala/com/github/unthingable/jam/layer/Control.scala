@@ -50,7 +50,7 @@ trait Control { this: Jam with MacroL =>
     /* User mode */
     override def lightOn: BooleanSupplier = () =>
       if (deviceSelector.isOn && deviceSelector.selected.contains(0))
-        j.Modifiers.blink
+        j.Mod.blink
       else
         isOn
 
@@ -136,15 +136,15 @@ trait Control { this: Jam with MacroL =>
             SupBooleanB(j.left.light.isOn, () => true),
             SupBooleanB(j.right.light.isOn, () => true),
             // must press both and then release to deactivate, so that releases don't end up in remote layer
-            HB(j.left.pressedAction, "slice left press", () => pressL = true),
-            HB(j.right.pressedAction, "slice right press", () => pressR = true),
-            HB(j.left.releasedAction, "slice left release", () => if (pressL && !j.right.isPressed()) select(0)),
-            HB(j.right.releasedAction, "slice right release", () => if (pressR && !j.left.isPressed()) select(0)),
+            HB(j.left.btn.pressedAction, "slice left press", () => pressL = true),
+            HB(j.right.btn.pressedAction, "slice right press", () => pressR = true),
+            HB(j.left.btn.releasedAction, "slice left release", () => if (pressL && !j.right.btn.isPressed()) select(0)),
+            HB(j.right.btn.releasedAction, "slice right release", () => if (pressR && !j.left.btn.isPressed()) select(0)),
           ) ++ EIGHT.flatMap { idx =>
             val button = j.groupButtons(idx)
             Vector(
-              HB(button.pressedAction, s"control slice $idx", () => selectSlice(idx)),
-              HB(button.releasedAction, s"control slice $idx release", () =>
+              HB(button.btn.pressedAction, s"control slice $idx", () => selectSlice(idx)),
+              HB(button.btn.releasedAction, s"control slice $idx release", () =>
                 if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
                   selectSlice(previousSlice)
               ),
@@ -288,8 +288,8 @@ trait Control { this: Jam with MacroL =>
                         JamColorState(
                           deviceColor(device),
                           (isSelected.get(), device.isEnabled.get()) match {
-                            case (true, true) => if (j.Modifiers.blink3) 3 else 0
-                            case (true, false) => if (j.Modifiers.blink3) 2 else 0
+                            case (true, true) => if (j.Mod.blink3) 3 else 0
+                            case (true, false) => if (j.Mod.blink3) 2 else 0
                             case (false, true) => 2
                             case (false, false) => 0
                           })

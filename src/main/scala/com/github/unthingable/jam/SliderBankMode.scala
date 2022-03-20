@@ -69,7 +69,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       import Event._
       import State._
 
-      val shiftOn = j.Modifiers.Shift.isPressed()
+      val shiftOn = j.Mod.Shift.isPressed()
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
@@ -144,12 +144,12 @@ abstract class SliderBankMode[P <: ObjectProxy](
     import Event._
     if (paramKnowsValue)
       Vector(
-        HB(j.clear.pressedAction, s"clear $idx pressed", () => engage(ClearP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.clear.releasedAction, s"clear $idx released", () => engage(ClearR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, BindingBehavior(exclusive = false)),
-        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = true, BindingBehavior(exclusive = false)),
+        HB(j.clear.pressedAction, s"clear $idx pressed", () => engage(ClearP), tracked = false, exclusive = false),
+        HB(j.clear.releasedAction, s"clear $idx released", () => engage(ClearR), tracked = false, exclusive = false),
+        HB(j.Mod.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, exclusive = false),
+        HB(j.Mod.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, exclusive = false),
+        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, exclusive = false),
+        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = true, exclusive = false),
       )
     else Vector.empty
   }

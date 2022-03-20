@@ -22,13 +22,13 @@ trait Aux { this: Jam =>
   ) {
     val bank = ext.host.createEffectTrackBank(8, 1)
     override val modeBindings: Seq[Binding[_, _, _]] =
-      j.groupButtons.zipWithIndex.flatMap { case (btn, idx) =>
+      j.groupButtons.zipWithIndex.flatMap { case (b, idx) =>
         val color = bank.getItemAt(idx).color()
         color.markInterested()
 
         Vector(
-          HB(btn.pressedAction, s"aux select $idx", () => auxLayer.select(idx)),
-          SupColorStateB(btn.light, () =>
+          HB(b.btn.pressedAction, s"aux select $idx", () => auxLayer.select(idx)),
+          SupColorStateB(b.light, () =>
             (if (auxLayer.selected.contains(idx))
                JamColorState(JamColorBase.WHITE, 3)
              else

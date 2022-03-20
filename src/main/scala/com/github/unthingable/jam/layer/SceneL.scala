@@ -177,7 +177,7 @@ trait SceneL { this: Jam =>
                 JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
-          HB(btn.pressedAction, "shift-scroll page $idx", () => {
+          HB(btn.btn.pressedAction, "shift-scroll page $idx", () => {
             trackBank.scrollPosition().set(col * 8)
             sceneBank.scrollPosition().set(row * 8)}))
       }).flatten
@@ -194,7 +194,7 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.isPressed()) pageMatrix.activateAction.invoke(), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed()) pageMatrix.activateAction.invoke(), 50)
     }
 
     def release(): Unit = {
@@ -211,8 +211,8 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      HB(j.song.pressedAction, "sceneCycle pressed", () => press()),
-      HB(j.song.releasedAction, "sceneCycle released", () => release()),
+      HB(j.song.btn.pressedAction, "sceneCycle pressed", () => press()),
+      HB(j.song.btn.releasedAction, "sceneCycle released", () => release()),
     )
   }
 }

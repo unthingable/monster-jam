@@ -45,6 +45,9 @@ case class MonsterJamExt(
         }, wait)
     }
   }
+
+  // for when you need a quick action
+  def a(f: => Unit): HardwareActionBindable = host.createAction(() => f, () => "")
 }
 
 class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {

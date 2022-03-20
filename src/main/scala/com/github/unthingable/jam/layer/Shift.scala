@@ -11,7 +11,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
    * Shift matrix row
    */
-  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Modifiers.Shift, GateMode.Gate) {
+  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Mod.Shift, GateMode.Gate) {
     val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
     override val modeBindings: Seq[Binding[_, _, _]] =
       (Vector(
@@ -25,12 +25,12 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
         (JamColorBase.FUCHSIA, () => clip.transpose(12)),
       ).zipWithIndex.flatMap { case ((color, action), idx) =>
         val button = j.matrix(0)(idx)
-        Vector(HB(button.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
+        Vector(HB(button.btn.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
           if (ext.preferences.shiftRow.get())
             Vector(SupColorStateB(
               button.light, () => JamColorState(
                 color,
-                brightness = if (button.isPressed()) 2 else 0),
+                brightness = if (button.btn.isPressed()) 2 else 0),
               JamColorState.empty))
           else Vector.empty
           )
@@ -42,16 +42,15 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
           else JamColorState(JamColorBase.YELLOW, 0)
         )) else Vector.empty)
        ++ Vector(
-        HB(j.matrix(1)(0).pressedAction, "toggle hide disabled", () => {
+        HB(j.matrix(1)(0).btn.pressedAction, "toggle hide disabled", () => {
           if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
             ext.docPrefs.hideDisabled.set(ShowHide.Show)
           else ext.docPrefs.hideDisabled.set(ShowHide.Hide)
         }),
-        HB(j.Combo.ShiftSolo.pressed, "shift-solo pressed", () => stepSequencer.patLength.activateAction.invoke())
       ))
   }
 
-  lazy val shiftPages = new ModeButtonCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.Gate) {
+  lazy val shiftPages = new ModeButtonCycleLayer("shiftPages", j.Mod.Shift, CycleMode.Gate) {
     trackBank.itemCount().markInterested()
     trackBank.scrollPosition().markInterested()
     sceneBank.itemCount().markInterested()
@@ -67,7 +66,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
             JamColorState(JamColorBase.WARM_YELLOW, 0)
         else JamColorState.empty
         , JamColorState.empty),
-      HB(btn(idx).pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
+      HB(btn(idx).btn.pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
     )
 
     val trackPages: Vector[Binding[_, _, _]] =
@@ -77,11 +76,11 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
         Vector.empty
 
     override val subModes = Vector(
-      new SimpleModeLayer("scene pages") {
+      new SimpleModeLayer("scenePagesSub") {
         override val modeBindings: Vector[Binding[_, _, _]] =
           EIGHT.flatMap(bankB(sceneBank, j.sceneButtons, _)) ++ trackPages
       },
-      new SimpleModeLayer("superscene pages") {
+      new SimpleModeLayer("superscenePagesSub") {
         override val modeBindings: Vector[Binding[_, _, _]] = {
           trackPages ++
           EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
@@ -94,7 +93,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
                           JamColorState(JamColorBase.ORANGE, 0)
                         else JamColorState.empty
               , JamColorState.empty),
-            HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superSceneSub.pageIndex = idx)
+            HB(j.sceneButtons(idx).btn.pressedAction, "super scene page $idx", () => superSceneSub.pageIndex = idx)
           ))
         }
       }

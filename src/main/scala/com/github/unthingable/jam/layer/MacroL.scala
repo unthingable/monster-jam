@@ -18,7 +18,7 @@ trait MacroL { this: Jam =>
     override def activate(): Unit = {
       super.activate()
       // dirty hack to show user controls
-      if (j.control.isPressed()) {
+      if (j.control.btn.isPressed()) {
         // CONTROL is already active, just need to toggle
         if (!controlLayer.isUserSelected) {
           controlToggleSub = controlLayer.selected
@@ -75,8 +75,8 @@ trait MacroL { this: Jam =>
               JamColorState(JamColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
-          HB(btn.pressedAction, "direct select track", () => select(track)),
-          HB(btn.releasedAction, "direct select release", () => ()),
+          HB(btn.btn.pressedAction, "direct select track", () => select(track)),
+          HB(btn.btn.releasedAction, "direct select release", () => ()),
         )
       }
   }

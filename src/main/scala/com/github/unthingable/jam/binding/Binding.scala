@@ -21,9 +21,9 @@ trait Named {
 }
 
 /**
- * Unmanaged/exclusive bindings are to be left alone when modes are removed
+ * Unmanaged/exclusive bindings are to be left alone when modes are deactivated
  *
- * @param managed bind and stay bound
+ * @param managed bind and stay bound if unmanaged
  * @param exclusive bumps other bindings
  */
 case class BindingBehavior(
@@ -101,15 +101,10 @@ case class HB(
 }
 
 object HB extends BindingDSL {
-  def apply(source: HBS, name: String, target: () => Unit)
+  def apply(source: HBS, name: String, target: () => Unit,
+    tracked: Boolean = true, managed: Boolean = true, exclusive: Boolean = true)
     (implicit ext: MonsterJamExt): HB =
-    new HB(source, name, action(name, target))
-  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean)
-    (implicit ext: MonsterJamExt): HB =
-    new HB(source, name, action(name, target), tracked = tracked)
-  def apply(source: HBS, name: String, target: () => Unit, tracked: Boolean, behavior: BindingBehavior)
-    (implicit ext: MonsterJamExt): HB =
-    new HB(source, name, action(name, target), tracked = tracked, behavior = behavior)
+    new HB(source, name, action(name, target), tracked, BindingBehavior(managed, exclusive))
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -135,19 +130,19 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 }
 
 object JB extends BindingDSL {
-  def apply(name: String, btn: JamRgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+  def apply(name: String, b: JamRgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (implicit ext: MonsterJamExt) =
     Vector(
-      SupColorStateB(btn.light, color),
-      HB(btn.pressedAction, s"$name ${btn.info.id} press", press),
-      HB(btn.releasedAction, s"$name ${btn.info.id} release", release),
+      SupColorStateB(b.light, color),
+      HB(b.btn.pressedAction, s"$name press", press),
+      HB(b.btn.releasedAction, s"$name release", release),
     )
 
-  def apply(name: String, btn: JamOnOffButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+  def apply(name: String, b: JamOnOffButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
     (implicit ext: MonsterJamExt) =
     Vector(
-      SupBooleanB(btn.light.isOn, isOn),
-      HB(btn.pressedAction, s"$name ${btn.info.id} press", press),
-      HB(btn.releasedAction, s"$name ${btn.info.id} release", release),
+      SupBooleanB(b.light.isOn, isOn),
+      HB(b.btn.pressedAction, s"$name press", press),
+      HB(b.btn.releasedAction, s"$name release", release),
     )
 }

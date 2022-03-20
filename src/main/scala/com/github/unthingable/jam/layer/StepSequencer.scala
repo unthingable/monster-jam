@@ -29,7 +29,7 @@ trait StepSequencer { this: Jam =>
 
     devices.itemCount().addValueObserver(v => Util.println(v.toString))
     clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
-    clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
+    //clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
     // follow track selection
     ext.cursorTrack.position().addValueObserver(v => if (isOn) selectedClipTrack.selectChannel(ext.cursorTrack))
@@ -55,6 +55,7 @@ trait StepSequencer { this: Jam =>
     var stepMode: StepMode.Value = StepMode.One
     var noteOffset = 0
     var stepOffset = 0
+    var newPatLength = 4
 
     // a mirror of the bitwig clip
     val steps: mutable.ArraySeq[mutable.ArraySeq[NoteStep]] = ArraySeq.fill(cols)(ArraySeq.fill(rows)(null))
@@ -80,24 +81,30 @@ trait StepSequencer { this: Jam =>
       stepOffset = offset
     }
 
+    lazy val patLength = new SimpleModeLayer("patLength") {
+      override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
+        JB(name,
+          j.matrix(idx / 8)(idx % 8),
+          () => { Util.println(s"set playStop $idx")
+            newPatLength = idx + 1
+            clip.getPlayStop.set(idx.toDouble + 1)},
+          () => (),
+          () => if (clip.getPlayStop.get() > idx)
+                  JamColorState(clip.color().get(), 2)
+                else
+                  JamColorState.empty
+        )
+      } ++ Vector(
+        //HB(j.solo.pressedAction, "", () => deactivateAction.invoke()),
+        SupBooleanB(j.solo.light.isOn, () => true))
+    }
+
     override val subModes: Seq[ModeLayer] = Vector(
-      new SimpleModeLayer("pat length") {
-        override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
-          JB(name,
-            j.matrix(idx / 8)(idx % 8),
-            () => clip.getPlayStop.set(idx),
-            () => (),
-            () => if (clip.getPlayStop.get() > idx)
-                    JamColorState(clip.color().get(), 2)
-                  else
-                    JamColorState.empty
-          )
-        }
-      }
+      patLength
     )
 
     override val modeBindings: Seq[Binding[_, _, _]] =
-      (for (col <- (0 until 8); row <- (0 until 4)) yield {
+      (for (col <- EIGHT; row <- EIGHT) yield {
         val (stepNum, x, y) = stepView(row, col)
         Vector(
           SupColorStateB(j.matrix(row)(col).light, () => {
@@ -112,20 +119,23 @@ trait StepSequencer { this: Jam =>
               }).getOrElse(JamColorState.empty)
             }
           }),
-          HB(j.matrix(row)(col).pressedAction, "", () => clip.toggleStep(x, y, 100)))
+          HB(j.matrix(row)(col).btn.pressedAction, "", () => clip.toggleStep(x, y, 100)))
       }).flatten ++
       EIGHT.flatMap { i =>
         val btn = j.sceneButtons(i)
         def hasContent = clip.getPlayStop.get() > i * 32 * stepSize
 
         Vector(
-          HB(btn.pressedAction, "", () => if (hasContent) scrollX(i * 32)),
-          SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor())
+          HB(btn.btn.pressedAction, "", () => if (hasContent) scrollX(i * 32)),
+          SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor()),
         )
-      }
+      } ++ Vector(
+        HB(j.Combo.ShiftSolo.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
+        HB(j.Combo.ShiftSolo.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
+      )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.step.pressedAction, "step toggle", () => toggleAction.invoke()),
+      HB(j.step.btn.pressedAction, "step toggle", () => toggleAction.invoke()),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

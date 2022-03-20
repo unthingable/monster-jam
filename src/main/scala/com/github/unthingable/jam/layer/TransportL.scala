@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, Set
 import com.github.unthingable.jam.binding.HB.action
 import com.github.unthingable.jam.binding._
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
+import com.github.unthingable.jam.surface.{Button, JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
 import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
 
 trait TransportL { this: Jam =>
@@ -19,9 +19,9 @@ trait TransportL { this: Jam =>
     Vector(
       HB(j.encoder.turn, "tempo turn", ext.host.createRelativeHardwareControlStepTarget(
         action("inc tempo", () => ext.transport.increaseTempo(1,
-          647 * (if (j.Modifiers.Shift.isPressed()) 20 else 1))),
+          647 * (if (j.Mod.Shift.btn.isPressed()) 20 else 1))),
         action("dec tempo", () => ext.transport.increaseTempo(-1,
-          647 * (if (j.Modifiers.Shift.isPressed()) 20 else 1)))))))
+          647 * (if (j.Mod.Shift.btn.isPressed()) 20 else 1)))))))
 
   lazy val play = new SimpleModeLayer("play") {
     ext.transport.isPlaying.markInterested()
@@ -33,7 +33,7 @@ trait TransportL { this: Jam =>
     val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
       val isPlaying = ext.transport.isPlaying
       val t         = ext.transport
-      (isPlaying.get(), j.Modifiers.Shift.isPressed()) match {
+      (isPlaying.get(), j.Mod.Shift.btn.isPressed()) match {
         // just play
         case (true, false) => t.play()
         // restart (and stop)
@@ -57,15 +57,15 @@ trait TransportL { this: Jam =>
     }
 
     override val modeBindings = Vector(
-      HB(j.play.pressedAction, "play pressed", playPressAction, tracked = false),
+      HB(j.play.btn.pressedAction, "play pressed", playPressAction, tracked = false),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
-      HB(j.noteRepeat.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
-      HB(j.noteRepeat.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
+      HB(j.noteRepeat.btn.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
+      HB(j.noteRepeat.btn.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
-      HB(j.record.pressedAction, "record pressed", ext.transport.recordAction()),
+      HB(j.record.btn.pressedAction, "record pressed", ext.transport.recordAction()),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
 
-      HB(j.auto.pressedAction, "auto pressed", () =>
+      HB(j.auto.btn.pressedAction, "auto pressed", () =>
         if (ext.transport.isAutomationOverrideActive.get())
           ext.transport.resetAutomationOverrides()
         else
@@ -73,14 +73,14 @@ trait TransportL { this: Jam =>
       ),
       SupBooleanB(j.auto.light.isOn, () =>
         if (ext.transport.isAutomationOverrideActive.get())
-          j.Modifiers.blink
+          j.Mod.blink
         else
           ext.transport.isArrangerAutomationWriteEnabled.get()
       )
     )
   }
 
-  lazy val shiftTransport = new ModeButtonLayer("shiftTransport", j.Modifiers.Shift, GateMode.Gate) {
+  lazy val shiftTransport = new ModeButtonLayer("shiftTransport", j.Mod.Shift, GateMode.Gate) {
     val loop   : SettableBooleanValue = ext.transport.isArrangerLoopEnabled
     val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
     val metro                         = ext.transport.isMetronomeEnabled
@@ -91,7 +91,7 @@ trait TransportL { this: Jam =>
     auto.markInterested()
 
     def b(button: OnOffButton, name: String, param: SettableBooleanValue) = Vector(
-      HB(button.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
+      HB(button.btn.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
       SupBooleanB(button.light.isOn, param)
     )
 
@@ -101,7 +101,7 @@ trait TransportL { this: Jam =>
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
     ).flatten ++ Vector(
-      HB(j.tempo.pressedAction, "tap tempo", ext.transport.tapTempoAction(),
+      HB(j.tempo.btn.pressedAction, "tap tempo", ext.transport.tapTempoAction(),
         // not exclusive so that tap tempo doesn't mess with tempo layer
         tracked = false, behavior = BindingBehavior(exclusive = false))
     )
@@ -120,7 +120,7 @@ trait TransportL { this: Jam =>
       Vector(
         SupColorB(sceneButton.light, () =>
           if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-        HB(sceneButton.pressedAction, "global quant grid", action(s"grid $idx", () => {
+        HB(sceneButton.btn.pressedAction, "global quant grid", action(s"grid $idx", () => {
           if (quant.get == enumValues(idx))
             quant.set("none")
           else
@@ -131,7 +131,7 @@ trait TransportL { this: Jam =>
 
   def buttonGroupChannelMode(
     name: String,
-    modeButton: JamOnOffButton,
+    modeButton: Button,
     group: Seq[JamRgbButton],
     prop: Channel => SettableBooleanValue,
     color: Int // Jam's color index
@@ -144,7 +144,7 @@ trait TransportL { this: Jam =>
     val gButton = group(idx)
 
     Vector(
-      HB(gButton.pressedAction, s"group $idx pressed: $name", () => propValue.toggle()),
+      HB(gButton.btn.pressedAction, s"group $idx pressed: $name", () => propValue.toggle()),
       SupColorStateB(gButton.light, () => {
         (existsValue.get(), propValue.get()) match {
           case (false, _) => JamColorState.empty
@@ -156,6 +156,6 @@ trait TransportL { this: Jam =>
   }
   )
 
-  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
   lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }

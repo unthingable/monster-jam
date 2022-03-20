@@ -3,9 +3,12 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
+import com.github
+import com.github.unthingable
+import com.github.unthingable.jam.binding
 import com.github.unthingable.jam.binding.HB
 import com.github.unthingable.jam.binding.HB.HBS
-import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.{MonsterJamExt, Util, jam}
 import com.github.unthingable.jam.surface.BlackSysexMagic.{BarMode, createCommand}
 
 import scala.collection.mutable
@@ -16,15 +19,76 @@ import scala.util.Try
 Jam controls, self-wired to midi
  */
 
-sealed trait JamControl
+case class ButtonActions(pressed: HBS, released: HBS, isPressed: () => Boolean)
 
+trait ButtonActionSupplier {
+  def pressedAction : HBS
+  def releasedAction: HBS
+  def isPressed     : () => Boolean
+}
 
-trait Button extends JamControl {
-  val pressedAction: HBS
+sealed trait Button {
+  def btn: ButtonActionSupplier
+}
 
-  val releasedAction: HBS
+sealed trait HwButton {
+  def hwb: HardwareButton
+}
 
-  val isPressed: () => Boolean
+trait SurfaceState {
+  /**
+   * A button and all its combo neighbors
+   */
+  val comboMap: mutable.Map[String, Set[Combo.JC]] = mutable.Map.empty
+}
+
+// key chords
+object Combo {
+  implicit private val surfaceState: SurfaceState = new SurfaceState {}
+
+  type NamedButton = Button with HasName
+  // a button combo is like a micro mode that's always on
+  case class JC(b1: NamedButton, bb: NamedButton*)(implicit ext: MonsterJamExt) {
+    val buttons: Seq[NamedButton] = b1 +: bb
+
+    buttons.foreach { b =>
+      b.raw.pressed.addBinding(ext.a(onPress(b)))
+      b.raw.released.addBinding(ext.a(onRelease(b)))
+      surfaceState.comboMap.updateWith(b.name)(_.map(cc => cc + this))
+    }
+
+    private var keysOn: Int     = 0
+    private var allOn : Boolean = false
+
+    val pressed     = FakeAction() // all combo buttons pressed
+    val releasedOne = FakeAction() // combo no longer fully held
+    val releasedAll = FakeAction() // all combo buttons released
+
+    val isPressedAll: () => Boolean = () => keysOn == buttons.size
+    val isPressedAny: () => Boolean = () => keysOn > 0
+
+    private def onPress(b: Button): Unit = {
+      val newState = keysOn + 1
+      if (newState == buttons.size) {
+        if (!allOn) {
+          pressed.invoke()
+          allOn = true
+        }
+      }
+      keysOn = newState
+    }
+
+    private def onRelease(b: Button): Unit = {
+      val newState = keysOn - 1
+      if (newState == buttons.size - 1)
+        releasedOne.invoke()
+      if (newState == 0 && allOn) {
+        releasedAll.invoke()
+        allOn = false
+      }
+      keysOn = newState
+    }
+  }
 }
 
 trait Light[L <: HardwareLight] { val light: L }
@@ -32,21 +96,115 @@ trait RgbLight extends Light[MultiStateHardwareLight]
 trait OnOffLight extends Light[OnOffHardwareLight]
 trait OnOffButton extends Button with OnOffLight
 
-trait Info { val info: MidiInfo }
+trait HasName { def name: String }
+trait Info extends HasName { val info: MidiInfo; val name: String = info.id }
 
-case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends Button with Info {
-  protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
+/**
+ * Hardware Jam button, actions triggered by raw events
+ */
 
-  val (on, off) = JamButton.infoActionMatchers(info)
+object JamControl {
+  //type ButtonActionSupplier = {
+  //  def pressedAction : HBS
+  //  def releasedAction: HBS
+  //  def isPressed     : () => Boolean
+  //}
 
-  button.pressedAction.setActionMatcher(on)
-  button.releasedAction.setActionMatcher(off)
-  button.isPressed.markInterested()
+  /*  Wired hardware controls */
 
-  override val pressedAction : HB.HBS        = button.pressedAction
-  override val releasedAction: HB.HBS        = button.releasedAction
-  override val isPressed     : () => Boolean = button.isPressed.get
+  def button(info: MidiInfo)(implicit ext: MonsterJamExt): HardwareButton = {
+    val button: HardwareButton = ext.hw.createHardwareButton(info.id)
+
+    val (on, off) = JamButton.infoActionMatchers(info)
+
+    button.pressedAction.setActionMatcher(on)
+    button.releasedAction.setActionMatcher(off)
+    button.isPressed.markInterested()
+
+    button
+  }
+
+  def rgbLight(info: MidiInfo)(implicit ext: MonsterJamExt): MultiStateHardwareLight = {
+    import JamColorState._
+    val light            : MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
+    var updatedColorState: JamColorState           = JamColorState.empty
+
+    light.setColorToStateFunction(toState)
+    light.state().onUpdateHardware { state: JamColorState =>
+      updatedColorState = state
+      sendColor(state.value)
+    }
+    light.state().setValue(JamColorState.empty)
+
+    def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
+
+    def sendColor(color: Int): Unit = {
+      info.event match {
+        case CC(cc)     =>
+          //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
+          ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
+        case Note(note) =>
+          //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
+          ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
+      }
+    }
+    light
+  }
+
+  def onOffLight(info: MidiInfo)(implicit ext: MonsterJamExt): OnOffHardwareLight = {
+    val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
+    light.onUpdateHardware { () =>
+      info.event match {
+        case CC(cc)     =>
+          //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
+          ext.midiOut.sendMidi(
+            ShortMidiMessage.CONTROL_CHANGE + info.channel,
+            cc,
+            if (light.isOn.currentValue) 127 else 0)
+        case Note(note) =>
+          //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
+          ext.midiOut.sendMidi(
+            ShortMidiMessage.NOTE_ON + info.channel,
+            note,
+            if (light.isOn.currentValue) 127 else 0)
+      }
+    }
+    light.isOn.setValue(false)
+    light
+  }
+
+  implicit class HbOps(b: HardwareButton) {
+    def asHas: ButtonActionSupplier = new ButtonActionSupplier {
+      override def pressedAction: HB.HBS = b.pressedAction
+      override def releasedAction: HB.HBS = b.releasedAction
+      override def isPressed: () => Boolean = b.isPressed.get
+    }
+  }
 }
+
+//case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt, surfaceState: SurfaceState) extends ButtonActionSupplier with Info {
+//  protected[surface] val button: HardwareButton = ext.hw.createHardwareButton(info.id)
+//
+//  val (on, off) = JamButton.infoActionMatchers(info)
+//
+//  button.pressedAction.setActionMatcher(on)
+//  button.releasedAction.setActionMatcher(off)
+//  button.isPressed.markInterested()
+//
+//  val raw: ButtonActions = ButtonActions(button.pressedAction, button.releasedAction, button.isPressed.get)
+//
+//  override val pressedAction : HB.HBS        = button.pressedAction
+//  override val releasedAction: HB.HBS        = button.releasedAction
+//  override val isPressed     : () => Boolean = button.isPressed.get
+//
+//  override val pressedNC = FakeAction()
+//  override val releasedNC = FakeAction()
+//
+//  button.pressedAction.addBinding(ext.a(if (shouldFire) pressedNC.invoke()))
+//  button.releasedAction.addBinding(ext.a(if (shouldFire) releasedNC.invoke()))
+//
+//  private def shouldFire: Boolean = surfaceState.comboMap.get(info.id).exists(_.exists(_.isPressedAny()))
+//}
 
 object JamButton {
   def infoActionMatchers(info: MidiInfo)(implicit ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
@@ -64,33 +222,36 @@ object JamButton {
     }
 }
 
-case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight with Info {
-  import JamColorState._
-  val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
-  var updatedColorState: JamColorState = JamColorState.empty
-
-  light.setColorToStateFunction(toState)
-  light.state().onUpdateHardware { state: JamColorState =>
-    updatedColorState = state
-    sendColor(state)
-  }
-  light.state().setValue(JamColorState.empty)
-
-  def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
-
-  def sendColor(color: JamColorState): Unit = sendColor(color.value)
-
-  def sendColor(color: Int): Unit = {
-    info.event match {
-      case CC(cc) =>
-        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
-        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
-      case Note(note) =>
-        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
-        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
-    }
-  }
-}
+/**
+ * Hardware Jam RGB light
+ */
+//case class JamRgbLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends RgbLight with Info {
+//  import JamColorState._
+//  val light: MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
+//  var updatedColorState: JamColorState = JamColorState.empty
+//
+//  light.setColorToStateFunction(toState)
+//  light.state().onUpdateHardware { state: JamColorState =>
+//    updatedColorState = state
+//    sendColor(state)
+//  }
+//  light.state().setValue(JamColorState.empty)
+//
+//  private def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
+//
+//  private def sendColor(color: JamColorState): Unit = sendColor(color.value)
+//
+//  private def sendColor(color: Int): Unit = {
+//    info.event match {
+//      case CC(cc) =>
+//        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
+//        ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
+//      case Note(note) =>
+//        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
+//        ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
+//    }
+//  }
+//}
 
 case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
   override def getVisualState: HardwareLightVisualState = null
@@ -106,53 +267,62 @@ object JamColorState {
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
 }
 
-case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends Info {
-  val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
-  light.onUpdateHardware { () =>
-    info.event match {
-      case CC(cc) =>
-        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
-        ext.midiOut.sendMidi(
-          ShortMidiMessage.CONTROL_CHANGE + info.channel,
-          cc,
-          if (light.isOn.currentValue) 127 else 0)
-      case Note(note) =>
-        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
-        ext.midiOut.sendMidi(
-          ShortMidiMessage.NOTE_ON + info.channel,
-          note,
-          if (light.isOn.currentValue) 127 else 0)
-    }
-  }
-  light.isOn.setValue(false)
-}
+/**
+ * Hardware Jam on/off light
+ */
+//case class JamOnOffLight(info: MidiInfo)(implicit ext: MonsterJamExt) extends Info {
+//  val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
+//  light.onUpdateHardware { () =>
+//    info.event match {
+//      case CC(cc) =>
+//        //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
+//        ext.midiOut.sendMidi(
+//          ShortMidiMessage.CONTROL_CHANGE + info.channel,
+//          cc,
+//          if (light.isOn.currentValue) 127 else 0)
+//      case Note(note) =>
+//        //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
+//        ext.midiOut.sendMidi(
+//          ShortMidiMessage.NOTE_ON + info.channel,
+//          note,
+//          if (light.isOn.currentValue) 127 else 0)
+//    }
+//  }
+//  light.isOn.setValue(false)
+//}
 
-case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJamExt) extends Button with RgbLight with Info {
-  val info = infoB
-  val jamButton: JamButton = JamButton(infoB)
-  val jamLight: JamRgbLight = JamRgbLight(infoL)
+case class JamRgbButton(btn: ButtonActionSupplier, light: MultiStateHardwareLight) extends Button with RgbLight
 
-  protected[surface] val button: HardwareButton = jamButton.button
-  val light: MultiStateHardwareLight = jamLight.light
-  button.setBackgroundLight(light)
+case class JamOnOffButton(btn: ButtonActionSupplier, light: OnOffHardwareLight) extends OnOffButton
 
-  override val pressedAction : HB.HBS        = button.pressedAction
-  override val releasedAction: HB.HBS        = button.releasedAction
-  override val isPressed     : () => Boolean = button.isPressed.get
-}
-
-case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt) extends OnOffButton with Info {
-  val jamButton: JamButton = JamButton(info)
-  val jamLight: JamOnOffLight = JamOnOffLight(info)
-
-  protected[surface] val button: HardwareButton = jamButton.button
-  val light: OnOffHardwareLight = jamLight.light
-  button.setBackgroundLight(light)
-
-  override val pressedAction : HB.HBS        = button.pressedAction
-  override val releasedAction: HB.HBS        = button.releasedAction
-  override val isPressed     : () => Boolean = button.isPressed.get
-}
+//case class JamRgbButton(infoB: MidiInfo, infoL: MidiInfo)(implicit ext: MonsterJamExt, st: SurfaceState) extends Button with RgbLight with Info {
+//  val info = infoB
+//  val jamButton: JamButton = JamButton(infoB)
+//  val jamLight: JamRgbLight = JamRgbLight(infoL)
+//
+//  val light: MultiStateHardwareLight = jamLight.light
+//  jamButton.button.setBackgroundLight(light)
+//
+//  override val pressedAction : HB.HBS        = jamButton.pressedAction
+//  override val releasedAction: HB.HBS        = jamButton.releasedAction
+//  override val isPressed     : () => Boolean = jamButton.isPressed
+//  override val pressedNC     : HB.HBS = jamButton.pressedNC
+//  override val releasedNC    : HB.HBS = jamButton.releasedNC
+//}
+//
+//case class JamOnOffButton(info: MidiInfo)(implicit ext: MonsterJamExt, st: SurfaceState) extends OnOffButton with Info {
+//  val jamButton: JamButton = JamButton(info)
+//  val jamLight: JamOnOffLight = JamOnOffLight(info)
+//
+//  val light: OnOffHardwareLight = jamLight.light
+//  jamButton.button.setBackgroundLight(light)
+//
+//  override val pressedAction : HB.HBS        = jamButton.pressedAction
+//  override val releasedAction: HB.HBS        = jamButton.releasedAction
+//  override val isPressed     : () => Boolean = jamButton.isPressed
+//  override val pressedNC     : HB.HBS = jamButton.pressedNC
+//  override val releasedNC    : HB.HBS = jamButton.releasedNC
+//}
 
 case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) {
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
@@ -175,7 +345,7 @@ case class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implic
   override def hashCode(): Int = touch.event.value
 }
 
-case class StripBank()(implicit ext: MonsterJamExt) extends Util {
+class StripBank()(implicit ext: MonsterJamExt) extends Util {
   val strips: Vector[JamTouchStrip] = ('A' to 'H').map { idx =>
     JamTouchStrip(
       touch = ext.xmlMap.button(s"CapTst$idx", ext.xmlMap.touchElems),
@@ -222,11 +392,11 @@ case class StripBank()(implicit ext: MonsterJamExt) extends Util {
  *
  * Being a HardwareBindingSource allows this to be used anywhere a real action is required.
  *
- * @param invokeCallback always called when action is invoked, never cleared
- * @param masquerade true when representing a real button
  */
-case class FakeAction(protected val invokeCallback:() => Unit = () => (), masquerade: Boolean = false)
+class FakeAction
   extends HardwareBindingSource[HardwareActionBinding] with Util {
+  protected val invokeCallback: () => Unit = () => ()
+
   val callbacks = mutable.LinkedHashSet.empty[HardwareActionBindable]
   def invoke(): Unit = {
     invokeCallback()
@@ -262,8 +432,17 @@ case class FakeAction(protected val invokeCallback:() => Unit = () => (), masque
     case _ => ???
   }
 }
+
+object FakeAction {
+  def apply() = new FakeAction
+  // when two dynamically created actions are same
+  def apply(hashString: String): FakeAction = new FakeAction {
+    override def hashCode(): Int = hashString.hashCode
+  }
+}
+
 case class FakeButton() {
   var isPressed: Boolean = false
-  val pressedAction: FakeAction = FakeAction(() => isPressed = true, masquerade = true)
-  val releasedAction: FakeAction = FakeAction(() => isPressed = false, masquerade = true)
+  val pressedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = true }
+  val releasedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = false }
 }
