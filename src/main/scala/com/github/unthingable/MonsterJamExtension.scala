@@ -91,7 +91,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     host.showPopupNotification("MonsterJam Initialized")
   }
 
-  override def exit(): Unit = { // TODO: Perform any cleanup once the driver exits
+  override def exit(): Unit = {
     // For now just show a popup notification for verification that it is no longer running.
     getHost.showPopupNotification("MonsterJam Exited")
   }

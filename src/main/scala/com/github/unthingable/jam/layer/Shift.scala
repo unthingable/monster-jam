@@ -11,7 +11,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
    * Shift matrix row
    */
-  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Mod.Shift, GateMode.Gate) {
+  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", ModeButton(j.Mod.Shift), GateMode.Gate) {
     val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
     override val modeBindings: Seq[Binding[_, _, _]] =
       (Vector(

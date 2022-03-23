@@ -6,7 +6,7 @@ import com.github.unthingable.jam.binding.HB.action
 import com.github.unthingable.jam.binding.{BindingBehavior => BB, _}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{Button, JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
-import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.jam.{GateMode, Jam, ModeButton, ModeButtonLayer, SimpleModeLayer}
 
 trait TransportL { this: Jam =>
   lazy val position = SimpleModeLayer("position",
@@ -80,7 +80,7 @@ trait TransportL { this: Jam =>
     )
   }
 
-  lazy val shiftTransport = new ModeButtonLayer("shiftTransport", j.Mod.Shift, GateMode.Gate) {
+  lazy val shiftTransport = new ModeButtonLayer("shiftTransport", ModeButton(j.Mod.Shift), GateMode.Gate) {
     val loop   : SettableBooleanValue = ext.transport.isArrangerLoopEnabled
     val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
     val metro                         = ext.transport.isMetronomeEnabled
@@ -109,7 +109,7 @@ trait TransportL { this: Jam =>
   }
 
   lazy val globalQuant = new ModeButtonLayer("globalQuant",
-    modeButton = j.grid,
+    modeButton = ModeButton(j.grid),
     gateMode = GateMode.Gate
   ) {
     val quant = ext.transport.defaultLaunchQuantization()
@@ -140,9 +140,10 @@ trait TransportL { this: Jam =>
     val track       = trackBank.getItemAt(idx)
     val propValue   = prop(track)
     val existsValue = track.exists()
+    val gButton     = group(idx)
+
     propValue.markInterested()
     existsValue.markInterested()
-    val gButton = group(idx)
 
     Vector(
       HB(gButton.btn.pressed, s"group $idx pressed: $name", () => propValue.toggle()),

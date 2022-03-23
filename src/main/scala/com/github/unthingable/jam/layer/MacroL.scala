@@ -5,12 +5,12 @@ import com.github.unthingable.Util.Timed
 import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{GateMode, IntActivatedLayer, Jam, ModeButtonLayer}
+import com.github.unthingable.jam.{GateMode, IntActivatedLayer, Jam, ModeButton, ModeButtonLayer}
 
 import java.time.Instant
 
 trait MacroL { this: Jam =>
-  lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
+  lazy val macroLayer = new ModeButtonLayer("MACRO", ModeButton(j.macroButton), GateMode.Gate, silent = true) {
     var bumpedStrip  : Option[IntActivatedLayer] = None
     var bumpedSubMode: Option[Int]               = None
     var controlToggleSub: Option[Int] = None // more dirty hacks

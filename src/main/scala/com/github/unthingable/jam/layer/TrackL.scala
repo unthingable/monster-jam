@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{BooleanValue, MasterTrack, Track}
 import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.jam.{GateMode, Jam, ModeButton, ModeButtonLayer, SimpleModeLayer}
 
 import java.time.Instant
 import java.util.function.BooleanSupplier
@@ -71,7 +71,8 @@ trait TrackL { this: Jam =>
     }
   }
 
-  def trackGate(idx: Int) = new ModeButtonLayer(s"track gate $idx", j.groupButtons(idx),
+  def trackGate(idx: Int) = new ModeButtonLayer(s"track gate $idx",
+    ModeButton(j.groupButtons(idx)),
     GateMode.Gate,
     silent = true
   ) {

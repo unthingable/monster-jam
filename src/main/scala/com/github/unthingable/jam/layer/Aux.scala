@@ -6,7 +6,7 @@ import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{CycleMode, GateMode, Jam, ModeButtonCycleLayer, ModeButtonLayer, SliderBankMode}
+import com.github.unthingable.jam.{CycleMode, GateMode, Jam, ModeButton, ModeButtonCycleLayer, ModeButtonLayer, SliderBankMode}
 
 trait Aux { this: Jam =>
   lazy val auxLayer = new ModeButtonCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
@@ -16,7 +16,7 @@ trait Aux { this: Jam =>
       })
   }
 
-  lazy val auxGate = new ModeButtonLayer("strip AUX gate", j.aux,
+  lazy val auxGate = new ModeButtonLayer("strip AUX gate", ModeButton(j.aux),
     GateMode.Gate,
     silent = true
   ) {
