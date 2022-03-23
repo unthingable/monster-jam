@@ -66,7 +66,7 @@ trait TrackL { this: Jam =>
           }
         ), JamColorState.empty),
         //HB(btn.button.pressedAction(), () => trackBank.cursorIndex().set(idx))
-        HB(btn.pressedAction, s"group $idx pressed: select in mixer", () => handlePress())
+        HB(btn.btn.pressed, s"group $idx pressed: select in mixer", () => handlePress())
       )
     }
   }
@@ -75,6 +75,7 @@ trait TrackL { this: Jam =>
     GateMode.Gate,
     silent = true
   ) {
+    import com.github.unthingable.jam.surface.Combo._
     val track   = trackBank.getItemAt(idx)
     val isAtTop = ext.host.getProject.getRootTrackGroup.createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
 
@@ -104,7 +105,7 @@ trait TrackL { this: Jam =>
       SupBooleanB(j.solo.light.isOn, track.solo()),
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
-      HB(j.only(j.solo).pressedAction, "track direct solo", track.solo().toggleAction()),
+      //FIXME HB(j.solo.withNone.pressed, "track direct solo", track.solo().toggleAction()),
       HB(j.mute.btn.pressed, "track direct mute", track.mute().toggleAction()),
       HB(j.record.btn.pressed, "track direct arm", track.arm().toggleAction()),
     )

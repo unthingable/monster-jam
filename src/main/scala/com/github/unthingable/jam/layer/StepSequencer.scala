@@ -130,8 +130,9 @@ trait StepSequencer { this: Jam =>
           SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor()),
         )
       } ++ Vector(
-        HB(j.Combo.ShiftSolo.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
-        HB(j.Combo.ShiftSolo.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
+        // FIXME
+        //HB(j.Combo.ShiftSolo.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
+        //HB(j.Combo.ShiftSolo.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(

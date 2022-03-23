@@ -3,7 +3,7 @@ package com.github.unthingable.jam.binding
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.Graph
+import com.github.unthingable.jam.{Graph, binding}
 import com.github.unthingable.jam.binding.HB.HBS
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton, RgbButton}
 
@@ -27,16 +27,17 @@ trait Named {
  * @param exclusive bumps other bindings
  */
 case class BindingBehavior(
+  tracked: Boolean = true,
   managed: Boolean = true,
   exclusive: Boolean = true
 )
 
-sealed trait Binding[S, T, I] extends Clearable {
+sealed trait Binding[S, B, T] extends Clearable {
   def bind(): Unit // watch out for idempotence
-  def source: S
+  def source: S // will be indexed by ModeGraph for bumping calculus
   def target: T
 
-  def surfaceElem: I
+  def bindingSource: B // actual thing we're binding to, provided by S
 
   var node: Option[Graph.ModeNode] = None // backreference to the node that owns this
   def layerName: String = node.map(_.layer.name).getOrElse("")
@@ -45,13 +46,13 @@ sealed trait Binding[S, T, I] extends Clearable {
 }
 
 // Controller <- Bitwig host
-sealed trait InBinding[H, C] extends Binding[H, C, C] {
-  def surfaceElem: C = target
+sealed trait InBinding[H, T] extends Binding[H, T, T] {
+  def bindingSource: T = target
 }
 
 // Controller -> Bitwig host
-sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
-  def surfaceElem: C = source // might be weird with observer bindings
+sealed trait OutBinding[S, B, H] extends Binding[S, B, H] with BindingDSL {
+  //def bindingSource: B = source // might be weird with observer bindings
   implicit val ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
@@ -59,13 +60,16 @@ sealed trait OutBinding[C, H] extends Binding[C, H, C] with BindingDSL {
 }
 
 // Bind hardware elements to actions
-case class HB(
-  source: HBS,
-  name: String, target: HardwareBindable,
-  tracked: Boolean = true,
-  override val behavior: BindingBehavior = BindingBehavior())
+class HB[S](
+  val source: S,
+  val toSource: S => HBS,
+  val name: String,
+  val target: HardwareBindable,
+  override val behavior: BindingBehavior)
   (implicit val ext: MonsterJamExt)
-  extends OutBinding[HBS, HardwareBindable] with Named {
+  extends OutBinding[S, HBS, HardwareBindable] with Named {
+
+  override val bindingSource = toSource(source)
 
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
   var isActive = false
@@ -75,11 +79,11 @@ case class HB(
     if (!isActive)
       bindings.addAll(
         Vector(
-          source.addBinding(target)
-        ) ++ (if (tracked)
+          bindingSource.addBinding(target)
+        ) ++ (if (behavior.tracked)
                 operatedActions
-                  .find(source.canBindTo)
-                  .map(source.addBinding)
+                  .find(bindingSource.canBindTo)
+                  .map(bindingSource.addBinding)
               else Seq.empty)
       )
     isActive = true
@@ -101,10 +105,21 @@ case class HB(
 }
 
 object HB extends BindingDSL {
-  def apply(source: HBS, name: String, target: () => Unit,
-    tracked: Boolean = true, managed: Boolean = true, exclusive: Boolean = true)
-    (implicit ext: MonsterJamExt): HB =
-    new HB(source, name, action(name, target), tracked, BindingBehavior(managed, exclusive))
+  def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)
+    (implicit ext: MonsterJamExt): HB[HBS] =
+    new HB(source, identity[HBS], name, action(name, target), behavior)
+
+  def apply(source: HBS, name: String, target: () => Unit)
+    (implicit ext: MonsterJamExt): HB[HBS] =
+    new HB(source, identity[HBS], name, action(name, target), BindingBehavior())
+
+  def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)
+    (implicit ext: MonsterJamExt): HB[HBS] =
+    new HB(source, identity[HBS], name, target, behavior)
+
+  def apply(source: HBS, name: String, target: HardwareBindable)
+    (implicit ext: MonsterJamExt): HB[HBS] =
+    new HB(source, identity[HBS], name, target, BindingBehavior())
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])

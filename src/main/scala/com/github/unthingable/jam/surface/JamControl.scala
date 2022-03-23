@@ -41,7 +41,12 @@ trait ButtonLight[L <: HardwareLight] extends Button with Light[L]
 trait OnOffButton extends ButtonLight[OnOffHardwareLight]
 trait RgbButton extends ButtonLight[MultiStateHardwareLight]
 
-trait HasId { def id: String }
+trait HasId {
+  def id: String
+  // IDs shouldn't repeat among the same set of objects
+  override def hashCode(): Int = id.hashCode()
+}
+
 trait Info extends HasId {val info: MidiInfo; final val id: String = info.id }
 
 object JamControl {
@@ -155,6 +160,10 @@ object JamButton {
     }
 }
 
+/* These represent actual hardware buttons, with one HardwareButton with raw events and one light.
+ * Sometimes you need to work with raw button actions and states, so they are there for you.
+ * These are declared once in JamSurface and IDs are unique, which is why we can hash them.
+ * */
 case class JamRgbButton(id: String, btn: ButtonActionSupplier, light: MultiStateHardwareLight) extends RgbButton with HasId
 
 case class JamOnOffButton(id: String, btn: ButtonActionSupplier, light: OnOffHardwareLight) extends OnOffButton with HasId

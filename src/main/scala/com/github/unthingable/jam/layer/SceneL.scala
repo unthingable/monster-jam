@@ -31,7 +31,7 @@ trait SceneL { this: Jam =>
           else
             JamColorBase.OFF,
           1)),
-        HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
+        HB(btn.btn.pressed, s"scene $i press", () => handlePress(scene)))
     }
 
     private def handlePress(scene: Scene): Unit = {
@@ -138,7 +138,7 @@ trait SceneL { this: Jam =>
       def pageOffset = pageIndex * 8
 
       Vector(
-        HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
+        HB(j.sceneButtons(idx).btn.pressed, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
         SupColorStateB(j.sceneButtons(idx).light, () =>
           JamColorState(
             if (superScenes(pageOffset + idx).isEmpty)

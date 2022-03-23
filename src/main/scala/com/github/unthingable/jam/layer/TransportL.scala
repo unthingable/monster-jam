@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
 import com.github.unthingable.jam.binding.HB.action
-import com.github.unthingable.jam.binding._
+import com.github.unthingable.jam.binding.{BindingBehavior => BB, _}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{Button, JamColorState, JamOnOffButton, JamRgbButton, OnOffButton}
 import com.github.unthingable.jam.{GateMode, Jam, ModeButtonLayer, SimpleModeLayer}
@@ -57,10 +57,10 @@ trait TransportL { this: Jam =>
     }
 
     override val modeBindings = Vector(
-      HB(j.play.btn.pressed, "play pressed", playPressAction, tracked = false),
+      HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
-      HB(j.noteRepeat.btn.pressed, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), tracked = false),
-      HB(j.noteRepeat.btn.released, "note repeat released", () => ext.transport.isFillModeActive.set(false), tracked = false),
+      HB(j.noteRepeat.btn.pressed, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
+      HB(j.noteRepeat.btn.released, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
       HB(j.record.btn.pressed, "record pressed", ext.transport.recordAction()),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
@@ -85,6 +85,7 @@ trait TransportL { this: Jam =>
     val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
     val metro                         = ext.transport.isMetronomeEnabled
     val auto                          = ext.transport.isClipLauncherAutomationWriteEnabled
+
     loop.markInterested()
     overdub.markInterested()
     metro.markInterested()
@@ -103,7 +104,7 @@ trait TransportL { this: Jam =>
     ).flatten ++ Vector(
       HB(j.tempo.btn.pressed, "tap tempo", ext.transport.tapTempoAction(),
         // not exclusive so that tap tempo doesn't mess with tempo layer
-        tracked = false, behavior = BindingBehavior(exclusive = false))
+        BB(tracked = false, exclusive = false))
     )
   }
 
@@ -156,6 +157,7 @@ trait TransportL { this: Jam =>
   }
   )
 
-  lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  //FIXME lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
   lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }

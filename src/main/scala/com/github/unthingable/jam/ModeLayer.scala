@@ -1,9 +1,9 @@
 package com.github.unthingable.jam
 
-import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB, OutBinding, SupBooleanB}
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior => BB, HB, OutBinding, SupBooleanB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.binding.BindingDSL._
-import com.github.unthingable.jam.surface.{Button, FakeAction, Info, JamButton, OnOffButton, OnOffLight}
+import com.github.unthingable.jam.surface.{Button, FakeAction, Info, JamButton, OnOffButton}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -114,7 +114,7 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.pressedAction, s"$name: mode button pressed, isOn: " + isOn, () => {
+    HB(modeButton.btn.pressed, s"$name: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -122,23 +122,22 @@ abstract class ModeButtonLayer(
           deactivateAction.invoke()
       } else
         activateAction.invoke()
-    },
-      tracked = true),
-    HB(modeButton.releasedAction, s"$name: mode button released", () => gateMode match {
+    }),
+    HB(modeButton.btn.released, s"$name: mode button released", () => gateMode match {
       case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
-          val operated = modeBindings.collect{case x: OutBinding[_,_] => x}.exists(_.operatedAt.nonEmpty)
+          val operated = modeBindings.collect{case x: OutBinding[_,_,_] => x}.exists(_.operatedAt.nonEmpty)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
             deactivateAction.invoke()
         }
     },
-      tracked = true)
+    )
   ) ++ (modeButton match {
-    case b: OnOffLight if !silent => Vector(SupBooleanB(b.light.isOn, () => isOn))
-    case _                        => Vector.empty
+    case b: OnOffButton if !silent => Vector(SupBooleanB(b.light.isOn, () => isOn))
+    case _                         => Vector.empty
   })
 }
 
@@ -250,19 +249,19 @@ abstract class ModeButtonCycleLayer(
   def lightOn: BooleanSupplier = () => isOn
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.btn.pressed, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), tracked = false)
+    HB(modeButton.btn.pressed, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), BB(tracked = false))
   ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        HB(modeButton.btn.pressed, s"$name cycle", () => cycle(), tracked = false, exclusive = false)
+        HB(modeButton.btn.pressed, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.btn.pressed, s"$name gate on", () => stickyPress(), tracked = false, exclusive = false),
-        HB(modeButton.btn.released, s"$name gate off", () => stickyRelease(), tracked = false, exclusive = false)
+        HB(modeButton.btn.pressed, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
+        HB(modeButton.btn.released, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }

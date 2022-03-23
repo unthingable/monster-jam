@@ -2,7 +2,7 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
 import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
-import com.github.unthingable.jam.binding.{Binding, BindingBehavior, HB}
+import com.github.unthingable.jam.binding.{Binding, BindingBehavior => BB, HB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -45,7 +45,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
 
   def stripObserver(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
-      if (isOn && !j.clear.isPressed()) {
+      if (isOn && !j.clear.btn.isPressed()) {
         j.stripBank.setValue(idx,
           (1.0.min(v / paramRange(idx)._2) * 127).toInt)
         paramValueCache.update(idx, v)
@@ -69,7 +69,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       import Event._
       import State._
 
-      val shiftOn = j.Mod.Shift.isPressed()
+      val shiftOn = j.Mod.Shift.btn.isPressed()
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
@@ -79,7 +79,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
         case (_,_,ClearR,_) =>
           bindWithRange(idx, force = true)
           Normal
-        case (_,_,StripP,_) if j.clear.isPressed() =>
+        case (_,_,StripP,_) if j.clear.btn.isPressed() =>
           param.reset()
           Normal
         case (_,_,ShiftP,_) =>
@@ -144,12 +144,12 @@ abstract class SliderBankMode[P <: ObjectProxy](
     import Event._
     if (paramKnowsValue)
       Vector(
-        HB(j.clear.pressedAction, s"clear $idx pressed", () => engage(ClearP), tracked = false, exclusive = false),
-        HB(j.clear.releasedAction, s"clear $idx released", () => engage(ClearR), tracked = false, exclusive = false),
-        HB(j.Mod.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, exclusive = false),
-        HB(j.Mod.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, exclusive = false),
-        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, exclusive = false),
-        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = true, exclusive = false),
+        HB(j.clear.btn.pressed, s"clear $idx pressed", () => engage(ClearP), BB(tracked = false, exclusive = false)),
+        HB(j.clear.btn.released, s"clear $idx released", () => engage(ClearR), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.pressed, s"shift $idx pressed", () => engage(ShiftP), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.released, s"shift $idx released", () => engage(ShiftR), BB(tracked = false, exclusive = false)),
+        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), BB(tracked = true, exclusive = false)),
+        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), BB(tracked = true, exclusive = false)),
       )
     else Vector.empty
   }

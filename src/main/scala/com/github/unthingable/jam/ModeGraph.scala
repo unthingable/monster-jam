@@ -1,7 +1,7 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.controller.api.HardwareActionBindable
-import com.github.unthingable.jam.binding.{Binding, HB}
+import com.github.unthingable.jam.binding.{Binding, HB, BindingBehavior => BB}
 import com.github.unthingable.jam.binding.HB.{HBS, action, isFakeAction}
 import com.github.unthingable.{MonsterJamExt, Util}
 
@@ -67,7 +67,7 @@ object Graph {
 
     // Synthesize node bindings
     layerMap.values.foreach { node =>
-      val bindings = node.layer.modeBindings ++ node.children.flatMap { child =>
+      val bindings: Seq[Binding[_, _, _]] = node.layer.modeBindings ++ node.children.flatMap { child =>
         child.layer match {
           case l: ActivatedLayer[HBS] with ListeningLayer =>
             Util.println(s"${node.layer.name}: synthesizing load bindings for ${l.name}")
@@ -89,8 +89,8 @@ object Graph {
           val smn = layerMap(sm)
           Util.println(s"${node.layer.name}: synthesizing load bindings for sub ${sm.name}")
           Vector(
-            HB(sm.activateAction, s"${node.layer.name}->${sm.name} syn act", activateAction(smn), tracked = false),
-            HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), tracked = false),
+            HB(sm.activateAction, s"${node.layer.name}->${sm.name} syn act", activateAction(smn), BB(tracked = false)),
+            HB(sm.deactivateAction, s"${node.layer.name}->${sm.name} syn deact", deactivateAction(smn), BB(tracked = false)),
           )
         }
         case _                           => Vector.empty
@@ -152,9 +152,9 @@ object Graph {
 
       val bumpBindings: Iterable[Bumped] =
         node.nodeBindings
-          .filter(b => !isFakeAction(b.surfaceElem) && b.behavior.exclusive)
+          .filter(b => !isFakeAction(b.bindingSource) && b.behavior.exclusive)
           .map(b => Bumped(b, sourceMap
-            .get(b.surfaceElem)
+            .get(b.source)
             .toSet
             .flatten
             .filter(_.behavior.exclusive)
@@ -163,7 +163,7 @@ object Graph {
       val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)) ++ bumpedExc
 
       if (bumpNodes.nonEmpty) {
-        def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB => b.name}
+        def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB[_] => b.name}
         Util.println(s"${node.layer.name} bumps ${bumpNodes.map(_.layer.name).mkString(",")}: ")
         //bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
         //  ext.host.println(s" > $b <- ${bb.mkString(",")}")
@@ -182,7 +182,7 @@ object Graph {
 
       // one layer overrides element bindings of another, so total replacement is ok
       sourceMap.addAll(node.nodeBindings
-        .groupBy(_.surfaceElem)
+        .groupBy(_.source)
         .view.mapValues(mutable.HashSet.from(_))
       )
       node.isActive = true
@@ -205,13 +205,13 @@ object Graph {
 
     def bind(binding: Binding[_,_,_]) = {
       binding.bind()
-      sourceMap.getOrElseUpdate(binding.surfaceElem, mutable.HashSet.empty).add(binding)
+      sourceMap.getOrElseUpdate(binding.source, mutable.HashSet.empty).add(binding)
     }
 
     def unbind(binding: Binding[_,_,_]) = {
       //ext.host.println(s"unbinding for: ${binding.layerName}")
       binding.clear()
-      sourceMap.get(binding.surfaceElem).foreach(_.remove(binding))
+      sourceMap.get(binding.source).foreach(_.remove(binding))
     }
   }
 }
