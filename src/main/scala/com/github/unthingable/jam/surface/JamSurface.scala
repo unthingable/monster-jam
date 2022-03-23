@@ -119,7 +119,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   val groupButtons: Seq[JamRgbButton] = ('A' to 'H').map { idx =>
-    val id = id
+    val id = s"BtnGroup${idx}"
     val btnInfo = ext.xmlMap.button(id)
     // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
     val ledInfo = ext.xmlMap.led(s"BtnGroup${idx}IDX").copy(channel = btnInfo.channel)
