@@ -36,7 +36,7 @@ sealed trait HwButton {
   def hwb: HardwareButton
 }
 
-trait Light[L <: HardwareLight] { val light: L }
+sealed trait Light[L <: HardwareLight] { val light: L }
 trait ButtonLight[L <: HardwareLight] extends Button with Light[L]
 trait OnOffButton extends ButtonLight[OnOffHardwareLight]
 trait RgbButton extends ButtonLight[MultiStateHardwareLight]

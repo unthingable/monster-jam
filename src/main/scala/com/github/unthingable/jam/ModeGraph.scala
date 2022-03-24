@@ -27,8 +27,6 @@ object Graph {
   class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) {
 
     private val layerMap: mutable.Map[ModeLayer, ModeNode] = mutable.LinkedHashMap.empty
-    // All source elements currently bound by us
-    private val sourceMap: mutable.HashMap[Any, mutable.HashSet[Binding[_, _, _]]] = mutable.HashMap.empty
 
     // Assemble graph
     edges foreach { case (a, bb) =>
@@ -153,7 +151,7 @@ object Graph {
       val bumpBindings: Iterable[Bumped] =
         node.nodeBindings
           .filter(b => !isFakeAction(b.bindingSource) && b.behavior.exclusive)
-          .map(b => Bumped(b, sourceMap
+          .map(b => Bumped(b, ext.binder.sourceMap
             .get(b.source)
             .toSet
             .flatten
@@ -174,14 +172,14 @@ object Graph {
       node.nodesToRestore.addAll(bumpNodes)
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
-      bumpBindings.flatMap(_.bumped).foreach(unbind)
+      bumpBindings.flatMap(_.bumped).foreach(ext.binder.unbind)
 
-      node.nodeBindings.foreach(bind)
+      node.nodeBindings.foreach(ext.binder.bind)
 
       node.layer.activate()
 
       // one layer overrides element bindings of another, so total replacement is ok
-      sourceMap.addAll(node.nodeBindings
+      ext.binder.sourceMap.addAll(node.nodeBindings
         .groupBy(_.source)
         .view.mapValues(mutable.HashSet.from(_))
       )
@@ -193,7 +191,7 @@ object Graph {
       Util.println(s"deactivating node ${node.layer.name}: $reason")
       node.isActive = false
       node.layer.deactivate()
-      node.nodeBindings.foreach(unbind)
+      node.nodeBindings.foreach(ext.binder.unbind)
 
       // restore base
       node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.name}"))
@@ -201,17 +199,6 @@ object Graph {
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
       Util.println(s"-- deactivated ${node.layer.name} ---")
-    }
-
-    def bind(binding: Binding[_,_,_]) = {
-      binding.bind()
-      sourceMap.getOrElseUpdate(binding.source, mutable.HashSet.empty).add(binding)
-    }
-
-    def unbind(binding: Binding[_,_,_]) = {
-      //ext.host.println(s"unbinding for: ${binding.layerName}")
-      binding.clear()
-      sourceMap.get(binding.source).foreach(_.remove(binding))
     }
   }
 }

@@ -5,6 +5,7 @@ import com.bitwig.extension.controller.api._
 import com.github.unthingable.JamSettings.{EnumSetting, enumSetting}
 import com.github.unthingable.JamSettings
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.binding.Binder
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
@@ -32,7 +33,8 @@ case class MonsterJamExt(
   application: Application,
   preferences: MonsterPref,
   docPrefs: MonsterDocPrefs,
-  xmlMap: XmlMap
+  xmlMap: XmlMap,
+  binder: Binder = new Binder(),
 ) {
   type Schedulable = (Int, () => Boolean, () => Unit)
   final def run(tasks: Schedulable*): Unit = {
