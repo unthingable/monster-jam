@@ -199,8 +199,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   //private val onlyCache: mutable.Map[Button, Button] = mutable.Map.empty
 
 
-  //import Combo.JC
+  import Combo.JC
   //
-  //val ShiftDup = JC(Mod.Shift, duplicate)
-  //val ShiftSolo = JC(Mod.Shift, solo)
+  val ShiftDup = JC(duplicate, Mod.Shift)
+  val ShiftSolo = JC(solo, Mod.Shift)
 }

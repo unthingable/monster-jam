@@ -107,7 +107,7 @@ trait TrackL { this: Jam =>
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
       //FIXME HB(j.solo.withNone.pressed, "track direct solo", track.solo().toggleAction()),
-      HB(j.mute.btn.pressed, "track direct mute", track.mute().toggleAction()),
+      HB(j.mute.withNone.pressed, "track direct mute", track.mute().toggleAction()),
       HB(j.record.btn.pressed, "track direct arm", track.arm().toggleAction()),
     )
   }

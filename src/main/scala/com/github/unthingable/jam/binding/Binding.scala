@@ -92,7 +92,10 @@ class HB[S](
   override def clear(): Unit = {
     bindings.foreach(_.removeBinding())
     bindings.clear()
-    //source.clearBindings() // one of these is probably unnecessary
+    source match {
+      case x: Clearable => x.clear()
+      case _ => ()
+    }
     operatedAt = None
     isActive = false
   }
@@ -105,6 +108,12 @@ class HB[S](
 }
 
 object HB extends BindingDSL {
+  /*
+  HB describes a binding source as a provider and a getter. The provider will get hashed by
+  ModGraph for binding bumping.
+  Sometimes all you have is a HardwareAction (hopefully a singleton object), then the getter is identity.
+  When creating new non-sigleton HAs, make sure they hash properly.
+   */
   def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, action(name, target), behavior)
@@ -112,6 +121,10 @@ object HB extends BindingDSL {
   def apply(source: HBS, name: String, target: () => Unit)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, action(name, target), BindingBehavior())
+
+  def apply[S](source: S, toSource: S => HBS, name: String, target: () => Unit)
+    (implicit ext: MonsterJamExt): HB[S] =
+    new HB(source, toSource, name, action(name, target), BindingBehavior())
 
   def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)
     (implicit ext: MonsterJamExt): HB[HBS] =
@@ -145,6 +158,9 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
 }
 
 object JB extends BindingDSL {
+  /*
+  Helper binding combinations, when you don't need to inspect Binder state
+   */
   def apply(name: String, b: RgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (implicit ext: MonsterJamExt) =
     Vector(

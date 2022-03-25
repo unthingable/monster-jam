@@ -6,6 +6,7 @@ import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, Pinnab
 import com.github.unthingable.Util
 import com.github.unthingable.jam.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
+import com.github.unthingable.jam.surface.Combo.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.{Jam, ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
@@ -131,8 +132,8 @@ trait StepSequencer { this: Jam =>
         )
       } ++ Vector(
         // FIXME
-        //HB(j.Combo.ShiftSolo.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
-        //HB(j.Combo.ShiftSolo.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
+        HB[JC](j.ShiftSolo, _.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
+        HB[JC](j.ShiftSolo, _.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(

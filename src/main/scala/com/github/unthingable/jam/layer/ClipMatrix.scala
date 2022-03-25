@@ -1,7 +1,8 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
-import com.github.unthingable.jam.binding.{Binding, BindingBehavior => BB, HB, SupColorStateB}
+import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB, BindingBehavior => BB}
+import com.github.unthingable.jam.surface.Combo.JC
 import com.github.unthingable.jam.{Jam, SimpleModeLayer}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -44,7 +45,8 @@ trait ClipMatrix { this: Jam =>
       HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
         source = None
       }, BB(tracked = false, managed = false)),
-      //FIXME HB(j.ShiftDup.pressed, "shift dup clip content", () => clip.duplicateContent())
+      //FIXME
+      HB[JC](j.ShiftDup, _.pressed, "shift dup clip content", () => clip.duplicateContent())
     )
 
 

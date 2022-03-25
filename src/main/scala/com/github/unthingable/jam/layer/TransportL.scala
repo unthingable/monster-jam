@@ -158,7 +158,8 @@ trait TransportL { this: Jam =>
   }
   )
 
+  import com.github.unthingable.jam.surface.Combo._
   //FIXME lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
-  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  lazy val solo = buttonGroupChannelMode("solo", j.solo.mapB(_.withNone), j.groupButtons, _.solo(), JamColorBase.YELLOW)
   lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }
