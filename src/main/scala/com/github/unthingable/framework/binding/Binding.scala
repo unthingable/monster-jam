@@ -52,7 +52,6 @@ sealed trait InBinding[H, T] extends Binding[H, T, T] {
 
 // Controller -> Bitwig host
 sealed trait OutBinding[S, B, H] extends Binding[S, B, H] with BindingDSL {
-  //def bindingSource: B = source // might be weird with observer bindings
   implicit val ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
@@ -101,8 +100,8 @@ class HB[S](
   }
 
   private val operatedActions = Vector(
-    action(() => s"$layerName: HB: unit operated", () => {operatedAt = Some(Instant.now())}),
-    action(() => s"$layerName: HB: double operated", _ => {operatedAt = Some(Instant.now())}),
+    action(() => s"$layerName: HB $name: unit operated", () => {operatedAt = Some(Instant.now())}),
+    action(() => s"$layerName: HB $name: double operated", _ => {operatedAt = Some(Instant.now())}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {operatedAt = Some(Instant.now())})
   )
 }

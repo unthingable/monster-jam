@@ -193,8 +193,19 @@ object Graph {
       node.layer.deactivate()
       node.nodeBindings.foreach(ext.binder.unbind)
 
+      def printBumpers(max: Int, cur: Int, node: ModeNode): String =
+        s"${node.layer.name}" +
+        (if (node.nodesToRestore.nonEmpty) " < " +
+          (if (cur > max) "XXX" else node.nodesToRestore.map(printBumpers(max, cur+1, _)).mkString("[",", ","]"))
+         else "")
+
+      //Util.println(printBumpers(7, 0, node))
+
+      for (a <- node.nodesToRestore; b <- a.nodesToRestore)
+        yield Util.println(Seq(node, a, b).map(_.layer.name).mkString(" < "))
+
       // restore base
-      node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.name}"))
+      node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.name} <:< $reason"))
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()
