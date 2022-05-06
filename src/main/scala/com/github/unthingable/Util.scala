@@ -72,46 +72,4 @@ case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
     val current = c.selectedPageIndex().get()
     c.pageNames().get().zipWithIndex.findLast {case (name, idx) => idx < current && f(name)}.map(_._2)
   }
-
-}
-
-object JamSettings {
-  object ShowHide extends Enumeration {
-    val Show, Hide = Value
-  }
-
-  object LimitLevels extends Enumeration {
-    val None = Value
-    val Zero = Value("0dB")
-    val MinusTen = Value("-10dB")
-    val Smart = Value
-  }
-
-  object DpadScroll extends Enumeration {
-    val RegularOne = Value("single/page")
-    val RegularPage = Value("page/single")
-  }
-
-  trait EnumSetting[A <: Enumeration] {
-    def outerEnum: A
-    def setting: SettableEnumValue
-    def set(v: A#Value): Unit
-    def get(): A#Value
-    def addValueObserver(f: A#Value => Unit): Unit
-  }
-
-  def enumSetting[A <: Enumeration: ValueOf](p: Settings, s: String, category: String, init: A#Value) =
-    new EnumSetting[A] {
-      val outerEnum: A = valueOf[A]
-
-      // side effect expected on creation
-      val setting: SettableEnumValue = p.getEnumSetting(s, category, outerEnum.values.toArray.map(_.toString), init.toString)
-      setting.markInterested()
-
-      def set(v: A#Value): Unit = setting.set(v.toString)
-
-      def get(): A#Value = outerEnum.withName(setting.get())
-
-      def addValueObserver(f: A#Value => Unit): Unit = setting.addValueObserver(v => f(outerEnum.withName(v)))
-    }
 }

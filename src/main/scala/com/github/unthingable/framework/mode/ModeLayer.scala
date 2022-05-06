@@ -1,10 +1,10 @@
-package com.github.unthingable.jam
+package com.github.unthingable.framework.mode
 
 import com.bitwig.extension.controller.api.OnOffHardwareLight
-import com.github.unthingable.jam.binding.{Binding, HB, OutBinding, SupBooleanB, BindingBehavior => BB}
+import com.github.unthingable.framework.binding.BindingDSL._
+import com.github.unthingable.framework.binding.{Binding, HB, OutBinding, SupBooleanB, BindingBehavior => BB}
+import com.github.unthingable.jam.surface.{Button, FakeAction, OnOffButton}
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.binding.BindingDSL._
-import com.github.unthingable.jam.surface.{Button, ButtonLight, FakeAction, Info, JamButton, OnOffButton}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier

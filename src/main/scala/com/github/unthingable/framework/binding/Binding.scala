@@ -1,10 +1,10 @@
-package com.github.unthingable.jam.binding
+package com.github.unthingable.framework.binding
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.{Graph, binding}
-import com.github.unthingable.jam.binding.HB.HBS
+import com.github.unthingable.framework.binding.HB.HBS
+import com.github.unthingable.framework.mode.Graph
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton, RgbButton}
 
 import java.time.Instant

@@ -1,9 +1,10 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{BooleanValue, MasterTrack, Track}
-import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.framework.mode.{GateMode, ModeButton, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.{Binding, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{GateMode, Jam, ModeButton, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.jam.Jam
 
 import java.time.Instant
 import java.util.function.BooleanSupplier

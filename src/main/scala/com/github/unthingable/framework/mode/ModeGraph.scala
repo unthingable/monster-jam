@@ -1,19 +1,20 @@
-package com.github.unthingable.jam
+package com.github.unthingable.framework.mode
 
 import com.bitwig.extension.controller.api.HardwareActionBindable
-import com.github.unthingable.jam.binding.{Binding, HB, BindingBehavior => BB}
-import com.github.unthingable.jam.binding.HB.{HBS, action, isFakeAction}
+import com.github.unthingable.framework.binding.HB.{HBS, action, isFakeAction}
+import com.github.unthingable.framework.binding.{Binding, HB, BindingBehavior => BB}
+import com.github.unthingable.framework.mode.MultiModeLayer
 import com.github.unthingable.{MonsterJamExt, Util}
 
 import scala.collection.mutable
 
 object Graph {
   case class ModeNode(layer: ModeLayer) {
-    protected[Graph] var parent: Option[ModeNode] = None
-    protected[Graph] val children: mutable.HashSet[ModeNode] = mutable.HashSet.empty
-    protected[Graph] val nodeBindings: mutable.Set[Binding[_, _, _]] = mutable.LinkedHashSet.empty
-    protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode] = mutable.HashSet.empty
-    protected[Graph] var isActive = false
+    protected[Graph] var parent        : Option[ModeNode]              = None
+    protected[Graph] val children      : mutable.HashSet[ModeNode]     = mutable.HashSet.empty
+    protected[Graph] val nodeBindings  : mutable.Set[Binding[_, _, _]] = mutable.LinkedHashSet.empty
+    protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode]     = mutable.HashSet.empty
+    protected[Graph] var isActive                                      = false
     //override def hashCode(): Int = layer.name.hashCode()
   }
 

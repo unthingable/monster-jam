@@ -3,16 +3,15 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
 import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
-import com.github.unthingable.jam.binding.HB
+import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.jam.surface.JamControl.HbOps
-import com.github.unthingable.jam.{binding, surface}
 import com.github.unthingable.{MonsterJamExt, Util}
 
 
 /* Surface model with all the controls, wired to MIDI */
 
 class JamSurface(implicit ext: MonsterJamExt) extends Util {
-  implicit private val surfaceState = new SurfaceState {}
+  implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
   private def b(id: String) = {
     val info = ext.xmlMap.button(id)
@@ -22,7 +21,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   object Mod {
-    var Shift = new OnOffButton with HasId {
+    object Shift extends OnOffButton with HasId {
       val id         = "SHIFT"
       val fakeButton = new FakeButton()
       override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
@@ -189,18 +188,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     }
   }
 
-  ///**
-  // * A button and all its combo neighbors
-  // */
-  //private val comboMap: mutable.Map[Button, Set[Button]] = mutable.Map.empty
-  ///**
-  // * A version of the button that only fires when none of its combo members are pressed
-  // */
-  //private val onlyCache: mutable.Map[Button, Button] = mutable.Map.empty
-
-
   import Combo.JC
-  //
   val ShiftDup = JC(duplicate, Mod.Shift)
   val ShiftSolo = JC(solo, Mod.Shift)
 }

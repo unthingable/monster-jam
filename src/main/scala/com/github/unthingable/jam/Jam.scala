@@ -3,8 +3,9 @@ package com.github.unthingable.jam
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
-import com.github.unthingable.jam.binding.BindingDSL
+import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, ModeCommander, SimpleModeLayer}
+import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
@@ -93,4 +94,17 @@ class Jam(implicit val ext: MonsterJamExt)
     masterButton -> top,
     bottom -> Coexist(unmanaged),
   )
+  /*
+  - some modes are mutually exclusive (activating one will deactivate others)
+  - some modes will activate others when activated (e.g. level button -> level sliders | pan sliders)
+  - some modes are "main" and others "temporary" (for restoration purposes)
+
+  can mode's activate() return an activatable?
+   */
+
+  // val newGraph = ModeCommander(
+  //   clipMatrix,
+  //   sceneLayer,
+  //   levelCycle,
+  // )
 }

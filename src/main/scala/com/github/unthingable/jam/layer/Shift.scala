@@ -2,10 +2,11 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Bank, Clip}
 import com.github.unthingable.JamSettings.ShowHide
+import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButton, ModeButtonCycleLayer, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 import com.github.unthingable.jam._
-import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB}
+import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB}
 
 trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
@@ -85,13 +86,13 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
           trackPages ++
           EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
             SupColorStateB(j.sceneButtons(idx).light, () =>
-              if (idx == superSceneSub.pageIndex)
+              if (idx == superSceneSub.pageIndex) then
                 JamColorState(JamColorBase.WHITE, 3)
-              else if (superSceneSub.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i)))
+              else if (superSceneSub.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i))) then
                      JamColorState(JamColorBase.LIME, 0)
-                   else if (superSceneSub.page(idx).exists(_.nonEmpty))
+              else if (superSceneSub.page(idx).exists(_.nonEmpty)) then
                           JamColorState(JamColorBase.ORANGE, 0)
-                        else JamColorState.empty
+              else JamColorState.empty
               , JamColorState.empty),
             HB(j.sceneButtons(idx).btn.pressed, "super scene page $idx", () => superSceneSub.pageIndex = idx)
           ))

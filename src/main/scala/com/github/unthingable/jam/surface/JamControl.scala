@@ -4,9 +4,9 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.binding
-import com.github.unthingable.jam.binding.HB
-import com.github.unthingable.jam.binding.HB.HBS
+import com.github.unthingable.framework.binding
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.language.implicitConversions
 
@@ -71,7 +71,7 @@ object JamControl {
     var updatedColorState: JamColorState           = JamColorState.empty
 
     light.setColorToStateFunction(toState)
-    light.state().onUpdateHardware { state: JamColorState =>
+    light.state().onUpdateHardware { (state: JamColorState) =>
       updatedColorState = state
       sendColor(state.value)
     }

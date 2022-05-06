@@ -2,9 +2,10 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util
+import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamTouchStrip
-import com.github.unthingable.jam.{CycleMode, Jam, ModeButtonCycleLayer, SliderBankMode}
+import com.github.unthingable.jam.{Jam, SliderBankMode}
 
 import scala.collection.mutable
 
@@ -53,8 +54,8 @@ trait Level { this: Jam =>
                     //case "Effect" | "Master" => 1.0
                     case _ => minusTen / max
                   }
-                case LimitLevels.Zero     => zero / max
-                case LimitLevels.MinusTen => minusTen / max
+                case LimitLevels.`0dB`   => zero / max
+                case LimitLevels.`-10dB` => minusTen / max
                 case _        => 1.0
               })
               Util.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")

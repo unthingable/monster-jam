@@ -3,11 +3,12 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Setting}
 import com.github.unthingable.Util
-import com.github.unthingable.jam.binding.HB.BindingOps
-import com.github.unthingable.jam.binding.{Binding, HB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.framework.mode.{ModeCycleLayer, ModeLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.HB.BindingOps
+import com.github.unthingable.framework.binding.{Binding, HB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.{Jam, ModeCycleLayer, ModeLayer, SimpleModeLayer, TrackId}
+import com.github.unthingable.jam.{Jam, TrackId}
 
 import java.time.Instant
 import scala.collection.mutable
@@ -44,7 +45,7 @@ trait SceneL { this: Jam =>
     }
   }
 
-  lazy val superSceneSub = new SimpleModeLayer("superSceneSub") with Util {
+  lazy object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
     val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
@@ -89,7 +90,7 @@ trait SceneL { this: Jam =>
     }
 
     def recall(sceneIdx: Int): Unit = {
-      (0 until maxTracks).map(TrackId).foreach { trackId =>
+      (0 until maxTracks).map(TrackId.apply).foreach { trackId =>
         superScenes(sceneIdx).get(trackId) match {
           case Some(clip) =>
             // If a scene has a clip for a track id, attempt to launch it

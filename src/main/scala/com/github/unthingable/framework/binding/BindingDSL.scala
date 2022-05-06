@@ -1,4 +1,4 @@
-package com.github.unthingable.jam.binding
+package com.github.unthingable.framework.binding
 
 import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
 import com.bitwig.extension.controller.api.{HardwareActionBindable, HardwareBinding, HardwareBindingSource}

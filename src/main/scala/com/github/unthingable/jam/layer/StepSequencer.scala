@@ -4,12 +4,13 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.NoteStep.State
 import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
 import com.github.unthingable.Util
-import com.github.unthingable.jam.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.framework.mode.{ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
 import com.github.unthingable.jam.surface.Combo.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Jam, ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
+import com.github.unthingable.jam.Jam
 
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq

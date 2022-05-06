@@ -1,9 +1,10 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
-import com.github.unthingable.jam.binding.{Binding, HB, SupColorStateB, BindingBehavior => BB}
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB, BindingBehavior => BB}
 import com.github.unthingable.jam.surface.Combo.JC
-import com.github.unthingable.jam.{Jam, SimpleModeLayer}
+import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 
@@ -71,7 +72,7 @@ trait ClipMatrix { this: Jam =>
     private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         clip.select()
-      else if (clip.isPlaying.get()) clips.stop()
+      else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
            else clip.launch()
     }
 

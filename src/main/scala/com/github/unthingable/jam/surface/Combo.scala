@@ -2,9 +2,9 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.controller.api.HardwareLight
 import com.github.unthingable.{MonsterJamExt, jam}
-import com.github.unthingable.jam.binding
-import com.github.unthingable.jam.binding.{Clearable, HB}
-import com.github.unthingable.jam.binding.HB.HBS
+import com.github.unthingable.framework.binding
+import com.github.unthingable.framework.binding.{Clearable, HB}
+import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.collection.mutable
 

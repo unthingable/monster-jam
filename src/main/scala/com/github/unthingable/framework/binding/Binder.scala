@@ -1,4 +1,4 @@
-package com.github.unthingable.jam.binding
+package com.github.unthingable.framework.binding
 
 import scala.collection.mutable
 

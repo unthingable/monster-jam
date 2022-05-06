@@ -2,23 +2,24 @@ package com.github.unthingable
 
 import com.bitwig.extension.controller.ControllerExtension
 import com.bitwig.extension.controller.api._
-import com.github.unthingable.JamSettings.{EnumSetting, enumSetting}
+import com.github.unthingable.JamSettings.{EnumSetting}
 import com.github.unthingable.JamSettings
 import com.github.unthingable.jam.Jam
-import com.github.unthingable.jam.binding.Binder
+import com.github.unthingable.framework.binding.Binder
+import com.github.unthingable.framework.mode.ModeCommander
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
   shiftGroup: SettableBooleanValue,
-  shiftDpad: EnumSetting[JamSettings.DpadScroll.type],
-  limitLevel: EnumSetting[JamSettings.LimitLevels.type],
+  shiftDpad: EnumSetting[JamSettings.DpadScroll],
+  limitLevel: EnumSetting[JamSettings.LimitLevels],
   smartTracker: SettableBooleanValue,
 )
 
 case class MonsterDocPrefs(
-  hideDisabled: EnumSetting[JamSettings.ShowHide.type]
+  hideDisabled: EnumSetting[JamSettings.ShowHide]
 )
 
 case class MonsterJamExt(
@@ -78,12 +79,12 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Options", true),
         preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Options", true),
-        enumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.RegularPage),
-        enumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
+        EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.`page/single`),
+        EnumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
       ),
       MonsterDocPrefs(
-        enumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
+        EnumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
       ),
       loadMap(host)
     )

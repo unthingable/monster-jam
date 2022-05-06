@@ -2,7 +2,8 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
 import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
-import com.github.unthingable.jam.binding.{Binding, BindingBehavior => BB, HB}
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.binding.{Binding, HB, BindingBehavior => BB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -90,7 +91,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
             strip.slider.clearBindings()
           val current = param.get()
           startValue = None
-          offsetObserver = { v: Double =>
+          offsetObserver = { v =>
             val offset = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
             param.set(floored)
