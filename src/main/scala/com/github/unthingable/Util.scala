@@ -21,25 +21,8 @@ trait Util {
 
   case class Timed[A](value: A, instant: Instant)
 }
-
-class Printer(printFun: String => Unit) {
-  import javax.swing.Timer
-
-  val timer = new Timer(100, (_: ActionEvent) => printFun(""))
-
-  timer.setRepeats(false)
-
-  def println(s: String): Unit = {
-    if (timer.isRunning)
-      timer.stop()
-    printFun(s)
-    timer.restart()
-  }
-}
-
 object Util extends Util {
   var println: String => Unit = null
-  //var ext: MonsterJamExt = null
 
   def printColor(c: Color): Unit = {
     Util.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
@@ -49,27 +32,4 @@ object Util extends Util {
     }
   }
   val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
-}
-
-case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
-  c.pageNames().markInterested()
-  c.selectedPageIndex().markInterested()
-
-  def selectPrevious: () => Unit = () => prev.foreach(c.selectedPageIndex().set(_))
-
-  def selectNext: () => Unit = () => next.foreach(c.selectedPageIndex().set(_))
-
-  def hasNext: () => Boolean = () => next.isDefined
-
-  def hasPrevious: () => Boolean = () => prev.isDefined
-
-  def next: Option[Int] = {
-    val current = c.selectedPageIndex().get()
-    c.pageNames().get().zipWithIndex.find {case (name, idx) => idx > current && f(name)}.map(_._2)
-  }
-
-  def prev: Option[Int] = {
-    val current = c.selectedPageIndex().get()
-    c.pageNames().get().zipWithIndex.findLast {case (name, idx) => idx < current && f(name)}.map(_._2)
-  }
 }

@@ -17,7 +17,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     val info = ext.xmlMap.button(id)
     val button = JamControl.button(info)
     val led = JamControl.onOffLight(info)
-    JamOnOffButton(id, button.asHas, led)
+    JamOnOffButton(id, button, led)
   }
 
   object Mod {
@@ -25,7 +25,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       val id         = "SHIFT"
       val fakeButton = new FakeButton()
       override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
-      override val btn: ButtonActionSupplier  = fakeButton.asHas
+      override val btn: HardwareButton  = fakeButton
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -79,7 +79,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       val info = ext.xmlMap.button(id)
       val button = JamControl.button(info)
       val led = JamControl.onOffLight(info)
-      JamOnOffButton(id, button.asHas, led)
+      JamOnOffButton(id, button, led)
     }
 
     val up: JamOnOffButton = b(1)
@@ -101,7 +101,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     button.setIndexInGroup(idx)
 
-    JamRgbButton(id, button.asHas, led)
+    JamRgbButton(id, button, led)
   }
 
   val matrix: Seq[Seq[JamRgbButton]] = (1 to 8).map { row =>
@@ -113,7 +113,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       val button = JamControl.button(btnInfo)
       val led = JamControl.rgbLight(ledInfo)
 
-      JamRgbButton(id, button.asHas, led)
+      JamRgbButton(id, button, led)
     }
   }
 
@@ -128,7 +128,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     button.setIndexInGroup(idx)
 
-    JamRgbButton(id, button.asHas, led)
+    JamRgbButton(id, button, led)
   }
 
   // Touchstrips

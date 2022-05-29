@@ -9,31 +9,34 @@ import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.language.implicitConversions
+import com.github.unthingable.framework.binding.*
 
 /*
 Jam controls, self-wired to midi
  */
 
-trait ButtonActionSupplier {
-  def pressed : HBS
-  def released: HBS
-  def isPressed     : () => Boolean
-}
+// trait ButtonActionSupplier {
+//   def pressed : HBS
+//   def released: HBS
+//   def isPressed     : () => Boolean
+//   def pressedE: ButtonEvt
+//   def releasedE: ButtonEvt
+// }
 
-object ButtonActionSupplier {
-  def apply(_pressed: HBS, _released: HBS, _isPressed: () => Boolean): ButtonActionSupplier = new ButtonActionSupplier {
-    override val pressed: HBS = _pressed
-    override val released: HBS = _released
-    override val isPressed: () => Boolean = _isPressed
-  }
-}
+// object ButtonActionSupplier {
+//   def apply(b: HasId, _pressed: HBS, _released: HBS, _isPressed: () => Boolean): ButtonActionSupplier = new ButtonActionSupplier {
+//     override val pressed: HBS = _pressed
+//     override val released: HBS = _released
+//     override val isPressed: () => Boolean = _isPressed
+
+//     override val pressedE = ButtonEvt.Press(b.id)
+
+//     override val releasedE = ButtonEvt.Release(b.id)
+//   }
+// }
 
 sealed trait Button {
-  def btn: ButtonActionSupplier
-}
-
-sealed trait HwButton {
-  def hwb: HardwareButton
+  def btn: HardwareButton
 }
 
 sealed trait Light[L <: HardwareLight] { val light: L }
@@ -61,6 +64,10 @@ object JamControl {
     button.pressedAction.setActionMatcher(on)
     button.releasedAction.setActionMatcher(off)
     button.isPressed.markInterested()
+
+    import ActionDSL.action
+    button.pressedAction.addBinding(action("", () => ext.events.pub(ButtonEvt.Press(info.id))))
+    button.releasedAction.addBinding(action("", () => ext.events.pub(ButtonEvt.Release(info.id))))
 
     button
   }
@@ -114,10 +121,10 @@ object JamControl {
     light
   }
 
-  implicit class HbOps(b: HardwareButton) {
-    def asHas: ButtonActionSupplier =
-      ButtonActionSupplier(b.pressedAction, b.releasedAction, b.isPressed.get)
-  }
+  // implicit class HbOps(b: HardwareButton & HasId) {
+  //   def asHas: ButtonActionSupplier =
+  //     ButtonActionSupplier(b, b.pressedAction, b.releasedAction, b.isPressed.get)
+  // }
 }
 
 //case class JamButton(info: MidiInfo)(implicit ext: MonsterJamExt, surfaceState: SurfaceState) extends ButtonActionSupplier with Info {
@@ -164,9 +171,9 @@ object JamButton {
  * Sometimes you need to work with raw button actions and states, so they are there for you.
  * These are declared once in JamSurface and IDs are unique, which is why we can hash them.
  * */
-case class JamRgbButton(id: String, btn: ButtonActionSupplier, light: MultiStateHardwareLight) extends RgbButton with HasId
+case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight) extends RgbButton with HasId
 
-case class JamOnOffButton(id: String, btn: ButtonActionSupplier, light: OnOffHardwareLight) extends OnOffButton with HasId
+case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight) extends OnOffButton with HasId
 
 class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) {
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)

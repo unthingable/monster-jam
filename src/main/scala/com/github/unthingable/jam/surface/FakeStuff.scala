@@ -65,5 +65,5 @@ class FakeButton() {
   val pressedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = true }
   val releasedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = false }
 
-  def asHas: ButtonActionSupplier = ButtonActionSupplier(pressedAction, releasedAction, () => isPressed)
+  // def asHas: ButtonActionSupplier = ButtonActionSupplier(this, pressedAction, releasedAction, () => isPressed)
 }

@@ -3,7 +3,7 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.controller.api.HardwareLight
 import com.github.unthingable.{MonsterJamExt, jam}
 import com.github.unthingable.framework.binding
-import com.github.unthingable.framework.binding.{Clearable, HB}
+import com.github.unthingable.framework.binding.{Clearable, HB, HwEvent, ButtonEvt}
 import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.collection.mutable
@@ -26,10 +26,8 @@ object Combo {
     def releasedAll: HBS
   }
 
-  type BAS = ButtonActionSupplier
-
   trait HasModifier {
-    val modifier: Seq[BAS]
+    val modifier: Seq[ButtonActionSupplier]
   }
 
   // a button combo is like a micro mode that's always on
@@ -38,8 +36,8 @@ object Combo {
     //val pressedButtons = mutable.HashSet.empty[BAS]
 
     (b +: mods).foreach { b =>
-      b.btn.pressed.addBinding(ext.a(onPress(b)))
-      b.btn.released.addBinding(ext.a(onRelease(b)))
+      b.btn.pressedAction.addBinding(ext.a(onPress(b)))
+      b.btn.releasedAction.addBinding(ext.a(onRelease(b)))
       //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
     }
 
@@ -52,7 +50,7 @@ object Combo {
 
     def isPressedAll = keysOn == 1 + mods.size
     def isPressedAny = keysOn > 0
-    def isModPressed = mods.exists(_.btn.isPressed())
+    def isModPressed = mods.exists(_.btn.isPressed().get())
 
     private def onPress(b: NamedButton): Unit = {
       val newState = keysOn + 1
@@ -131,11 +129,15 @@ object Combo {
 
         override val released: FakeAction = FakeAction(s"$id:onlyR")
 
-        override def isPressed: () => Boolean = () => b.btn.isPressed() && !all.exists(_.isModPressed)
+        override def isPressed: () => Boolean = () => b.btn.isPressed().get() && !all.exists(_.isModPressed)
+
+        override val pressedE: ButtonEvt = ButtonEvt.Press(b.id)
+
+        override val releasedE: ButtonEvt = ButtonEvt.Release(b.id)
       }
 
-      b.btn.pressed.addBinding(ext.a(if (!all.exists(_.isModPressed)) ret.pressed.invoke()))
-      b.btn.released.addBinding(ext.a(if (all.forall(!_.quasiOn)) ret.released.invoke()))
+      b.btn.pressedAction.addBinding(ext.a(if (!all.exists(_.isModPressed)) ret.pressed.invoke()))
+      b.btn.releasedAction.addBinding(ext.a(if (all.forall(!_.quasiOn)) ret.released.invoke()))
 
       ret
     }

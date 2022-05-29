@@ -8,6 +8,7 @@ import com.github.unthingable.jam.Jam
 
 import java.time.Instant
 import java.util.function.BooleanSupplier
+import com.github.unthingable.framework.binding.EB
 
 trait TrackL { this: Jam =>
   lazy val trackGroup = new SimpleModeLayer("trackGroup") {
@@ -110,6 +111,8 @@ trait TrackL { this: Jam =>
       //FIXME HB(j.solo.withNone.pressed, "track direct solo", track.solo().toggleAction()),
       HB(j.mute.withNone.pressed, "track direct mute", track.mute().toggleAction()),
       HB(j.record.btn.pressed, "track direct arm", track.arm().toggleAction()),
+
+      //EB()
     )
   }
 

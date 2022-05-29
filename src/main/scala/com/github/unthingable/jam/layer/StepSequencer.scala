@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.NoteStep.State
 import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
 import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.{Binding, HB, JB, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.framework.binding.{Binding, HB, JCB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
 import com.github.unthingable.jam.surface.Combo.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -85,7 +85,7 @@ trait StepSequencer { this: Jam =>
 
     lazy val patLength = new SimpleModeLayer("patLength") {
       override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
-        JB(name,
+        JCB(name,
           j.matrix(idx / 8)(idx % 8),
           () => { Util.println(s"set playStop $idx")
             newPatLength = idx + 1

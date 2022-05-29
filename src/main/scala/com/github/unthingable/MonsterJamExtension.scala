@@ -1,11 +1,12 @@
 package com.github.unthingable
 
 import com.bitwig.extension.controller.ControllerExtension
-import com.bitwig.extension.controller.api._
-import com.github.unthingable.JamSettings.{EnumSetting}
+import com.bitwig.extension.controller.api.*
+import com.github.unthingable.JamSettings.EnumSetting
 import com.github.unthingable.JamSettings
+import com.github.unthingable.framework.EventBus
 import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.binding.Binder
+import com.github.unthingable.framework.binding.{Binder, Event}
 import com.github.unthingable.framework.mode.ModeCommander
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
@@ -36,6 +37,7 @@ case class MonsterJamExt(
   docPrefs: MonsterDocPrefs,
   xmlMap: XmlMap,
   binder: Binder = new Binder(),
+  events: EventBus[Event] = new EventBus(),
 ) {
   type Schedulable = (Int, () => Boolean, () => Unit)
   final def run(tasks: Schedulable*): Unit = {
@@ -58,7 +60,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
   var ext: MonsterJamExt = null
   private var jam: Jam = null
 
-  val printer = new Printer(host.println)
+  val printer = new util.Printer(host.println)
   Util.println = printer.println
 
   val preferences: Preferences = host.getPreferences

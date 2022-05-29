@@ -52,7 +52,7 @@ sealed trait InBinding[H, T] extends Binding[H, T, T] {
 
 // Controller -> Bitwig host
 sealed trait OutBinding[S, B, H] extends Binding[S, B, H] with BindingDSL {
-  implicit val ext: MonsterJamExt
+  given ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
   var operatedAt: Option[Instant] = None
@@ -65,7 +65,7 @@ class HB[S](
   val name: String,
   val target: HardwareBindable,
   override val behavior: BindingBehavior)
-  (implicit val ext: MonsterJamExt)
+  (using val ext: MonsterJamExt)
   extends OutBinding[S, HBS, HardwareBindable] with Named {
 
   override val bindingSource = toSource(source)
@@ -156,7 +156,7 @@ case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
   override def clear(): Unit = target.setValueSupplier(() => false)
 }
 
-object JB extends BindingDSL {
+object JCB extends BindingDSL {
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
@@ -176,3 +176,28 @@ object JB extends BindingDSL {
       HB(b.btn.released, s"$name release", release),
     )
 }
+
+// event binding
+// import Event.*
+case class EB(ev: Event, action: Outcome)(using val ext: MonsterJamExt) extends OutBinding[Event, Event, Outcome] {
+  override def bind(): Unit = ext.events.setSub(ev, ev =>
+    action match
+      case x: SideEffect => x.f(ev)
+      case x: Command => ext.events.pub(x)
+  )
+
+  override val source: Event = ev
+
+  override val target: Outcome = action
+
+  override val bindingSource: Event = ev
+
+  override def clear(): Unit = ext.events.clearSub(ev)
+
+  //def eval(): Unit = action match
+  //  case f: SideEffect => f(ev)
+  //  case _ => ???
+}
+
+object EB:
+  def apply(ev: Event, f: => Unit)(using ext: MonsterJamExt): EB = EB(ev, SideEffect(_ => f))

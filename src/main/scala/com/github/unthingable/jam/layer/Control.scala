@@ -8,7 +8,8 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam._
 import com.github.unthingable.framework.binding.HB.BindingOps
-import com.github.unthingable.{FilteredPage, Util}
+import com.github.unthingable.Util
+import com.github.unthingable.util.FilteredPage
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier

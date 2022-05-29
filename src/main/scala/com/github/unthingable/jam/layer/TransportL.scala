@@ -31,7 +31,9 @@ trait TransportL { this: Jam =>
     ext.transport.isAutomationOverrideActive.markInterested()
     ext.transport.isArrangerAutomationWriteEnabled.markInterested()
 
-    val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => {
+    val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => playPress())
+
+    def playPress(): Unit = {
       val isPlaying = ext.transport.isPlaying
       val t         = ext.transport
       (isPlaying.get(), j.Mod.Shift.btn.isPressed()) match {
@@ -43,7 +45,7 @@ trait TransportL { this: Jam =>
         case (false, false) => t.continuePlayback()
         case (false, true)  => restart(false)
       }
-    })
+    }
 
     def restart(go: Boolean): Unit = {
       val h = ext.host
@@ -58,7 +60,8 @@ trait TransportL { this: Jam =>
     }
 
     override val modeBindings = Vector(
-      HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
+      // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
+      EB(j.play.btn.pressedE, playPress()),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
       HB(j.noteRepeat.btn.pressed, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
       HB(j.noteRepeat.btn.released, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
