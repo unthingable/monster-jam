@@ -10,6 +10,7 @@ import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgb
 import java.time.Instant
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
+import com.github.unthingable.jam.surface.HwButton
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -160,20 +161,20 @@ object JCB extends BindingDSL {
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
-  def apply(name: String, b: RgbButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+  def apply(name: String, b: RgbButton with HwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (implicit ext: MonsterJamExt) =
     Vector(
       SupColorStateB(b.light, color),
-      HB(b.btn.pressed, s"$name press", press),
-      HB(b.btn.released, s"$name release", release),
+      HB(b.btn.pressedAction, s"$name press", press),
+      HB(b.btn.releasedAction, s"$name release", release),
     )
 
-  def apply(name: String, b: OnOffButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+  def apply(name: String, b: OnOffButton with HwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
     (implicit ext: MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
-      HB(b.btn.pressed, s"$name press", press),
-      HB(b.btn.released, s"$name release", release),
+      HB(b.btn.pressedAction, s"$name press", press),
+      HB(b.btn.releasedAction, s"$name release", release),
     )
 }
 
@@ -186,6 +187,11 @@ case class EB(ev: Event, action: Outcome)(using val ext: MonsterJamExt) extends 
       case x: Command => ext.events.pub(x)
   )
 
+  // TODO refactor ownership and exclusivity
+  /* WIP 
+  source tell the binder how to tell when another mode is taking over the control
+  most times a new mode will "shadow" the binding, but some bindings are non-exclusive, curently mnanaged by BindingBehavior
+  */
   override val source: Event = ev
 
   override val target: Outcome = action

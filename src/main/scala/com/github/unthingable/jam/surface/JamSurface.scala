@@ -23,9 +23,9 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   object Mod {
     object Shift extends OnOffButton with HasId {
       val id         = "SHIFT"
-      val fakeButton = new FakeButton()
+      val fakeButton = new FakeButton(id)
       override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
-      override val btn: HardwareButton  = fakeButton
+      override val btn  = fakeButton
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -188,7 +188,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     }
   }
 
-  import Combo.JC
-  val ShiftDup = JC(duplicate, Mod.Shift)
-  val ShiftSolo = JC(solo, Mod.Shift)
+  // import Combo.JC
+  // val ShiftDup = JC(duplicate, Mod.Shift)
+  // val ShiftSolo = JC(solo, Mod.Shift)
 }

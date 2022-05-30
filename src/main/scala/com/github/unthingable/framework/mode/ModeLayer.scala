@@ -8,6 +8,7 @@ import com.github.unthingable.{MonsterJamExt, Util}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
+import com.github.unthingable.jam.surface.HwButton
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -91,9 +92,9 @@ object SimpleModeLayer {
 case class ModeButton(on: HBS, off: HBS, light: Option[OnOffHardwareLight])
 
 object ModeButton {
-  def apply(b: Button): ModeButton = ModeButton(
-    b.btn.pressed,
-    b.btn.released,
+  def apply(b: HwButton): ModeButton = ModeButton(
+    b.btn.pressedAction,
+    b.btn.releasedAction,
     b match {
       case x: OnOffButton => Some(x.light)
       case _              => None
@@ -143,7 +144,7 @@ abstract class ModeButtonLayer(
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: Button, modeBindings: Seq[Binding[_, _, _]],
+  def apply(name: String, modeButton: HwButton, modeBindings: Seq[Binding[_, _, _]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false)
     (implicit ext: MonsterJamExt): ModeButtonLayer = {
@@ -214,7 +215,7 @@ abstract class ModeCycleLayer(
 
 abstract class ModeButtonCycleLayer(
   name: String,
-  val modeButton: OnOffButton,
+  val modeButton: OnOffButton with HwButton,
   val cycleMode: CycleMode,
   val silent: Boolean = false,
   val siblingOperatedModes: Seq[ModeLayer] = Vector(),
@@ -250,19 +251,19 @@ abstract class ModeButtonCycleLayer(
   def lightOn: BooleanSupplier = () => isOn
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.btn.pressed, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), BB(tracked = false))
+    HB(modeButton.btn.pressedAction, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), BB(tracked = false))
   ) ++ (if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        HB(modeButton.btn.pressed, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
+        HB(modeButton.btn.pressedAction, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.btn.pressed, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
-        HB(modeButton.btn.released, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
+        HB(modeButton.btn.pressedAction, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
+        HB(modeButton.btn.releasedAction, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }

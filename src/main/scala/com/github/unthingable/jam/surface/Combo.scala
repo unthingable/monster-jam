@@ -19,7 +19,7 @@ trait SurfaceState {
 object Combo {
   implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
-  type NamedButton = Button with HasId
+  type NamedButton = HwButton with HasId
   trait ComboSupplier {
     def pressed: HBS
     def releasedOne: HBS
@@ -27,7 +27,7 @@ object Combo {
   }
 
   trait HasModifier {
-    val modifier: Seq[ButtonActionSupplier]
+    val modifier: Seq[HwButton]
   }
 
   // a button combo is like a micro mode that's always on

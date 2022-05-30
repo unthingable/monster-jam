@@ -60,7 +60,7 @@ object FakeAction {
   }
 }
 
-class FakeButton() {
+class FakeButton(val id: String) extends ButtonStateSupplier with HasId {
   var isPressed: Boolean = false
   val pressedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = true }
   val releasedAction: FakeAction = new FakeAction { override val invokeCallback = () => isPressed = false }

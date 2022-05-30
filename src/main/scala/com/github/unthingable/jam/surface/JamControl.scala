@@ -15,13 +15,12 @@ import com.github.unthingable.framework.binding.*
 Jam controls, self-wired to midi
  */
 
-// trait ButtonActionSupplier {
-//   def pressed : HBS
-//   def released: HBS
-//   def isPressed     : () => Boolean
-//   def pressedE: ButtonEvt
-//   def releasedE: ButtonEvt
-// }
+class ButtonStateSupplier(id: String, btn: HardwareButton) {
+  btn.isPressed.markInterested()
+  def isPressed: Boolean = btn.isPressed().get()
+  def pressedE: ButtonEvt = ButtonEvt.Press(id)
+  def releasedE: ButtonEvt = ButtonEvt.Release(id)
+}
 
 // object ButtonActionSupplier {
 //   def apply(b: HasId, _pressed: HBS, _released: HBS, _isPressed: () => Boolean): ButtonActionSupplier = new ButtonActionSupplier {
@@ -35,7 +34,8 @@ Jam controls, self-wired to midi
 //   }
 // }
 
-sealed trait Button {
+sealed trait Button
+sealed trait HwButton extends Button {
   def btn: HardwareButton
 }
 
@@ -66,6 +66,7 @@ object JamControl {
     button.isPressed.markInterested()
 
     import ActionDSL.action
+    // how will exclusive subsctiptions be managed? should this be calling a key controller instead?
     button.pressedAction.addBinding(action("", () => ext.events.pub(ButtonEvt.Press(info.id))))
     button.releasedAction.addBinding(action("", () => ext.events.pub(ButtonEvt.Release(info.id))))
 
@@ -152,7 +153,7 @@ object JamControl {
 //}
 
 object JamButton {
-  def infoActionMatchers(info: MidiInfo)(implicit ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
+  def infoActionMatchers(info: MidiInfo)(using ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
     info.event match {
       case CC(cc)     =>
         (
@@ -171,11 +172,12 @@ object JamButton {
  * Sometimes you need to work with raw button actions and states, so they are there for you.
  * These are declared once in JamSurface and IDs are unique, which is why we can hash them.
  * */
-case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight) extends RgbButton with HasId
 
-case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight) extends OnOffButton with HasId
+case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight) extends ButtonStateSupplier(id, btn) with RgbButton with HwButton with HasId
 
-class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(implicit ext: MonsterJamExt) {
+case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight) extends ButtonStateSupplier(id, btn) with OnOffButton with HwButton with HasId
+
+class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(using ext: MonsterJamExt) {
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
   slider.isBeingTouched.markInterested()
 
