@@ -19,15 +19,15 @@ trait SurfaceState {
 object Combo {
   implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
-  type NamedButton = HwButton with HasId
+  type NamedButton = ButtonStateSupplier with HasId
   trait ComboSupplier {
-    def pressed: HBS
-    def releasedOne: HBS
-    def releasedAll: HBS
+    def pressed: ButtonEvt
+    def releasedOne: ButtonEvt
+    def releasedAll: ButtonEvt
   }
 
   trait HasModifier {
-    val modifier: Seq[HwButton]
+    val modifier: Seq[HasHwButton]
   }
 
   // a button combo is like a micro mode that's always on
@@ -36,8 +36,11 @@ object Combo {
     //val pressedButtons = mutable.HashSet.empty[BAS]
 
     (b +: mods).foreach { b =>
-      b.btn.pressedAction.addBinding(ext.a(onPress(b)))
-      b.btn.releasedAction.addBinding(ext.a(onRelease(b)))
+      ext.events.addSub(b.pressedE, _ => onPress(b))
+      ext.events.addSub(b.releasedE, _ => onRelease(b))
+      // b.btn.pressedAction.addBinding(ext.a(onPress(b)))
+      // b.btn.releasedAction.addBinding(ext.a(onRelease(b)))
+
       //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
     }
 
@@ -50,7 +53,7 @@ object Combo {
 
     def isPressedAll = keysOn == 1 + mods.size
     def isPressedAny = keysOn > 0
-    def isModPressed = mods.exists(_.btn.isPressed().get())
+    def isModPressed = mods.exists(_.isPressed)
 
     private def onPress(b: NamedButton): Unit = {
       val newState = keysOn + 1
@@ -81,67 +84,50 @@ object Combo {
   }
 
 
-  type HWB = ButtonLight[_] with HasId
+  // type HWB = ButtonLight[_] with HasId
 
-  implicit class BLOps[L <: HardwareLight](b: ButtonLight[L] with HasId)(implicit ext: MonsterJamExt) {
-    def map(f: ButtonActionSupplier => ButtonActionSupplier with HasId): HWB = new ButtonLight[L] with HasId {
-      override val light: L = b.light
-      private val newBtn = f(btn)
-      override def btn: ButtonActionSupplier = newBtn
-      override val id = s"${b.id}>${newBtn.id}"
-    }
+  // implicit class BLOps[L <: HardwareLight](b: ButtonLight[L] with HasId)(implicit ext: MonsterJamExt) {
+  //   def map(f: ButtonActionSupplier => ButtonActionSupplier with HasId): HWB = new ButtonLight[L] with HasId {
+  //     override val light: L = b.light
+  //     private val newBtn = f(btn)
+  //     override def btn: ButtonActionSupplier = newBtn
+  //     override val id = s"${b.id}>${newBtn.id}"
+  //   }
 
-    def mapB(f: ButtonLight[L] with HasId => ButtonActionSupplier with HasId): HWB = new ButtonLight[L] with HasId {
-      override val light: L = b.light
-      private val newBtn = f(b)
-      override def btn: ButtonActionSupplier = newBtn
-      override val id = s"${b.id}>${newBtn.id}"
-    }
+  //   def mapB(f: ButtonLight[L] with HasId => ButtonActionSupplier with HasId): HWB = new ButtonLight[L] with HasId {
+  //     override val light: L = b.light
+  //     private val newBtn = f(b)
+  //     override def btn: ButtonActionSupplier = newBtn
+  //     override val id = s"${b.id}>${newBtn.id}"
+  //   }
 
-    // fixme rm
-    //def withM(mod: HWB): ButtonActionSupplier with HasModifier = {
-    //
-    //  val ret = new BAS with HasModifier {
-    //    override val pressed: FakeAction = FakeAction()
-    //    override val released: FakeAction = FakeAction()
-    //    override val isPressed: () => Boolean = () => modifier.forall(_.isPressed()) && b.btn.isPressed()
-    //
-    //    override val modifier: Seq[BAS] = Vector(mod.btn)
-    //  }
-    //
-    //  b.btn.pressed.addBinding(ext.a(if (ret.modifier.forall(_.isPressed())) ret.pressed.invoke()))
-    //  b.btn.pressed.addBinding(ext.a(if (ret.modifier.forall(_.isPressed())) ret.pressed.invoke()))
-    //
-    //  ret
-    //}
+  //   def withNone: ButtonActionSupplier with HasId = {
+  //     // all active combos involving this button
+  //     def all: Seq[JC] = ext.binder.sourceMap.keys
+  //       .collect {case x: JC => x}
+  //       .filter(_.b == b) // only combos involving this button
+  //       .toVector
 
-    def withNone: ButtonActionSupplier with HasId = {
-      // all active combos involving this button
-      def all: Seq[JC] = ext.binder.sourceMap.keys
-        .collect {case x: JC => x}
-        .filter(_.b == b) // only combos involving this button
-        .toVector
+  //     val ret = new ButtonActionSupplier with HasId {
+  //       val id = s"${b.id}:only"
 
-      val ret = new ButtonActionSupplier with HasId {
-        val id = s"${b.id}:only"
+  //       override val pressed: FakeAction = FakeAction(s"$id:onlyP")
 
-        override val pressed: FakeAction = FakeAction(s"$id:onlyP")
+  //       override val released: FakeAction = FakeAction(s"$id:onlyR")
 
-        override val released: FakeAction = FakeAction(s"$id:onlyR")
+  //       override def isPressed: () => Boolean = () => b.btn.isPressed().get() && !all.exists(_.isModPressed)
 
-        override def isPressed: () => Boolean = () => b.btn.isPressed().get() && !all.exists(_.isModPressed)
+  //       override val pressedE: ButtonEvt = ButtonEvt.Press(b.id)
 
-        override val pressedE: ButtonEvt = ButtonEvt.Press(b.id)
+  //       override val releasedE: ButtonEvt = ButtonEvt.Release(b.id)
+  //     }
 
-        override val releasedE: ButtonEvt = ButtonEvt.Release(b.id)
-      }
+  //     b.btn.pressedAction.addBinding(ext.a(if (!all.exists(_.isModPressed)) ret.pressed.invoke()))
+  //     b.btn.releasedAction.addBinding(ext.a(if (all.forall(!_.quasiOn)) ret.released.invoke()))
 
-      b.btn.pressedAction.addBinding(ext.a(if (!all.exists(_.isModPressed)) ret.pressed.invoke()))
-      b.btn.releasedAction.addBinding(ext.a(if (all.forall(!_.quasiOn)) ret.released.invoke()))
-
-      ret
-    }
-  }
+  //     ret
+  //   }
+  // }
 
   //implicit class BOps(b: ButtonActionSupplier)(implicit ext: MonsterJamExt) {
   //  type HWB = ButtonLight[_] with HasId

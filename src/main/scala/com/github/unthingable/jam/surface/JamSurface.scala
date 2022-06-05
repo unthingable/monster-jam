@@ -3,8 +3,8 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
 import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
-import com.github.unthingable.framework.binding.HB
-import com.github.unthingable.jam.surface.JamControl.HbOps
+import com.github.unthingable.framework.binding.{HB, ButtonEvt}
+// import com.github.unthingable.jam.surface.JamControl.HbOps
 import com.github.unthingable.{MonsterJamExt, Util}
 
 
@@ -21,11 +21,15 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   object Mod {
-    object Shift extends OnOffButton with HasId {
+    object Shift extends HasOnOffLight, HasButtonState, HasId {
       val id         = "SHIFT"
-      val fakeButton = new FakeButton(id)
+      val btn = new FakeButton(id)
       override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
-      override val btn  = fakeButton
+      val st = new ButtonStateSupplier {
+        def isPressed = btn.isPressed
+        val pressedE = ButtonEvt.Press("SHIFT")
+        val releasedE = ButtonEvt.Release("SHIFT")
+      }
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -177,9 +181,11 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        Mod.Shift.fakeButton.pressedAction.invoke()
+        ext.events.eval(Mod.Shift.st.pressedE)
+        // Mod.Shift.fakeButton.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        Mod.Shift.fakeButton.releasedAction.invoke()
+        ext.events.eval(Mod.Shift.st.releasedE)
+        // Mod.Shift.fakeButton.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()

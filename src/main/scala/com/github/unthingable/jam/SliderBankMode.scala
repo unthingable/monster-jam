@@ -46,7 +46,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
 
   def stripObserver(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
-      if (isOn && !j.clear.btn.isPressed()) {
+      if (isOn && !j.clear.btn.isPressed().get) {
         j.stripBank.setValue(idx,
           (1.0.min(v / paramRange(idx)._2) * 127).toInt)
         paramValueCache.update(idx, v)
@@ -70,7 +70,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       import Event._
       import State._
 
-      val shiftOn = j.Mod.Shift.btn.isPressed()
+      val shiftOn = j.Mod.Shift.btn.isPressed
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
@@ -80,7 +80,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
         case (_,_,ClearR,_) =>
           bindWithRange(idx, force = true)
           Normal
-        case (_,_,StripP,_) if j.clear.btn.isPressed() =>
+        case (_,_,StripP,_) if j.clear.btn.isPressed().get =>
           param.reset()
           Normal
         case (_,_,ShiftP,_) =>
@@ -145,10 +145,10 @@ abstract class SliderBankMode[P <: ObjectProxy](
     import Event._
     if (paramKnowsValue)
       Vector(
-        HB(j.clear.btn.pressed, s"clear $idx pressed", () => engage(ClearP), BB(tracked = false, exclusive = false)),
-        HB(j.clear.btn.released, s"clear $idx released", () => engage(ClearR), BB(tracked = false, exclusive = false)),
-        HB(j.Mod.Shift.btn.pressed, s"shift $idx pressed", () => engage(ShiftP), BB(tracked = false, exclusive = false)),
-        HB(j.Mod.Shift.btn.released, s"shift $idx released", () => engage(ShiftR), BB(tracked = false, exclusive = false)),
+        HB(j.clear.btn.pressedAction, s"clear $idx pressed", () => engage(ClearP), BB(tracked = false, exclusive = false)),
+        HB(j.clear.btn.releasedAction, s"clear $idx released", () => engage(ClearR), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.pressedAction, s"shift $idx pressed", () => engage(ShiftP), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.releasedAction, s"shift $idx released", () => engage(ShiftR), BB(tracked = false, exclusive = false)),
         HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), BB(tracked = true, exclusive = false)),
         HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), BB(tracked = true, exclusive = false)),
       )

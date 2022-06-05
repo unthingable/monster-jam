@@ -2,7 +2,7 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Bank, Clip}
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButton, ModeButtonCycleLayer, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButtonCycleLayer, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 import com.github.unthingable.jam._
@@ -12,7 +12,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
    * Shift matrix row
    */
-  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", ModeButton(j.Mod.Shift), GateMode.Gate) {
+  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Mod.Shift, GateMode.Gate) {
     val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
     override val modeBindings: Seq[Binding[_, _, _]] =
       (Vector(
@@ -26,12 +26,12 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
         (JamColorBase.FUCHSIA, () => clip.transpose(12)),
       ).zipWithIndex.flatMap { case ((color, action), idx) =>
         val button = j.matrix(0)(idx)
-        Vector(HB(button.btn.pressed, s"shift-$idx matrix pressed", action)) ++ (
+        Vector(HB(button.btn.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
           if (ext.preferences.shiftRow.get())
             Vector(SupColorStateB(
               button.light, () => JamColorState(
                 color,
-                brightness = if (button.btn.isPressed()) 2 else 0),
+                brightness = if (button.btn.isPressed().get) 2 else 0),
               JamColorState.empty))
           else Vector.empty
           )
@@ -43,7 +43,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
           else JamColorState(JamColorBase.YELLOW, 0)
         )) else Vector.empty)
        ++ Vector(
-        HB(j.matrix(1)(0).btn.pressed, "toggle hide disabled", () => {
+        HB(j.matrix(1)(0).btn.pressedAction, "toggle hide disabled", () => {
           if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
             ext.docPrefs.hideDisabled.set(ShowHide.Show)
           else ext.docPrefs.hideDisabled.set(ShowHide.Hide)
@@ -67,7 +67,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
             JamColorState(JamColorBase.WARM_YELLOW, 0)
         else JamColorState.empty
         , JamColorState.empty),
-      HB(btn(idx).btn.pressed, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
+      HB(btn(idx).btn.pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
     )
 
     val trackPages: Vector[Binding[_, _, _]] =
@@ -94,7 +94,7 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
                           JamColorState(JamColorBase.ORANGE, 0)
               else JamColorState.empty
               , JamColorState.empty),
-            HB(j.sceneButtons(idx).btn.pressed, "super scene page $idx", () => superSceneSub.pageIndex = idx)
+            HB(j.sceneButtons(idx).btn.pressedAction, "super scene page $idx", () => superSceneSub.pageIndex = idx)
           ))
         }
       }

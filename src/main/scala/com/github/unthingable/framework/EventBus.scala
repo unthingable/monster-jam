@@ -13,7 +13,7 @@ class EventBus[E] {
 
   private val subs = mutable.HashMap.empty[E, mutable.ListBuffer[Reactor]]
 
-  def pub(e: E): Unit =
+  def eval(e: E): Unit =
     Util.println("evt: " + e.toString)
     subs.get(e).toSeq.flatten.foreach(_(e))
 

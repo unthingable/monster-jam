@@ -121,24 +121,24 @@ trait StepSequencer { this: Jam =>
               }).getOrElse(JamColorState.empty)
             }
           }),
-          HB(j.matrix(row)(col).btn.pressed, "", () => clip.toggleStep(x, y, 100)))
+          HB(j.matrix(row)(col).btn.pressedAction, "", () => clip.toggleStep(x, y, 100)))
       }).flatten ++
       EIGHT.flatMap { i =>
         val btn = j.sceneButtons(i)
         def hasContent = clip.getPlayStop.get() > i * 32 * stepSize
 
         Vector(
-          HB(btn.btn.pressed, "", () => if (hasContent) scrollX(i * 32)),
+          HB(btn.btn.pressedAction, "", () => if (hasContent) scrollX(i * 32)),
           SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor()),
         )
       } ++ Vector(
         // FIXME
-        HB[JC](j.ShiftSolo, _.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
-        HB[JC](j.ShiftSolo, _.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
+        // HB[JC](j.ShiftSolo, _.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
+        // HB[JC](j.ShiftSolo, _.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.step.btn.pressed, "step toggle", () => toggleAction.invoke()),
+      HB(j.step.btn.pressedAction, "step toggle", () => toggleAction.invoke()),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

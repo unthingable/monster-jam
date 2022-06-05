@@ -3,7 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.Send
 import com.github.unthingable.Util
 import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB}
-import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButton, ModeButtonCycleLayer, ModeButtonLayer}
+import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButtonCycleLayer, ModeButtonLayer}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -17,7 +17,7 @@ trait Aux { this: Jam =>
       })
   }
 
-  lazy val auxGate = new ModeButtonLayer("strip AUX gate", ModeButton(j.aux),
+  lazy val auxGate = new ModeButtonLayer("strip AUX gate", j.aux,
     GateMode.Gate,
     silent = true
   ) {
@@ -28,7 +28,7 @@ trait Aux { this: Jam =>
         color.markInterested()
 
         Vector(
-          HB(b.btn.pressed, s"aux select $idx", () => auxLayer.select(idx)),
+          HB(b.btn.pressedAction, s"aux select $idx", () => auxLayer.select(idx)),
           SupColorStateB(b.light, () =>
             (if (auxLayer.selected.contains(idx))
                JamColorState(JamColorBase.WHITE, 3)

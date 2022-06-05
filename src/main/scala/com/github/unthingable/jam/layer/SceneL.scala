@@ -32,7 +32,7 @@ trait SceneL { this: Jam =>
           else
             JamColorBase.OFF,
           1)),
-        HB(btn.btn.pressed, s"scene $i press", () => handlePress(scene)))
+        HB(btn.btn.pressedAction, s"scene $i press", () => handlePress(scene)))
     }
 
     private def handlePress(scene: Scene): Unit = {
@@ -45,7 +45,7 @@ trait SceneL { this: Jam =>
     }
   }
 
-  lazy object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
+  object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
     val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
@@ -139,7 +139,7 @@ trait SceneL { this: Jam =>
       def pageOffset = pageIndex * 8
 
       Vector(
-        HB(j.sceneButtons(idx).btn.pressed, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
+        HB(j.sceneButtons(idx).btn.pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
         SupColorStateB(j.sceneButtons(idx).light, () =>
           JamColorState(
             if (superScenes(pageOffset + idx).isEmpty)
@@ -178,7 +178,7 @@ trait SceneL { this: Jam =>
                 JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
-          HB(btn.btn.pressed, "shift-scroll page $idx", () => {
+          HB(btn.btn.pressedAction, "shift-scroll page $idx", () => {
             trackBank.scrollPosition().set(col * 8)
             sceneBank.scrollPosition().set(row * 8)}))
       }).flatten
@@ -195,7 +195,7 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.btn.isPressed()) pageMatrix.activateAction.invoke(), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) pageMatrix.activateAction.invoke(), 50)
     }
 
     def release(): Unit = {
@@ -212,8 +212,8 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      HB(j.song.btn.pressed, "sceneCycle pressed", () => press()),
-      HB(j.song.btn.released, "sceneCycle released", () => release()),
+      HB(j.song.btn.pressedAction, "sceneCycle pressed", () => press()),
+      HB(j.song.btn.releasedAction, "sceneCycle released", () => release()),
     )
   }
 }

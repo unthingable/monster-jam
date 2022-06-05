@@ -38,8 +38,8 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          HB(btn.btn.pressed, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          HB(btn.btn.released, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          HB(btn.btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
+          HB(btn.btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
     } ++ Vector(
@@ -47,7 +47,7 @@ trait ClipMatrix { this: Jam =>
         source = None
       }, BB(tracked = false, managed = false)),
       //FIXME
-      HB[JC](j.ShiftDup, _.pressed, "shift dup clip content", () => clip.duplicateContent())
+      // HB[JC](j.ShiftDup, _.pressed, "shift dup clip content", () => clip.duplicateContent())
     )
 
 

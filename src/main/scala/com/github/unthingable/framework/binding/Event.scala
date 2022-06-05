@@ -1,7 +1,5 @@
 package com.github.unthingable.framework.binding
 
-import com.github.unthingable.jam.surface.Button
-
 // event binding
 trait HwEvent // hardware events: button presses, etc.
 trait ExtEvent // extention events: mode activations, etc.

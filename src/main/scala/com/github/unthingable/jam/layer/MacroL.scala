@@ -2,7 +2,7 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util.Timed
-import com.github.unthingable.framework.mode.{GateMode, IntActivatedLayer, ModeButton, ModeButtonLayer}
+import com.github.unthingable.framework.mode.{GateMode, IntActivatedLayer, ModeButtonLayer}
 import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -11,7 +11,7 @@ import com.github.unthingable.jam.Jam
 import java.time.Instant
 
 trait MacroL { this: Jam =>
-  lazy val macroLayer = new ModeButtonLayer("MACRO", ModeButton(j.macroButton), GateMode.Gate, silent = true) {
+  lazy val macroLayer = new ModeButtonLayer("MACRO", j.macroButton, GateMode.Gate, silent = true) {
     var bumpedStrip  : Option[IntActivatedLayer] = None
     var bumpedSubMode: Option[Int]               = None
     var controlToggleSub: Option[Int] = None // more dirty hacks
@@ -19,7 +19,7 @@ trait MacroL { this: Jam =>
     override def activate(): Unit = {
       super.activate()
       // dirty hack to show user controls
-      if (j.control.btn.isPressed()) {
+      if (j.control.btn.isPressed().get) {
         // CONTROL is already active, just need to toggle
         if (!controlLayer.isUserSelected) {
           controlToggleSub = controlLayer.selected
@@ -76,8 +76,8 @@ trait MacroL { this: Jam =>
               JamColorState(JamColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
-          HB(btn.btn.pressed, "direct select track", () => select(track)),
-          HB(btn.btn.released, "direct select release", () => ()),
+          HB(btn.btn.pressedAction, "direct select track", () => select(track)),
+          HB(btn.btn.releasedAction, "direct select release", () => ()),
         )
       }
   }

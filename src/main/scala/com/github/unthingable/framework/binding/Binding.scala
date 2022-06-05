@@ -1,16 +1,16 @@
 package com.github.unthingable.framework.binding
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api._
+import com.bitwig.extension.controller.api.*
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.framework.binding.HB.HBS
 import com.github.unthingable.framework.mode.Graph
-import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton, OnOffButton, RgbButton}
+import com.github.unthingable.jam.surface.{HasHwButton, HasOnOffLight, HasRgbLight, JamColorState, JamOnOffButton, JamRgbButton}
 
 import java.time.Instant
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
-import com.github.unthingable.jam.surface.HwButton
+import reflect.Selectable.reflectiveSelectable
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -133,6 +133,10 @@ object HB extends BindingDSL {
   def apply(source: HBS, name: String, target: HardwareBindable)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, target, BindingBehavior())
+
+  // FIXME - temporary shim for compilation
+  def apply(source: ButtonEvt, name: String, target: Any) = ???
+  def apply(source: ButtonEvt, name: String, target: Any, behavior: BindingBehavior) = ???
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -161,7 +165,7 @@ object JCB extends BindingDSL {
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
-  def apply(name: String, b: RgbButton with HwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+  def apply(name: String, b: HasRgbLight & HasHwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (implicit ext: MonsterJamExt) =
     Vector(
       SupColorStateB(b.light, color),
@@ -169,7 +173,7 @@ object JCB extends BindingDSL {
       HB(b.btn.releasedAction, s"$name release", release),
     )
 
-  def apply(name: String, b: OnOffButton with HwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+  def apply(name: String, b: HasOnOffLight & HasHwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
     (implicit ext: MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
@@ -180,11 +184,15 @@ object JCB extends BindingDSL {
 
 // event binding
 // import Event.*
-case class EB(ev: Event, action: Outcome)(using val ext: MonsterJamExt) extends OutBinding[Event, Event, Outcome] {
-  override def bind(): Unit = ext.events.setSub(ev, ev =>
+case class EB(
+  ev: Event, 
+  action: Outcome,
+  override val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
+)(using val ext: MonsterJamExt) extends OutBinding[Event, Event, Outcome] {
+  override def bind(): Unit = ext.events.addSub(ev, ev =>
     action match
       case x: SideEffect => x.f(ev)
-      case x: Command => ext.events.pub(x)
+      case x: Command => ext.events.eval(x)
   )
 
   // TODO refactor ownership and exclusivity
@@ -198,7 +206,7 @@ case class EB(ev: Event, action: Outcome)(using val ext: MonsterJamExt) extends 
 
   override val bindingSource: Event = ev
 
-  override def clear(): Unit = ext.events.clearSub(ev)
+  override def clear(): Unit = ext.events.clearSub(ev) // FIXME
 
   //def eval(): Unit = action match
   //  case f: SideEffect => f(ev)
