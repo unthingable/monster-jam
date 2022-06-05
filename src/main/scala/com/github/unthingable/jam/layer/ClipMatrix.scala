@@ -43,7 +43,7 @@ trait ClipMatrix { this: Jam =>
         )
       }
     } ++ Vector(
-      HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
+      HB(GlobalMode.Duplicate.deactivateEvent, "dup clips: clear source", () => {
         source = None
       }, BB(tracked = false, managed = false)),
       //FIXME

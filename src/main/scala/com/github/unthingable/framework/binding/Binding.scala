@@ -41,7 +41,7 @@ sealed trait Binding[S, B, T] extends Clearable {
   def bindingSource: B // actual thing we're binding to, provided by S
 
   var node: Option[Graph.ModeNode] = None // backreference to the node that owns this
-  def layerName: String = node.map(_.layer.name).getOrElse("")
+  def layerName: String = node.map(_.layer.id).getOrElse("")
 
   val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
 }
@@ -135,8 +135,8 @@ object HB extends BindingDSL {
     new HB(source, identity[HBS], name, target, BindingBehavior())
 
   // FIXME - temporary shim for compilation
-  def apply(source: ButtonEvt, name: String, target: Any) = ???
-  def apply(source: ButtonEvt, name: String, target: Any, behavior: BindingBehavior) = ???
+  def apply(source: Event, name: String, target: Any) = ???
+  def apply(source: Event, name: String, target: Any, behavior: BindingBehavior) = ???
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])

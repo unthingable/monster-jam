@@ -2,6 +2,7 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.controller.api.{HardwareActionBindable, HardwareActionBinding, HardwareBindable, HardwareBindingSource}
 import com.github.unthingable.Util
+import com.github.unthingable.framework.HasId
 
 import scala.collection.mutable
 

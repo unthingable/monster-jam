@@ -29,8 +29,8 @@ trait Level { this: Jam =>
           track.addVuMeterObserver(128, -1, true, v => if (isOn) strip.update(v))
         }
 
-        override def activate(): Unit = {
-          super.activate()
+        override def onActivate(): Unit = {
+          super.onActivate()
           // clear meter values from whatever was happening before, let VU meters self update
           j.stripBank.strips.foreach(_.update(0))
           updateLimits(None)

@@ -16,8 +16,8 @@ trait MacroL { this: Jam =>
     var bumpedSubMode: Option[Int]               = None
     var controlToggleSub: Option[Int] = None // more dirty hacks
 
-    override def activate(): Unit = {
-      super.activate()
+    override def onActivate(): Unit = {
+      super.onActivate()
       // dirty hack to show user controls
       if (j.control.btn.isPressed().get) {
         // CONTROL is already active, just need to toggle
@@ -34,16 +34,16 @@ trait MacroL { this: Jam =>
           bumpedSubMode = controlLayer.selected
           controlLayer.selectUser()
         }
-        if (!controlLayer.isOn) controlLayer.activateAction.invoke()
+        if (!controlLayer.isOn) ext.events.eval(controlLayer.activateEvent)
       }
     }
 
-    override def deactivate(): Unit = {
-      bumpedStrip.foreach(_.activateAction.invoke())
+    override def onDeactivate(): Unit = {
+      bumpedStrip.map(_.activateEvent).foreach(ext.events.eval)
       bumpedSubMode.foreach(controlLayer.select)
       bumpedStrip = None
       bumpedSubMode = None
-      super.deactivate()
+      super.onDeactivate()
     }
 
     override val modeBindings: Seq[Binding[_, _, _]] =

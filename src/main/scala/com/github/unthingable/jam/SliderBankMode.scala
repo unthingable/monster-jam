@@ -13,13 +13,13 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 abstract class SliderBankMode[P <: ObjectProxy](
-  override val name: String,
+  override val id: String,
   val obj: Int => P,
   val param: P => Parameter,
   val stripColor: Option[Int => Int] = None
 )
   (implicit ext: MonsterJamExt, j: JamSurface)
-  extends SimpleModeLayer(name) with Util {
+  extends SimpleModeLayer(id) with Util {
 
   import SliderBankMode._
 
@@ -161,7 +161,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       flush)
   }
 
-  override def activate(): Unit = {
+  override def onActivate(): Unit = {
 
     //ext.host.println(barMode.toString)
     //ext.host.println(sliderParams.map(_.name().get()).mkString(","))
@@ -196,11 +196,11 @@ abstract class SliderBankMode[P <: ObjectProxy](
       j.stripBank.flushValues()
 
     j.stripBank.strips.indices.foreach(bindWithRange(_))
-    super.activate()
+    super.onActivate()
   }
 
-  override def deactivate(): Unit = {
-    super.deactivate()
+  override def onDeactivate(): Unit = {
+    super.onDeactivate()
     j.stripBank.strips.foreach(_.slider.clearBindings())
   }
 }

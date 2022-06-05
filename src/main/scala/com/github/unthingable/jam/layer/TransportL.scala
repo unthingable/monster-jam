@@ -31,7 +31,7 @@ trait TransportL { this: Jam =>
     ext.transport.isAutomationOverrideActive.markInterested()
     ext.transport.isArrangerAutomationWriteEnabled.markInterested()
 
-    val playPressAction: HardwareActionBindable = action(s"$name play pressed", () => playPress())
+    val playPressAction: HardwareActionBindable = action(s"$id play pressed", () => playPress())
 
     def playPress(): Unit = {
       val isPlaying = ext.transport.isPlaying

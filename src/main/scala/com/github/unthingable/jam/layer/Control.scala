@@ -74,11 +74,11 @@ trait Control { this: Jam with MacroL =>
           param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
         }
 
-        override def activate(): Unit = {
+        override def onActivate(): Unit = {
           sliderParams.forindex { case (param, idx) =>
             j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
           }
-          super.activate()
+          super.onActivate()
         }
 
         override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
@@ -126,14 +126,14 @@ trait Control { this: Jam with MacroL =>
 
           var (pressL, pressR) = (false, false)
 
-          override def activate(): Unit = {
+          override def onActivate(): Unit = {
             currentSlice = idx
             sliderParams.forindex { case (param, idx) =>
               j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
             }
             pressL = false
             pressR = false
-            super.activate()
+            super.onActivate()
           }
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
@@ -200,7 +200,7 @@ trait Control { this: Jam with MacroL =>
     }
 
     /* Main */
-    override def activate(): Unit = {
+    override def onActivate(): Unit = {
       val idx       = page.c.selectedPageIndex().get()
       val pageNames = page.c.pageNames().get()
       if (idx >= 0 && idx < pageNames.length && pageNames(idx) == touchFX)
@@ -208,12 +208,12 @@ trait Control { this: Jam with MacroL =>
           page.selectPrevious()
         else
           page.selectNext()
-      super.activate()
+      super.onActivate()
     }
 
-    override def deactivate(): Unit = {
-      deviceSelector.deactivateAction.invoke() // if it was active we don't want it
-      super.deactivate()
+    override def onDeactivate(): Unit = {
+      ext.events.eval(deviceSelector.deactivateEvent) // if it was active we don't want it
+      super.onDeactivate()
     }
   }
 

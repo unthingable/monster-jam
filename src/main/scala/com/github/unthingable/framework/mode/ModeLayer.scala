@@ -2,9 +2,10 @@ package com.github.unthingable.framework.mode
 
 import com.bitwig.extension.controller.api.OnOffHardwareLight
 import com.github.unthingable.framework.binding.BindingDSL.*
-import com.github.unthingable.framework.binding.{Binding, ButtonEvt, HB, OutBinding, SupBooleanB, BindingBehavior as BB}
+import com.github.unthingable.framework.binding.{Binding, ButtonEvt, HB, OutBinding, SupBooleanB, BindingBehavior as BB, ModeCommand}
 import com.github.unthingable.jam.surface.{FakeAction, FakeButton, HasButtonState, HasHwButton, HasOnOffLight, JamOnOffButton}
 import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.framework.HasId
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
@@ -25,8 +26,7 @@ import com.bitwig.`extension`.controller.api.HardwareButton
  * @param modeBindings active bindings for this mode
  */
 
-trait ModeLayer extends IntActivatedLayer {
-  val name: String
+trait ModeLayer extends IntActivatedLayer, HasId {
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_,_,_]]
   implicit def ext: MonsterJamExt
@@ -39,16 +39,16 @@ trait ModeLayer extends IntActivatedLayer {
   def ifOn(f: => Unit): () => Unit = () => if (isOn) f
 
   // called when layer is activated/deactivated by the container
-  def activate(): Unit = {
+  def onActivate(): Unit = {
     activeAt = Instant.now()
     isOn = true
   }
 
-  def deactivate(): Unit = isOn = false
+  def onDeactivate(): Unit = isOn = false
 
-  override def toggleAction: FakeAction = if (isOn) deactivateAction else activateAction
+  override def toggleEvent = if (isOn) deactivateEvent else activateEvent
 
-  override def hashCode(): Int = name.hashCode
+  override def hashCode(): Int = id.hashCode
 
   protected def maybeLight(b: HasButtonState): Option[OnOffHardwareLight] = 
     b match 
@@ -62,21 +62,21 @@ trait ModeLayer extends IntActivatedLayer {
 /**
  * Layer whose (de)activation is controlled by actions
  */
-trait ActivatedLayer[+A <: HBS] {
-  def activateAction  : A
-  def deactivateAction: A
-  def toggleAction: A
+trait ActivatedLayer[+A] {
+  def activateEvent  : A
+  def deactivateEvent: A
+  def toggleEvent: A
 }
 
 /**
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
-trait IntActivatedLayer extends ActivatedLayer[FakeAction] {
+trait IntActivatedLayer extends ActivatedLayer[ModeCommand[IntActivatedLayer]] {
   /* FIXME: actions are bindable and are called before (de)activate().
   However, the call to (de)activate() is wrapped in another action and wired in ModeGraph, can be confusing.
   */
-  override final val activateAction  : FakeAction = FakeAction()
-  override final val deactivateAction: FakeAction = FakeAction()
+  override final val activateEvent = ModeCommand.Activate(this)
+  override final val deactivateEvent = ModeCommand.Deactivate(this)
 }
 
 trait ListeningLayer {
@@ -86,7 +86,7 @@ trait ListeningLayer {
 
 // does not self-activate
 abstract class SimpleModeLayer(
-  val name: String
+  val id: String
 )(implicit val ext: MonsterJamExt) extends ModeLayer {}
 
 object SimpleModeLayer {
@@ -120,7 +120,7 @@ object GateMode {
 }
 
 abstract class ModeButtonLayer(
-  val name: String,
+  val id: String,
   val modeButton: HasButtonState,
   val gateMode: GateMode = GateMode.Auto,
   override val silent: Boolean = false
@@ -128,24 +128,24 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.pressedE, s"$name: mode button pressed, isOn: " + isOn, () => {
+    HB(modeButton.st.pressedE, s"$id: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
         if (gateMode != GateMode.OneWay)
-          deactivateAction.invoke()
+          ext.events.eval(deactivateEvent)
       } else
-        activateAction.invoke()
+        ext.events.eval(activateEvent)
     }),
-    HB(modeButton.st.releasedE, s"$name: mode button released", () => gateMode match {
-      case GateMode.Gate                     => if (isOn) deactivateAction.invoke()
+    HB(modeButton.st.releasedE, s"$id: mode button released", () => gateMode match {
+      case GateMode.Gate                     => if (isOn) ext.events.eval(deactivateEvent)
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
         if (isOn) {
           val operated = modeBindings.collect{case x: OutBinding[_,_,_] => x}.exists(_.operatedAt.nonEmpty)
           val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
           if (operated || elapsed)
-            deactivateAction.invoke()
+            ext.events.eval(deactivateEvent)
         }
     },
     )
@@ -178,35 +178,35 @@ object CycleMode {
 
 // duplicates ModeGraph functionality, some day will need a rewrite
 abstract class MultiModeLayer(
-  val name: String,
+  val id: String,
 )(implicit val ext: MonsterJamExt) extends ModeLayer {
   val subModes: Seq[ModeLayer]
 
-  override def activate(): Unit = {
-    super.activate()
-  }
+  // override def onActivate(): Unit = {
+  //   super.onActivate()
+  // }
 
-  override def deactivate(): Unit = {
-    subModes.filter(_.isOn).foreach(_.deactivateAction.invoke())
-    super.deactivate()
+  override def onDeactivate(): Unit = {
+    subModes.filter(_.isOn).map(_.deactivateEvent).foreach(ext.events.eval)
+    super.onDeactivate()
   }
 }
 
 abstract class ModeCycleLayer(
-  override val name: String,
-)(implicit override val ext: MonsterJamExt) extends MultiModeLayer(name) {
+  override val id: String,
+)(implicit override val ext: MonsterJamExt) extends MultiModeLayer(id) {
   protected var isStuck: Boolean = false
 
   var selected: Option[Int] = Some(0)
 
-  override def activate(): Unit = {
-    super.activate()
-    selected.foreach(subModes(_).activateAction.invoke())
+  override def onActivate(): Unit = {
+    super.onActivate()
+    selected.map(subModes(_).activateEvent).foreach(ext.events.eval)
   }
 
-  override def deactivate(): Unit = {
-    selected.foreach(subModes(_).deactivateAction.invoke())
-    super.deactivate()
+  override def onDeactivate(): Unit = {
+    selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval)
+    super.onDeactivate()
   }
 
   def cycle(): Unit = {
@@ -214,11 +214,11 @@ abstract class ModeCycleLayer(
   }
 
   def select(idx: Int): Unit = {
-    if (isOn) selected.foreach(subModes(_).deactivateAction.invoke())
+    if (isOn) selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval)
     val mode = subModes(idx)
-    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.name}")
+    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
     selected = Some(idx)
-    if (isOn) mode.activateAction.invoke()
+    if (isOn) ext.events.eval(mode.activateEvent)
   }
 }
 
@@ -235,7 +235,7 @@ abstract class ModeButtonCycleLayer(
 
   def stickyPress(): Unit = {
     (isOn, cycleMode: CycleMode) match {
-      case (false, _) => activateAction.invoke()
+      case (false, _) => ext.events.eval(activateEvent)
       case _ => ()
     }
   }
@@ -245,13 +245,13 @@ abstract class ModeButtonCycleLayer(
 
   def stickyRelease(): Unit = {
     (isOn, cycleMode: CycleMode) match {
-      case (true, CycleMode.Gate) => deactivateAction.invoke()
+      case (true, CycleMode.Gate) => ext.events.eval(deactivateEvent)
       case (true, CycleMode.Sticky) =>
         lazy val operated =
           operatedBindings.operatedAfter(activeAt)
           
         if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
-          deactivateAction.invoke()
+          ext.events.eval(deactivateEvent)
           isStuck = false
         } else
           isStuck = true
@@ -264,7 +264,7 @@ abstract class ModeButtonCycleLayer(
 
   // import reflect.Selectable.reflectiveSelectable
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.pressedE, s"$name cycle load MB pressed", () => if (!isOn) activateAction.invoke(), BB(tracked = false))
+    HB(modeButton.st.pressedE, s"$name cycle load MB pressed", () => if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
   ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these

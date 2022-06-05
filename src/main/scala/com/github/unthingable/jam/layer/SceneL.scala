@@ -195,12 +195,12 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) pageMatrix.activateAction.invoke(), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval(pageMatrix.activateEvent), 50)
     }
 
     def release(): Unit = {
       if (pageMatrix.isOn)
-        pageMatrix.deactivateAction.invoke()
+        ext.events.eval(pageMatrix.deactivateEvent)
 
       if (pressedAt.exists(instant =>
         instant.plusMillis(400).isAfter(Instant.now())

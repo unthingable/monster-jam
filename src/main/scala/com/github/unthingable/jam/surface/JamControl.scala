@@ -10,6 +10,7 @@ import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.language.implicitConversions
 import com.github.unthingable.framework.binding.*
+import com.github.unthingable.framework.HasId
 
 /*
 Jam controls, self-wired to midi
@@ -43,12 +44,6 @@ trait HasLight[L <: HardwareLight] { val light: L }
 // trait RgbButton extends ButtonLight[MultiStateHardwareLight]
 type HasOnOffLight = HasLight[OnOffHardwareLight]
 type HasRgbLight = HasLight[MultiStateHardwareLight]
-
-trait HasId {
-  def id: String
-  // IDs shouldn't repeat among the same set of objects
-  override def hashCode(): Int = id.hashCode()
-}
 
 trait Info extends HasId { val info: MidiInfo; final val id: String = info.id }
 

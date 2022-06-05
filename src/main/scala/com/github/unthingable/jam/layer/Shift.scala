@@ -100,9 +100,9 @@ trait Shift { this: Jam with SceneL with StepSequencer =>
       }
     )
 
-    override def activate(): Unit = {
+    override def onActivate(): Unit = {
       //selected = if (superSceneSub.isOn) Some(1) else Some(0)
-      super.activate()
+      super.onActivate()
       select(if (superSceneSub.isOn) 1 else 0)
     }
   }

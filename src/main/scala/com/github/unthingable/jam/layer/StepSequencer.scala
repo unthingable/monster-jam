@@ -85,7 +85,7 @@ trait StepSequencer { this: Jam =>
 
     lazy val patLength = new SimpleModeLayer("patLength") {
       override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
-        JCB(name,
+        JCB(id,
           j.matrix(idx / 8)(idx % 8),
           () => { Util.println(s"set playStop $idx")
             newPatLength = idx + 1
@@ -138,7 +138,7 @@ trait StepSequencer { this: Jam =>
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.step.btn.pressedAction, "step toggle", () => toggleAction.invoke()),
+      HB(j.step.btn.pressedAction, "step toggle", () => ext.events.eval(toggleEvent)),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

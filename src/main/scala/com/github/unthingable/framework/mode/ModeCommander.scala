@@ -5,7 +5,7 @@ import com.github.unthingable.framework.binding.*
 enum LayerCommand extends ExtEvent:
   case Activate, Deactivate
 
-case class ModeCommand(
+case class ModeCmd(
   cmd: LayerCommand,
   mode: ModeLayer,
   when: () => Boolean = () => true
@@ -22,7 +22,7 @@ case class ModeCommand(
 // case class Deactivate(mode: ModeLayer, when: () => Boolean = () => true) extends ModeCommand
 
 trait ModeCommander {
-  def eval(c: ModeCommand): Unit
+  def eval(c: ModeCmd): Unit
 }
 
 object ModeCommander {
@@ -34,7 +34,7 @@ object ModeCommander {
     def index(mode: ModeLayer): Unit = ???
 
     val ret = new ModeCommander {
-      override def eval(c: ModeCommand): Unit =
+      override def eval(c: ModeCmd): Unit =
         if c.when() then
           c.cmd match {
             case Activate   => ???
@@ -42,9 +42,9 @@ object ModeCommander {
           }
     }
 
-    def activate(mode: ModeLayer): Unit = ret.eval(ModeCommand(Activate, mode))
+    def activate(mode: ModeLayer): Unit = ret.eval(ModeCmd(Activate, mode))
     def deactivate(mode: ModeLayer): Unit =
-      ret.eval(ModeCommand(Deactivate, mode))
+      ret.eval(ModeCmd(Deactivate, mode))
 
     initModes
       .tapEach(index)

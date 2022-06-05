@@ -6,6 +6,7 @@ import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, 
 import com.github.unthingable.framework.binding.{HB, ButtonEvt}
 // import com.github.unthingable.jam.surface.JamControl.HbOps
 import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.framework.HasId
 
 
 /* Surface model with all the controls, wired to MIDI */

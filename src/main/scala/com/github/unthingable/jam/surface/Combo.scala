@@ -2,6 +2,7 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.controller.api.HardwareLight
 import com.github.unthingable.{MonsterJamExt, jam}
+import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding
 import com.github.unthingable.framework.binding.{Clearable, HB, HwEvent, ButtonEvt}
 import com.github.unthingable.framework.binding.HB.HBS
