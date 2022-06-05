@@ -14,18 +14,24 @@ class EventBus[E] {
   private val subs = mutable.HashMap.empty[E, mutable.ListBuffer[Reactor]]
 
   def eval(e: E): Unit =
-    Util.println("evt: " + e.toString)
-    subs.get(e).toSeq.flatten.foreach(_(e))
+    val receivers = subs.get(e).toSeq.flatten
+    if (receivers.nonEmpty) Util.println(s"evt: $e => ${receivers.size}")
+    receivers.foreach(_(e))
 
   def addSub(e: E, r: Reactor): Unit =
+    Util.println(s"evt+ $e")
     getSub(e).addOne(r)
 
-  def rmSub(e: E, r: Reactor): Unit = getSub(e).filterInPlace(_ != r)
+  def rmSub(e: E, r: Reactor): Unit = 
+    Util.println(s"evt- $e")
+    getSub(e).filterInPlace(_ != r)
 
   def setSub(e: E, r: Reactor): Unit =
+    Util.println(s"evt= $e")
     subs.update(e, mutable.ListBuffer(r))
     
   def clearSub(e: E): Unit =
+    Util.println(s"evt clear: $e")
     subs.remove(e)
 
   private def getSub(e: E): mutable.ListBuffer[Reactor] = subs.getOrElseUpdate(e, mutable.ListBuffer.empty[Reactor])

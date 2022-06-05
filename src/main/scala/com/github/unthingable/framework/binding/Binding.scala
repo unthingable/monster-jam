@@ -135,8 +135,8 @@ object HB extends BindingDSL {
     new HB(source, identity[HBS], name, target, BindingBehavior())
 
   // FIXME - temporary shim for compilation
-  def apply(source: Event, name: String, target: Any) = ???
-  def apply(source: Event, name: String, target: Any, behavior: BindingBehavior) = ???
+  def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt) = EB(source, target())
+  def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, SideEffect(_ => target()), behavior)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -189,11 +189,11 @@ case class EB(
   action: Outcome,
   override val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
 )(using val ext: MonsterJamExt) extends OutBinding[Event, Event, Outcome] {
-  override def bind(): Unit = ext.events.addSub(ev, ev =>
-    action match
+  val receiver = (_: Event) => action match
       case x: SideEffect => x.f(ev)
       case x: Command => ext.events.eval(x)
-  )
+
+  override def bind(): Unit = ext.events.addSub(ev, receiver)
 
   // TODO refactor ownership and exclusivity
   /* WIP 
@@ -206,7 +206,8 @@ case class EB(
 
   override val bindingSource: Event = ev
 
-  override def clear(): Unit = ext.events.clearSub(ev) // FIXME
+  // override def clear(): Unit = ext.events.clearSub(ev) // FIXME
+  override def clear(): Unit = ext.events.rmSub(ev, receiver)
 
   //def eval(): Unit = action match
   //  case f: SideEffect => f(ev)
@@ -214,4 +215,4 @@ case class EB(
 }
 
 object EB:
-  def apply(ev: Event, f: => Unit)(using ext: MonsterJamExt): EB = EB(ev, SideEffect(_ => f))
+  inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB = EB(ev, SideEffect(_ => f))

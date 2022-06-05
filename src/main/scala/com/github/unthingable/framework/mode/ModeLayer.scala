@@ -5,11 +5,12 @@ import com.github.unthingable.framework.binding.BindingDSL.*
 import com.github.unthingable.framework.binding.{Binding, ButtonEvt, HB, OutBinding, SupBooleanB, BindingBehavior as BB, ModeCommand}
 import com.github.unthingable.jam.surface.{FakeAction, FakeButton, HasButtonState, HasHwButton, HasOnOffLight, JamOnOffButton}
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.framework.HasId
+import com.github.unthingable.framework.{HasId}
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 import com.bitwig.`extension`.controller.api.HardwareButton
+import com.github.unthingable.jam.surface.HasLight
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -29,7 +30,7 @@ import com.bitwig.`extension`.controller.api.HardwareButton
 trait ModeLayer extends IntActivatedLayer, HasId {
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_,_,_]]
-  implicit def ext: MonsterJamExt
+  // given ext: MonsterJamExt
 
   def silent: Boolean = false
 
@@ -50,13 +51,18 @@ trait ModeLayer extends IntActivatedLayer, HasId {
 
   override def hashCode(): Int = id.hashCode
 
-  protected def maybeLight(b: HasButtonState): Option[OnOffHardwareLight] = 
-    b match 
+  protected inline def maybeLight(b: HasButtonState): Option[OnOffHardwareLight] = 
+    inline b match 
       case x: HasOnOffLight => Some(x.light)
       case _ => None
   
-  protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
+  protected inline def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
+    val ml = maybeLight(b)
+    Util.println(s"$id light: $ml $silent")
     maybeLight(b).filter(_ => !silent).toSeq.map(l => SupBooleanB(l.isOn, () => isOn))
+  
+  // let's just say we're too lazy to import cats and make a proper Show instance
+  override def toString(): String = s"ML:$id"
 }
 
 /**
@@ -91,7 +97,7 @@ abstract class SimpleModeLayer(
 
 object SimpleModeLayer {
   def apply(name: String, modeBindings: Seq[Binding[_, _, _]])
-    (implicit ext: MonsterJamExt): SimpleModeLayer = {
+    (using MonsterJamExt): SimpleModeLayer = {
     val x = modeBindings
     new SimpleModeLayer(name) {
       override val modeBindings: Seq[Binding[_, _, _]] = x
@@ -121,10 +127,10 @@ object GateMode {
 
 abstract class ModeButtonLayer(
   val id: String,
-  val modeButton: HasButtonState,
+  val modeButton: HasButtonState & HasLight[_],
   val gateMode: GateMode = GateMode.Auto,
   override val silent: Boolean = false
-)(implicit val ext: MonsterJamExt) extends ModeLayer, ListeningLayer {
+)(using ext: MonsterJamExt) extends ModeLayer, ListeningLayer {
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
@@ -137,7 +143,11 @@ abstract class ModeButtonLayer(
       } else
         ext.events.eval(activateEvent)
     }),
-    HB(modeButton.st.releasedE, s"$id: mode button released", () => gateMode match {
+    HB(modeButton.st.releasedE, s"$id: mode button released", () => released)
+  ) ++ maybeLightB(modeButton)
+
+  // TODO inline
+  private def released = gateMode match {
       case GateMode.Gate                     => if (isOn) ext.events.eval(deactivateEvent)
       case GateMode.Toggle | GateMode.OneWay => ()
       case GateMode.Auto                     =>
@@ -147,16 +157,14 @@ abstract class ModeButtonLayer(
           if (operated || elapsed)
             ext.events.eval(deactivateEvent)
         }
-    },
-    )
-  ) ++ maybeLightB(modeButton)
+      }
 }
 
 object ModeButtonLayer {
   def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false)
-    (implicit ext: MonsterJamExt): ModeButtonLayer = {
+    (using MonsterJamExt): ModeButtonLayer = {
     val x = modeBindings
     new ModeButtonLayer(name, modeButton, gateMode, silent) {
       override val modeBindings: Seq[Binding[_, _, _]] = x
@@ -179,7 +187,7 @@ object CycleMode {
 // duplicates ModeGraph functionality, some day will need a rewrite
 abstract class MultiModeLayer(
   val id: String,
-)(implicit val ext: MonsterJamExt) extends ModeLayer {
+)(using ext: MonsterJamExt) extends ModeLayer {
   val subModes: Seq[ModeLayer]
 
   // override def onActivate(): Unit = {
@@ -194,7 +202,7 @@ abstract class MultiModeLayer(
 
 abstract class ModeCycleLayer(
   override val id: String,
-)(implicit override val ext: MonsterJamExt) extends MultiModeLayer(id) {
+)(using ext: MonsterJamExt) extends MultiModeLayer(id) {
   protected var isStuck: Boolean = false
 
   var selected: Option[Int] = Some(0)
@@ -231,7 +239,7 @@ abstract class ModeButtonCycleLayer(
   val cycleMode: CycleMode,
   override val silent: Boolean = false,
   val siblingOperatedModes: Seq[ModeLayer] = Vector(),
-)(implicit override val ext: MonsterJamExt) extends ModeCycleLayer(name), ListeningLayer {
+)(using ext: MonsterJamExt) extends ModeCycleLayer(name), ListeningLayer {
 
   def stickyPress(): Unit = {
     (isOn, cycleMode: CycleMode) match {
