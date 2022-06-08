@@ -16,7 +16,7 @@ enum ButtonEvt extends HwEvent:
 enum ModeCommand[+A] extends Command:
   case Activate(obj: A)
   case Deactivate(obj: A)
-  case Toggle(obj: A)
+  // case Toggle(obj: A)
 
 /* What is the main problem?
 The difference between raw button press events and higher order events (combos and chords) is fuzzy.

@@ -18,16 +18,16 @@ Jam controls, self-wired to midi
 
 trait ButtonStateSupplier:
   def isPressed: Boolean
-  def pressedE: ButtonEvt
-  def releasedE: ButtonEvt
+  def press: ButtonEvt
+  def release: ButtonEvt
 
 object ButtonStateSupplier:
   def apply(id: String, btn: HardwareButton): ButtonStateSupplier = {
     btn.isPressed.markInterested()
     new ButtonStateSupplier {
       def isPressed: Boolean = btn.isPressed.get()
-      def pressedE: ButtonEvt = ButtonEvt.Press(id)
-      def releasedE: ButtonEvt = ButtonEvt.Release(id)
+      val press: ButtonEvt = ButtonEvt.Press(id)
+      val release: ButtonEvt = ButtonEvt.Release(id)
     }
   }
 
@@ -38,7 +38,7 @@ sealed trait HasHwButton: // extends Button:
 // sealed trait HwButton extends Button[_]
   def btn: HardwareButton
 
-trait HasLight[L <: HardwareLight] { val light: L }
+sealed trait HasLight[L <: HardwareLight] { val light: L }
 // trait ButtonLight[L <: HardwareLight] extends Light[L]
 // trait OnOffButton extends ButtonLight[OnOffHardwareLight]
 // trait RgbButton extends ButtonLight[MultiStateHardwareLight]
@@ -116,6 +116,12 @@ object JamControl {
     light.isOn.setValue(false)
     light
   }
+
+  def maybeLight(b: Any): Option[OnOffHardwareLight] = 
+    b match 
+      // let's assume that's the only one, it's a sealed trait after all
+      case x: JamOnOffButton => Some(x.light)
+      case _ => None
 }
 
 object JamButton {

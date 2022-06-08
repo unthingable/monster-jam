@@ -22,14 +22,13 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   object Mod {
-    object Shift extends HasOnOffLight, HasButtonState, HasId {
+    object Shift extends HasButtonState, HasId {
       val id         = "SHIFT"
       val btn = new FakeButton(id)
-      override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
       val st = new ButtonStateSupplier {
         def isPressed = btn.isPressed
-        val pressedE = ButtonEvt.Press("SHIFT")
-        val releasedE = ButtonEvt.Release("SHIFT")
+        val press = ButtonEvt.Press("SHIFT")
+        val release = ButtonEvt.Release("SHIFT")
       }
     }
 
@@ -182,10 +181,10 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        ext.events.eval(Mod.Shift.st.pressedE)
+        ext.events.eval(Mod.Shift.st.press)
         // Mod.Shift.fakeButton.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        ext.events.eval(Mod.Shift.st.releasedE)
+        ext.events.eval(Mod.Shift.st.release)
         // Mod.Shift.fakeButton.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")

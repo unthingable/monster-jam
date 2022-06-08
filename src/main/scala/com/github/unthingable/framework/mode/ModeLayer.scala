@@ -11,6 +11,7 @@ import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
 import com.bitwig.`extension`.controller.api.HardwareButton
 import com.github.unthingable.jam.surface.HasLight
+import com.github.unthingable.jam.surface.JamControl
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -30,14 +31,13 @@ import com.github.unthingable.jam.surface.HasLight
 trait ModeLayer extends IntActivatedLayer, HasId {
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_,_,_]]
-  // given ext: MonsterJamExt
 
   def silent: Boolean = false
 
   var isOn: Boolean = false
   var activeAt: Instant = Instant.now()
 
-  def ifOn(f: => Unit): () => Unit = () => if (isOn) f
+  // def ifOn(f: => Unit): () => Unit = () => if (isOn) f
 
   // called when layer is activated/deactivated by the container
   def onActivate(): Unit = {
@@ -51,15 +51,10 @@ trait ModeLayer extends IntActivatedLayer, HasId {
 
   override def hashCode(): Int = id.hashCode
 
-  protected inline def maybeLight(b: HasButtonState): Option[OnOffHardwareLight] = 
-    inline b match 
-      case x: HasOnOffLight => Some(x.light)
-      case _ => None
-  
-  protected inline def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
-    val ml = maybeLight(b)
+  protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
+    val ml = JamControl.maybeLight(b)
     Util.println(s"$id light: $ml $silent")
-    maybeLight(b).filter(_ => !silent).toSeq.map(l => SupBooleanB(l.isOn, () => isOn))
+    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l.isOn, () => isOn))
   
   // let's just say we're too lazy to import cats and make a proper Show instance
   override def toString(): String = s"ML:$id"
@@ -93,10 +88,10 @@ trait ListeningLayer {
 // does not self-activate
 abstract class SimpleModeLayer(
   val id: String
-)(implicit val ext: MonsterJamExt) extends ModeLayer {}
+)(using MonsterJamExt) extends ModeLayer {}
 
 object SimpleModeLayer {
-  def apply(name: String, modeBindings: Seq[Binding[_, _, _]])
+  inline def apply(name: String, modeBindings: Seq[Binding[_, _, _]])
     (using MonsterJamExt): SimpleModeLayer = {
     val x = modeBindings
     new SimpleModeLayer(name) {
@@ -127,14 +122,14 @@ object GateMode {
 
 abstract class ModeButtonLayer(
   val id: String,
-  val modeButton: HasButtonState & HasLight[_],
+  val modeButton: HasButtonState, // & HasLight[_],
   val gateMode: GateMode = GateMode.Auto,
   override val silent: Boolean = false
 )(using ext: MonsterJamExt) extends ModeLayer, ListeningLayer {
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.pressedE, s"$id: mode button pressed, isOn: " + isOn, () => {
+    HB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -143,7 +138,7 @@ abstract class ModeButtonLayer(
       } else
         ext.events.eval(activateEvent)
     }),
-    HB(modeButton.st.releasedE, s"$id: mode button released", () => released)
+    HB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
 
   // TODO inline
@@ -161,7 +156,7 @@ abstract class ModeButtonLayer(
 }
 
 object ModeButtonLayer {
-  def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
+  inline def apply(name: String, modeButton: JamOnOffButton, modeBindings: Seq[Binding[_, _, _]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false)
     (using MonsterJamExt): ModeButtonLayer = {
@@ -272,19 +267,19 @@ abstract class ModeButtonCycleLayer(
 
   // import reflect.Selectable.reflectiveSelectable
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.pressedE, s"$name cycle load MB pressed", () => if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
+    HB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
   ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        HB(modeButton.st.pressedE, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
+        HB(modeButton.st.press, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.st.pressedE, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
-        HB(modeButton.st.releasedE, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
+        HB(modeButton.st.press, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
+        HB(modeButton.st.release, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }

@@ -114,29 +114,29 @@ object HB extends BindingDSL {
   Sometimes all you have is a HardwareAction (hopefully a singleton object), then the getter is identity.
   When creating new non-sigleton HAs, make sure they hash properly.
    */
-  def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)
+  inline def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, action(name, target), behavior)
 
-  def apply(source: HBS, name: String, target: () => Unit)
+  inline def apply(source: HBS, name: String, target: () => Unit)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, action(name, target), BindingBehavior())
 
-  def apply[S](source: S, toSource: S => HBS, name: String, target: () => Unit)
+  inline def apply[S](source: S, toSource: S => HBS, name: String, target: () => Unit)
     (implicit ext: MonsterJamExt): HB[S] =
     new HB(source, toSource, name, action(name, target), BindingBehavior())
 
-  def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)
+  inline def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, target, behavior)
 
-  def apply(source: HBS, name: String, target: HardwareBindable)
+  inline def apply(source: HBS, name: String, target: HardwareBindable)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, target, BindingBehavior())
 
   // FIXME - temporary shim for compilation
-  def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt) = EB(source, target())
-  def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, SideEffect(_ => target()), behavior)
+  inline def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt) = EB(source, target())
+  inline def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, source, SideEffect(_ => target()), behavior)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -165,16 +165,16 @@ object JCB extends BindingDSL {
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
-  def apply(name: String, b: HasRgbLight & HasHwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
-    (implicit ext: MonsterJamExt) =
+  inline def apply(name: String, b: HasRgbLight & HasHwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+    (using MonsterJamExt) =
     Vector(
       SupColorStateB(b.light, color),
       HB(b.btn.pressedAction, s"$name press", press),
       HB(b.btn.releasedAction, s"$name release", release),
     )
 
-  def apply(name: String, b: HasOnOffLight & HasHwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
-    (implicit ext: MonsterJamExt) =
+  inline def apply(name: String, b: HasOnOffLight & HasHwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+    (using MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
       HB(b.btn.pressedAction, s"$name press", press),
@@ -184,11 +184,12 @@ object JCB extends BindingDSL {
 
 // event binding
 // import Event.*
-case class EB(
+case class EB[S](
   ev: Event, 
+  source: S,
   action: Outcome,
-  override val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
-)(using val ext: MonsterJamExt) extends OutBinding[Event, Event, Outcome] {
+  override val behavior: BindingBehavior
+)(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
   val receiver = (_: Event) => action match
       case x: SideEffect => x.f(ev)
       case x: Command => ext.events.eval(x)
@@ -200,7 +201,7 @@ case class EB(
   source tell the binder how to tell when another mode is taking over the control
   most times a new mode will "shadow" the binding, but some bindings are non-exclusive, curently mnanaged by BindingBehavior
   */
-  override val source: Event = ev
+  // override val source: S = source
 
   override val target: Outcome = action
 
@@ -215,4 +216,5 @@ case class EB(
 }
 
 object EB:
-  inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB = EB(ev, SideEffect(_ => f))
+  // inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f))
+  inline def apply(ev: Event, f: => Unit, bb: BindingBehavior = BindingBehavior())(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f), bb)

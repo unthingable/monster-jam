@@ -37,8 +37,8 @@ object Combo {
     //val pressedButtons = mutable.HashSet.empty[BAS]
 
     (b +: mods).foreach { b =>
-      ext.events.addSub(b.pressedE, _ => onPress(b))
-      ext.events.addSub(b.releasedE, _ => onRelease(b))
+      ext.events.addSub(b.press, _ => onPress(b))
+      ext.events.addSub(b.release, _ => onRelease(b))
       // b.btn.pressedAction.addBinding(ext.a(onPress(b)))
       // b.btn.releasedAction.addBinding(ext.a(onRelease(b)))
 
