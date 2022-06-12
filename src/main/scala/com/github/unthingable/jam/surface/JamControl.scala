@@ -12,6 +12,7 @@ import scala.language.implicitConversions
 import com.github.unthingable.framework.binding.*
 import com.github.unthingable.framework.HasId
 import com.github.unthingable.jam.surface.KeyMaster.checkCombo
+import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 /*
 Jam controls, self-wired to midi
@@ -71,6 +72,10 @@ object JamControl {
 
   /*  Wired hardware controls */
 
+  import ActionDSL.action
+  inline def handle(id: String, e: RawButtonEvent)(using ext: MonsterJamExt): HardwareActionBindable = 
+    action("", () => KeyMaster.eval(id, e).foreach(ext.events.eval))
+      
   def button(info: MidiInfo)(implicit ext: MonsterJamExt): HardwareButton = {
     val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
@@ -80,12 +85,8 @@ object JamControl {
     button.releasedAction.setActionMatcher(off)
     button.isPressed.markInterested()
 
-    import ActionDSL.action
-    inline def onlySingle(e: String => ButtonEvt): HardwareActionBindable = 
-      action("", () => if !checkCombo(info.id) then ext.events.eval(e(info.id)))
-
-    button.pressedAction.addBinding(onlySingle(ButtonEvt.Press.apply))
-    button.releasedAction.addBinding(onlySingle(ButtonEvt.Release.apply))
+    button.pressedAction.addBinding(handle(info.id, RawButtonEvent.Press))
+    button.releasedAction.addBinding(handle(info.id, RawButtonEvent.Release))
 
     button
   }

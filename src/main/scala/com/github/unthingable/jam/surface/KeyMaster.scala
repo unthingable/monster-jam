@@ -4,11 +4,12 @@ import com.bitwig.extension.controller.api.HardwareLight
 import com.github.unthingable.{MonsterJamExt, jam}
 import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding
-import com.github.unthingable.framework.binding.{Clearable, HB, HwEvent, ButtonEvt}
+import com.github.unthingable.framework.binding.{Clearable, HB, HwEvent, ButtonEvt, Event}
 import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.collection.mutable
 import com.bitwig.`extension`.controller.api.HardwareButton
+import com.github.unthingable.Util
 
 trait SurfaceState {
   /**
@@ -47,15 +48,16 @@ object KeyMaster {
     // import reflect.Selectable.reflectiveSelectable
 
     val allb: Seq[NamedButton] = b +: mods
+    val allbIds = allb.map(_.id)
 
-    allb.foreach { b =>
-      // ext.events.addSub(b.press, _ => onPress(b))
-      // ext.events.addSub(b.release, _ => onRelease(b))
-      b.st.pressedAction.addBinding(ext.a(onPress(b)))
-      b.st.releasedAction.addBinding(ext.a(onRelease(b)))
+    // allb.foreach { b =>
+    //   // ext.events.addSub(b.press, _ => onPress(b))
+    //   // ext.events.addSub(b.release, _ => onRelease(b))
+    //   // b.st.pressedAction.addBinding(ext.a(onPress(b)))
+    //   // b.st.releasedAction.addBinding(ext.a(onRelease(b)))
 
-      //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
-    }
+    //   //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
+    // }
 
     protected[KeyMaster] var keysOn: Int      = 0
     protected[KeyMaster] var quasiOn: Boolean = false // flips to true when all keys pressed and to false when all released
@@ -75,7 +77,13 @@ object KeyMaster {
     inline def isPressedAny = allb.exists(_.st.isPressed)
     inline def isModPressed = mods.exists(_.st.isPressed)
 
-    private def onPress(b: NamedButton): Option[ComboEvent] = {
+    def onPress(bid: String): Option[ComboEvent] =
+      Option.when(allbIds.contains(bid))(onPress()).flatten
+    
+    def onRelease(bid: String): Option[ComboEvent] = 
+      Option.when(allbIds.contains(bid))(onRelease()).flatten
+
+    private def onPress(): Option[ComboEvent] = 
       val newState = keysOn + 1
       keysOn = newState
       if (newState == 1 + mods.size && !quasiOn) {
@@ -84,26 +92,44 @@ object KeyMaster {
           // ext.events.eval(press)
           // pressed.invoke()
       } else None
-    }
 
-    private def onRelease(b: NamedButton): Unit = {
+    private def onRelease(): Option[ComboEvent] = 
       val newState = keysOn - 1
+      keysOn = newState
       if (newState == mods.size) // one less than all the buttons
-        ext.events.eval(releaseOne)
+        Some(releaseOne)
+        // ext.events.eval(releaseOne)
         // releasedOne.invoke()
       if (newState == 0 && quasiOn) {
-        ext.events.eval(releaseAll)
-        // releasedAll.invoke()
         quasiOn = false
-      }
-      keysOn = newState
-    }
+        Some(releaseAll)
+        // ext.events.eval(releaseAll)
+        // releasedAll.invoke()
+      } else None
 
-    def clear(): Unit = {
+    def clear(): Unit = 
       keysOn = 0
       quasiOn = false
-    }
   }
+
+  enum RawButtonEvent:
+    case Press, Release
+
+  def eval(buttonId: String, ev: RawButtonEvent)(using ext: MonsterJamExt): Seq[Event] =
+    Util.println(s"KeyMaster eval $buttonId $ev")
+    val ret = ext.binder.sourceMap.keys
+    .collect {case x: JC => x}
+      .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button
+      .flatMap(jc =>
+        ev match
+          case RawButtonEvent.Press => jc.onPress(buttonId)
+          case RawButtonEvent.Release => jc.onRelease(buttonId)
+      ).toSeq
+    if ret.nonEmpty then ret else Seq(ev match
+      case RawButtonEvent.Press => ButtonEvt.Press(buttonId)
+      case RawButtonEvent.Release => ButtonEvt.Release(buttonId)
+    )
+
 
   // true if no currently active combo is using this button
   inline def checkCombo(buttonId: String)(using ext: MonsterJamExt): Boolean =

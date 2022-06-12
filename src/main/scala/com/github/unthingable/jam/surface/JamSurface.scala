@@ -8,6 +8,7 @@ import com.github.unthingable.framework.binding.{HB, ButtonEvt}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.framework.HasId
 import com.github.unthingable.jam.surface.KeyMaster.JC
+import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 
 /* Surface model with all the controls, wired to MIDI */
@@ -27,7 +28,9 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       val id         = "SHIFT"
       val btn = FakeButton(id)
       val st  = ButtonStateSupplier(btn)
-    
+
+      btn.pressedAction.addBinding(JamControl.handle(id, RawButtonEvent.Press))
+      btn.releasedAction.addBinding(JamControl.handle(id, RawButtonEvent.Release))
     }
 
     var blink : Boolean = false // on 50% of the time
