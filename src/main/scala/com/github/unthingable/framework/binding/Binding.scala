@@ -52,7 +52,7 @@ sealed trait InBinding[H, T] extends Binding[H, T, T] {
 }
 
 // Controller -> Bitwig host
-sealed trait OutBinding[S, B, H] extends Binding[S, B, H] with BindingDSL {
+sealed trait OutBinding[S, B, H] extends Binding[S, B, H], BindingDSL {
   given ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
@@ -67,7 +67,7 @@ class HB[S](
   val target: HardwareBindable,
   override val behavior: BindingBehavior)
   (using val ext: MonsterJamExt)
-  extends OutBinding[S, HBS, HardwareBindable] with Named {
+  extends OutBinding[S, HBS, HardwareBindable], Named {
 
   override val bindingSource = toSource(source)
 
@@ -185,10 +185,10 @@ object JCB extends BindingDSL {
 // event binding
 // import Event.*
 case class EB[S](
-  ev: Event, 
   source: S,
+  ev: Event, 
   action: Outcome,
-  override val behavior: BindingBehavior
+  override val behavior: BindingBehavior = BindingBehavior()
 )(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
   val receiver = (_: Event) => action match
       case x: SideEffect => x.f(ev)
@@ -217,4 +217,7 @@ case class EB[S](
 
 object EB:
   // inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f))
-  inline def apply(ev: Event, f: => Unit, bb: BindingBehavior = BindingBehavior())(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f), bb)
+  inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f))
+  inline def apply(ev: Event, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f), bb)
+  inline def apply[S](source: S, ev: S => Event, f: => Unit)(using MonsterJamExt): EB[S] = EB(source, ev(source), SideEffect(_ => f))
+  inline def apply[S](source: S, ev: S => Event, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[S] = EB(source, ev(source), SideEffect(_ => f), bb)

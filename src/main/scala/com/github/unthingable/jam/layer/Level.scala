@@ -56,7 +56,7 @@ trait Level { this: Jam =>
                   }
                 case LimitLevels.`0dB`   => zero / max
                 case LimitLevels.`-10dB` => minusTen / max
-                case _        => 1.0
+                // case _        => 1.0
               })
               Util.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")
               if (bind)

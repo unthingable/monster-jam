@@ -7,6 +7,7 @@ import com.github.unthingable.framework.binding.{HB, ButtonEvt}
 // import com.github.unthingable.jam.surface.JamControl.HbOps
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.framework.HasId
+import com.github.unthingable.jam.surface.Combo.JC
 
 
 /* Surface model with all the controls, wired to MIDI */
@@ -22,14 +23,11 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   object Mod {
-    object Shift extends HasButtonState, HasId {
+    object Shift extends HasButtonState, HasId, HasFakeButton {
       val id         = "SHIFT"
-      val btn = new FakeButton(id)
-      val st = new ButtonStateSupplier {
-        def isPressed = btn.isPressed
-        val press = ButtonEvt.Press("SHIFT")
-        val release = ButtonEvt.Release("SHIFT")
-      }
+      val btn = FakeButton(id)
+      val st  = ButtonStateSupplier(btn)
+    
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -182,10 +180,10 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
         ext.events.eval(Mod.Shift.st.press)
-        // Mod.Shift.fakeButton.pressedAction.invoke()
+        Mod.Shift.btn.pressedAction.invoke()
       case ShiftReleaseCommand =>
         ext.events.eval(Mod.Shift.st.release)
-        // Mod.Shift.fakeButton.releasedAction.invoke()
+        Mod.Shift.btn.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()
@@ -195,6 +193,6 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   // import Combo.JC
-  // val ShiftDup = JC(duplicate, Mod.Shift)
-  // val ShiftSolo = JC(solo, Mod.Shift)
+  val ShiftDup = JC(duplicate, Mod.Shift)
+  val ShiftSolo = JC(solo, Mod.Shift)
 }

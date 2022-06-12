@@ -8,7 +8,7 @@ import com.github.unthingable.jam.surface.FakeAction
 import java.time.Instant
 import java.util.function.Supplier
 
-trait ActionDSL {
+transparent trait ActionDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(() => {
       if name.nonEmpty then Util.println(s"! $name")
@@ -27,7 +27,7 @@ trait ActionDSL {
   def action(name: Supplier[String], f: Double => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(f(_), name)
 }
-trait BindingDSL extends ActionDSL {
+transparent trait BindingDSL extends ActionDSL {
   type HBS = HardwareBindingSource[_ <: HardwareBinding]
 
   trait EmptyCB[A <: ValueChangedCallback] { def empty: A }

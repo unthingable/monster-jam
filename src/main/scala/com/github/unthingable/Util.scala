@@ -8,7 +8,7 @@ import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
 import java.time.Instant
 
-trait Util {
+transparent trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
     def forindex(f: (A, Int) => Unit): S[A] = {
       seq.zipWithIndex.foreach(f.tupled)

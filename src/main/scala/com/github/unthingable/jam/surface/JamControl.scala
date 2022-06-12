@@ -11,15 +11,19 @@ import com.github.unthingable.framework.binding.HB.HBS
 import scala.language.implicitConversions
 import com.github.unthingable.framework.binding.*
 import com.github.unthingable.framework.HasId
+import com.github.unthingable.jam.surface.Combo.checkCombo
 
 /*
 Jam controls, self-wired to midi
  */
 
+// universal interface, so that we can marry HardwareButton with FakeButton, make compiler happy and move on
 trait ButtonStateSupplier:
   def isPressed: Boolean
   def press: ButtonEvt
   def release: ButtonEvt
+  def pressedAction: HBS
+  def releasedAction: HBS
 
 object ButtonStateSupplier:
   def apply(id: String, btn: HardwareButton): ButtonStateSupplier = {
@@ -28,15 +32,31 @@ object ButtonStateSupplier:
       def isPressed: Boolean = btn.isPressed.get()
       val press: ButtonEvt = ButtonEvt.Press(id)
       val release: ButtonEvt = ButtonEvt.Release(id)
+      val pressedAction = btn.pressedAction
+      val releasedAction = btn.releasedAction
     }
   }
+
+  def apply(btn: FakeButton): ButtonStateSupplier = new ButtonStateSupplier {
+    def isPressed: Boolean = btn.isPressed
+    val press: ButtonEvt = ButtonEvt.Press(btn.id)
+    val release: ButtonEvt = ButtonEvt.Release(btn.id)
+    val pressedAction = btn.pressedAction
+    val releasedAction = btn.releasedAction
+  }
+
+trait HasButton[A]:
+  def btn: A
 
 trait HasButtonState:
   def st: ButtonStateSupplier
 
-sealed trait HasHwButton: // extends Button:
+sealed trait HasHwButton extends HasButton[HardwareButton] 
+  // extends Button:
 // sealed trait HwButton extends Button[_]
-  def btn: HardwareButton
+  // def btn: HardwareButton
+trait HasFakeButton extends HasButton[FakeButton]
+
 
 sealed trait HasLight[L <: HardwareLight] { val light: L }
 // trait ButtonLight[L <: HardwareLight] extends Light[L]
@@ -61,9 +81,11 @@ object JamControl {
     button.isPressed.markInterested()
 
     import ActionDSL.action
-    // how will exclusive subsctiptions be managed? should this be calling a key controller instead?
-    button.pressedAction.addBinding(action("", () => ext.events.eval(ButtonEvt.Press(info.id))))
-    button.releasedAction.addBinding(action("", () => ext.events.eval(ButtonEvt.Release(info.id))))
+    inline def onlySingle(e: String => ButtonEvt): HardwareActionBindable = 
+      action("", () => if !checkCombo(info.id) then ext.events.eval(e(info.id)))
+
+    button.pressedAction.addBinding(onlySingle(ButtonEvt.Press.apply))
+    button.releasedAction.addBinding(onlySingle(ButtonEvt.Release.apply))
 
     button
   }

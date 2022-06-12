@@ -8,6 +8,7 @@ import com.github.unthingable.framework.binding.{Clearable, HB, HwEvent, ButtonE
 import com.github.unthingable.framework.binding.HB.HBS
 
 import scala.collection.mutable
+import com.bitwig.`extension`.controller.api.HardwareButton
 
 trait SurfaceState {
   /**
@@ -20,27 +21,38 @@ trait SurfaceState {
 object Combo {
   implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
-  type NamedButton = ButtonStateSupplier with HasId
+  type NamedButton = HasButtonState & HasId & HasButton[_]
+
   trait ComboSupplier {
-    def pressed: ButtonEvt
-    def releasedOne: ButtonEvt
-    def releasedAll: ButtonEvt
+    def pressed: ComboEvent
+    def releasedOne: ComboEvent
+    def releasedAll: ComboEvent
   }
 
   trait HasModifier {
     val modifier: Seq[HasHwButton]
   }
 
-  // a button combo is like a micro mode that's always on
-  case class JC(b: NamedButton, mods: NamedButton*)(implicit ext: MonsterJamExt) extends Clearable {
+  enum ComboEvent extends HwEvent:
+    case Pressed(buttonId: String) // all combo buttons pressed
+    case ReleasedOne(buttonId: String) // combo no longer fully held
+    case ReleasedAll(buttonId: String) // all combo buttons released
+
+  case class JC(b: NamedButton, mods: NamedButton*)(using ext: MonsterJamExt) extends Clearable, HasId {
     //val buttons: Seq[BAS] = (b1 +: bb).map(_.btn)
     //val pressedButtons = mutable.HashSet.empty[BAS]
 
-    (b +: mods).foreach { b =>
-      ext.events.addSub(b.press, _ => onPress(b))
-      ext.events.addSub(b.release, _ => onRelease(b))
-      // b.btn.pressedAction.addBinding(ext.a(onPress(b)))
-      // b.btn.releasedAction.addBinding(ext.a(onRelease(b)))
+    override val id = b.id + "<" + mods.map(_.id).mkString("+")
+
+    // import reflect.Selectable.reflectiveSelectable
+
+    val allb: Seq[NamedButton] = b +: mods
+
+    allb.foreach { b =>
+      // ext.events.addSub(b.press, _ => onPress(b))
+      // ext.events.addSub(b.release, _ => onRelease(b))
+      b.st.pressedAction.addBinding(ext.a(onPress(b)))
+      b.st.releasedAction.addBinding(ext.a(onRelease(b)))
 
       //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
     }
@@ -48,19 +60,27 @@ object Combo {
     protected[Combo] var keysOn: Int      = 0
     protected[Combo] var quasiOn: Boolean = false // flips to true when all keys pressed and to false when all released
 
-    val pressed     = FakeAction() // all combo buttons pressed
-    val releasedOne = FakeAction() // combo no longer fully held
-    val releasedAll = FakeAction() // all combo buttons released
+    // val pressed     = FakeAction() // all combo buttons pressed
+    // val releasedOne = FakeAction() // combo no longer fully held
+    // val releasedAll = FakeAction() // all combo buttons released
 
-    def isPressedAll = keysOn == 1 + mods.size
-    def isPressedAny = keysOn > 0
-    def isModPressed = mods.exists(_.isPressed)
+    val pressed     = ComboEvent.Pressed(id)
+    val releasedOne = ComboEvent.ReleasedOne(id)
+    val releasedAll = ComboEvent.ReleasedAll(id)
+
+    // might not react fast enough?
+    // def isPressedAll = keysOn == 1 + mods.size
+    // def isPressedAny = keysOn > 0
+    inline def isPressedAll = allb.forall(_.st.isPressed)
+    inline def isPressedAny = allb.exists(_.st.isPressed)
+    inline def isModPressed = mods.exists(_.st.isPressed)
 
     private def onPress(b: NamedButton): Unit = {
       val newState = keysOn + 1
       if (newState == 1 + mods.size) {
         if (!quasiOn) {
-          pressed.invoke()
+          ext.events.eval(pressed)
+          // pressed.invoke()
           quasiOn = true
         }
       }
@@ -70,9 +90,11 @@ object Combo {
     private def onRelease(b: NamedButton): Unit = {
       val newState = keysOn - 1
       if (newState == mods.size) // one less than all the buttons
-        releasedOne.invoke()
+        ext.events.eval(releasedOne)
+        // releasedOne.invoke()
       if (newState == 0 && quasiOn) {
-        releasedAll.invoke()
+        ext.events.eval(releasedAll)
+        // releasedAll.invoke()
         quasiOn = false
       }
       keysOn = newState
@@ -84,6 +106,12 @@ object Combo {
     }
   }
 
+  // true if no currently active combo is using this button
+  inline def checkCombo(buttonId: String)(using ext: MonsterJamExt): Boolean =
+    ext.binder.sourceMap.keys
+    .collect {case x: JC => x}
+      .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button
+      .exists(_.isPressedAny)
 
   // type HWB = ButtonLight[_] with HasId
 

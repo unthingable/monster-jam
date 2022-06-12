@@ -80,7 +80,7 @@ object Graph {
               HB(l.activateEvent, s"${l.id} syn act", () => activate("by action")(child)),
               HB(l.deactivateEvent, s"${l.id} syn deact", () => deactivate("by action")(child)),
             )
-          case _                     => Vector.empty
+          // case _                     => Vector.empty
         }
       } ++ (node.layer match {
         // MultiModeLayer is its submodes' parent

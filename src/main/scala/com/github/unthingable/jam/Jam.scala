@@ -10,10 +10,7 @@ import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
 class Jam(implicit val ext: MonsterJamExt)
-  extends BindingDSL
-  with Aux with TransportL with Level with Dpad with TrackL
-  with ClipMatrix with Shift with Control with MacroL with SceneL
-  with StepSequencer {
+  extends BindingDSL, Aux, TransportL, Level, Dpad, TrackL, ClipMatrix, Shift, Control, MacroL, SceneL, StepSequencer {
 
   implicit val j: JamSurface = new JamSurface()
 

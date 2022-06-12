@@ -49,8 +49,6 @@ trait ModeLayer extends IntActivatedLayer, HasId {
 
   override def toggleEvent = if (isOn) deactivateEvent else activateEvent
 
-  override def hashCode(): Int = id.hashCode
-
   protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
     val ml = JamControl.maybeLight(b)
     Util.println(s"$id light: $ml $silent")
