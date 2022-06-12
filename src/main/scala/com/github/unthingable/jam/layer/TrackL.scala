@@ -78,7 +78,7 @@ trait TrackL { this: Jam =>
     GateMode.Gate,
     silent = true
   ) {
-    import com.github.unthingable.jam.surface.Combo._
+    import com.github.unthingable.jam.surface.KeyMaster._
     val track   = trackBank.getItemAt(idx)
     val isAtTop = ext.host.getProject.getRootTrackGroup.createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
 

@@ -3,13 +3,14 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB, BindingBehavior => BB}
-import com.github.unthingable.jam.surface.Combo.JC
+import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 
 import java.time.{Duration, Instant}
 import scala.collection.mutable
+import com.github.unthingable.framework.binding.EB
 
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
@@ -43,11 +44,11 @@ trait ClipMatrix { this: Jam =>
         )
       }
     } ++ Vector(
-      HB(GlobalMode.Duplicate.deactivateEvent, "dup clips: clear source", () => {
+      // FIXME: last released combo button needs to be handled as combo, not single
+      HB(j.duplicate.st.release, "dup clips: clear source", () => {
         source = None
       }, BB(tracked = false, managed = false)),
-      //FIXME
-      // HB[JC](j.ShiftDup, _.pressed, "shift dup clip content", () => clip.duplicateContent())
+      EB(j.ShiftDup, _.press, clip.duplicateContent)
     )
 
 

@@ -14,19 +14,19 @@ trait SurfaceState {
   /**
    * A button and all its combo neighbors
    */
-  val comboMap: mutable.Map[String, Set[Combo.JC]] = mutable.Map.empty
+  val comboMap: mutable.Map[String, Set[KeyMaster.JC]] = mutable.Map.empty
 }
 
 // key chords
-object Combo {
+object KeyMaster {
   implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
   type NamedButton = HasButtonState & HasId & HasButton[_]
 
   trait ComboSupplier {
-    def pressed: ComboEvent
-    def releasedOne: ComboEvent
-    def releasedAll: ComboEvent
+    def press: ComboEvent
+    def releaseOne: ComboEvent
+    def releaseAll: ComboEvent
   }
 
   trait HasModifier {
@@ -57,16 +57,16 @@ object Combo {
       //surfaceState.comboMap.updateWith(b.id)(_.map(cc => cc + this))
     }
 
-    protected[Combo] var keysOn: Int      = 0
-    protected[Combo] var quasiOn: Boolean = false // flips to true when all keys pressed and to false when all released
+    protected[KeyMaster] var keysOn: Int      = 0
+    protected[KeyMaster] var quasiOn: Boolean = false // flips to true when all keys pressed and to false when all released
 
     // val pressed     = FakeAction() // all combo buttons pressed
     // val releasedOne = FakeAction() // combo no longer fully held
     // val releasedAll = FakeAction() // all combo buttons released
 
-    val pressed     = ComboEvent.Pressed(id)
-    val releasedOne = ComboEvent.ReleasedOne(id)
-    val releasedAll = ComboEvent.ReleasedAll(id)
+    val press      = ComboEvent.Pressed(id)
+    val releaseOne = ComboEvent.ReleasedOne(id)
+    val releaseAll = ComboEvent.ReleasedAll(id)
 
     // might not react fast enough?
     // def isPressedAll = keysOn == 1 + mods.size
@@ -75,25 +75,24 @@ object Combo {
     inline def isPressedAny = allb.exists(_.st.isPressed)
     inline def isModPressed = mods.exists(_.st.isPressed)
 
-    private def onPress(b: NamedButton): Unit = {
+    private def onPress(b: NamedButton): Option[ComboEvent] = {
       val newState = keysOn + 1
-      if (newState == 1 + mods.size) {
-        if (!quasiOn) {
-          ext.events.eval(pressed)
-          // pressed.invoke()
-          quasiOn = true
-        }
-      }
       keysOn = newState
+      if (newState == 1 + mods.size && !quasiOn) {
+          quasiOn = true
+          Some(press)
+          // ext.events.eval(press)
+          // pressed.invoke()
+      } else None
     }
 
     private def onRelease(b: NamedButton): Unit = {
       val newState = keysOn - 1
       if (newState == mods.size) // one less than all the buttons
-        ext.events.eval(releasedOne)
+        ext.events.eval(releaseOne)
         // releasedOne.invoke()
       if (newState == 0 && quasiOn) {
-        ext.events.eval(releasedAll)
+        ext.events.eval(releaseAll)
         // releasedAll.invoke()
         quasiOn = false
       }

@@ -11,7 +11,7 @@ import com.github.unthingable.framework.binding.HB.HBS
 import scala.language.implicitConversions
 import com.github.unthingable.framework.binding.*
 import com.github.unthingable.framework.HasId
-import com.github.unthingable.jam.surface.Combo.checkCombo
+import com.github.unthingable.jam.surface.KeyMaster.checkCombo
 
 /*
 Jam controls, self-wired to midi

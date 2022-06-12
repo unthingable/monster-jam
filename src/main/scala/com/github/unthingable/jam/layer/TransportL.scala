@@ -163,7 +163,7 @@ trait TransportL { this: Jam =>
   }
   )
 
-  import com.github.unthingable.jam.surface.Combo._
+  import com.github.unthingable.jam.surface.KeyMaster._
   //FIXME lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
   // lazy val solo = buttonGroupChannelMode("solo", j.solo.mapB(_.withNone), j.groupButtons, _.solo(), JamColorBase.YELLOW)
   val solo = SimpleModeLayer("solo", Seq.empty)

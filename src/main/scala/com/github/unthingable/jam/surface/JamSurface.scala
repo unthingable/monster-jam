@@ -7,7 +7,7 @@ import com.github.unthingable.framework.binding.{HB, ButtonEvt}
 // import com.github.unthingable.jam.surface.JamControl.HbOps
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.framework.HasId
-import com.github.unthingable.jam.surface.Combo.JC
+import com.github.unthingable.jam.surface.KeyMaster.JC
 
 
 /* Surface model with all the controls, wired to MIDI */

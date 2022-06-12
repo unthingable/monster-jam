@@ -190,11 +190,15 @@ case class EB[S](
   action: Outcome,
   override val behavior: BindingBehavior = BindingBehavior()
 )(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
+  var isActive = false
+
   val receiver = (_: Event) => action match
       case x: SideEffect => x.f(ev)
       case x: Command => ext.events.eval(x)
 
-  override def bind(): Unit = ext.events.addSub(ev, receiver)
+  override def bind(): Unit = 
+    if (!isActive) ext.events.addSub(ev, receiver)
+    isActive = true
 
   // TODO refactor ownership and exclusivity
   /* WIP 
@@ -208,7 +212,9 @@ case class EB[S](
   override val bindingSource: Event = ev
 
   // override def clear(): Unit = ext.events.clearSub(ev) // FIXME
-  override def clear(): Unit = ext.events.rmSub(ev, receiver)
+  override def clear(): Unit = 
+    ext.events.rmSub(ev, receiver)
+    isActive = false
 
   //def eval(): Unit = action match
   //  case f: SideEffect => f(ev)

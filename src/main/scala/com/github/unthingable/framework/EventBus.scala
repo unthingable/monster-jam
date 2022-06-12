@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 class EventBus[E] {
   type Reactor = E => Unit
 
-  private val subs = mutable.HashMap.empty[E, mutable.ListBuffer[Reactor]]
+  private val subs = mutable.HashMap.empty[E, mutable.HashSet[Reactor]]
 
   def eval(e: E): Unit =
     val receivers = subs.get(e).toSeq.flatten
@@ -28,11 +28,11 @@ class EventBus[E] {
 
   def setSub(e: E, r: Reactor): Unit =
     Util.println(s"evt= $e")
-    subs.update(e, mutable.ListBuffer(r))
+    subs.update(e, mutable.HashSet(r))
     
   def clearSub(e: E): Unit =
     Util.println(s"evt clear: $e")
     subs.remove(e)
 
-  private def getSub(e: E): mutable.ListBuffer[Reactor] = subs.getOrElseUpdate(e, mutable.ListBuffer.empty[Reactor])
+  private def getSub(e: E): mutable.HashSet[Reactor] = subs.getOrElseUpdate(e, mutable.HashSet.empty[Reactor])
 }

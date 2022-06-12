@@ -7,7 +7,7 @@ import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.{Binding, HB, JCB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
-import com.github.unthingable.jam.surface.Combo.JC
+import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.Jam
