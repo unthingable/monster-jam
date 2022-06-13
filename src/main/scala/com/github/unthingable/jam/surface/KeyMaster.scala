@@ -116,7 +116,7 @@ object KeyMaster {
     case Press, Release
 
   def eval(buttonId: String, ev: RawButtonEvent)(using ext: MonsterJamExt): Seq[Event] =
-    Util.println(s"KeyMaster eval $buttonId $ev")
+    // Util.println(s"KeyMaster eval $buttonId $ev")
     val ret = ext.binder.sourceMap.keys
     .collect {case x: JC => x}
       .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button

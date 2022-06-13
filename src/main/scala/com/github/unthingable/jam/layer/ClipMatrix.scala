@@ -44,7 +44,7 @@ trait ClipMatrix { this: Jam =>
         )
       }
     } ++ Vector(
-      // FIXME: last released combo button needs to be handled as combo, not single
+      // FIXME: last released combo button needs to be handled as combo, not single - fixed?
       HB(j.duplicate.st.release, "dup clips: clear source", () => {
         source = None
       }, BB(tracked = false, managed = false)),

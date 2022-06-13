@@ -97,7 +97,8 @@ trait TransportL { this: Jam =>
 
     // import reflect.Selectable.reflectiveSelectable
     def b(button: JamOnOffButton, name: String, param: SettableBooleanValue) = Vector(
-      // FIXME HB(button.btn.pressedAction, s"shiftTransport $name pressed", () => param.toggle()),
+      // FIXME 
+      HB(button.st.press, s"shiftTransport $name pressed", () => param.toggle()),
       SupBooleanB(button.light.isOn, param)
     )
 
@@ -165,7 +166,7 @@ trait TransportL { this: Jam =>
 
   import com.github.unthingable.jam.surface.KeyMaster._
   //FIXME lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
-  // lazy val solo = buttonGroupChannelMode("solo", j.solo.mapB(_.withNone), j.groupButtons, _.solo(), JamColorBase.YELLOW)
-  val solo = SimpleModeLayer("solo", Seq.empty)
+  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  // val solo = SimpleModeLayer("solo", Seq.empty)
   lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }
