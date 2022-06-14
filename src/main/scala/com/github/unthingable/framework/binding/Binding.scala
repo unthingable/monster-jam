@@ -135,8 +135,8 @@ object HB extends BindingDSL {
     new HB(source, identity[HBS], name, target, BindingBehavior())
 
   // FIXME - temporary shim for compilation
-  inline def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt) = EB(source, target())
-  inline def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, source, SideEffect(_ => target()), behavior)
+  // inline def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt): EB[Event] = EB(source, name, target())
+  // inline def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, source, SideEffect(_ => target()), behavior, context = name)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -188,7 +188,8 @@ case class EB[S](
   source: S,
   ev: Event, 
   action: Outcome,
-  override val behavior: BindingBehavior = BindingBehavior()
+  override val behavior: BindingBehavior,
+  val context: String
 )(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
   var isActive = false
 
@@ -199,13 +200,6 @@ case class EB[S](
   override def bind(): Unit = 
     if (!isActive) ext.events.addSub(ev, receiver)
     isActive = true
-
-  // TODO refactor ownership and exclusivity
-  /* WIP 
-  source tell the binder how to tell when another mode is taking over the control
-  most times a new mode will "shadow" the binding, but some bindings are non-exclusive, curently mnanaged by BindingBehavior
-  */
-  // override val source: S = source
 
   override val target: Outcome = action
 
@@ -222,8 +216,25 @@ case class EB[S](
 }
 
 object EB:
-  // inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f))
-  inline def apply(ev: Event, f: => Unit)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f))
-  inline def apply(ev: Event, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[Event] = EB(ev, ev, SideEffect(_ => f), bb)
-  inline def apply[S](source: S, ev: S => Event, f: => Unit)(using MonsterJamExt): EB[S] = EB(source, ev(source), SideEffect(_ => f))
-  inline def apply[S](source: S, ev: S => Event, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[S] = EB(source, ev(source), SideEffect(_ => f), bb)
+  type EventSpec[S] = Event | (S, S => Event)
+
+  type EventSpecOut[A, S] = A match 
+    case Event => Event
+    case (S, S => Event) => S
+
+  inline def apply(ev: Event, ctx: String, f: => Unit)(using MonsterJamExt): EB[Event] = 
+    EB(ev, ev, SideEffect(_ => f), behavior = BindingBehavior(), context = ctx)
+  inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[Event] =
+    EB(ev, ev, SideEffect(_ => f), bb, context = ctx)
+  inline def apply[S](source: S, ev: S => Event, ctx: String, f: => Unit)(using MonsterJamExt): EB[S] = 
+    EB(source, ev(source), SideEffect(_ => f), behavior = BindingBehavior(), context = ctx)
+  inline def apply[S](source: S, ev: S => Event, ctx: String, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
+    EB(source, ev(source), SideEffect(_ => f), bb, context = ctx)
+
+  // inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior()) = ???
+  // inline def apply[S](es: EventSpec[S], ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior())(using ext: MonsterJamExt): EB[_] =
+  //   inline es match
+  //     case e: Event => EB[Event](e, e, SideEffect(_ => f), bb, context = ctx)
+  //     case (s: S, e: (S => Event)) => EB[S](s, e(s), SideEffect(_ => f), bb, context = ctx)
+  //   // EB(source, ev, SideEffect(_ => f), bb, context = ctx)
+

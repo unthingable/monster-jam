@@ -61,7 +61,7 @@ trait TransportL { this: Jam =>
 
     override val modeBindings = Vector(
       // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
-      EB(j.play.st.press, playPress(), BB(tracked = false)),
+      EB(j.play.st.press, "", playPress(), BB(tracked = false)),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
       HB(j.noteRepeat.btn.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
       HB(j.noteRepeat.btn.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
@@ -97,8 +97,8 @@ trait TransportL { this: Jam =>
 
     // import reflect.Selectable.reflectiveSelectable
     def b(button: JamOnOffButton, name: String, param: SettableBooleanValue) = Vector(
-      // FIXME 
-      HB(button.st.press, s"shiftTransport $name pressed", () => param.toggle()),
+      // FIXME - fixed?
+      EB(button.st.press, s"shiftTransport $name pressed", param.toggle()),
       SupBooleanB(button.light.isOn, param)
     )
 

@@ -7,6 +7,7 @@ import com.github.unthingable.framework.mode.MultiModeLayer
 import com.github.unthingable.{MonsterJamExt, Util}
 
 import scala.collection.mutable
+import com.github.unthingable.framework.binding.EB
 
 object Graph {
   case class ModeNode(layer: ModeLayer) {
@@ -71,14 +72,14 @@ object Graph {
           case l: ActivatedLayer[ModeCommand[_]] with ListeningLayer =>
             Util.println(s"${node.layer.id}: synthesizing load bindings for ${l.id}")
             l.loadBindings ++ Vector(
-              HB(l.activateEvent, s"${l.id} syn act", () => activate("by action")(child)),
-              HB(l.deactivateEvent, s"${l.id} syn deact", () => deactivate("by action")(child)),
+              EB(l.activateEvent, s"${l.id} syn act", activate("by action")(child)),
+              EB(l.deactivateEvent, s"${l.id} syn deact", deactivate("by action")(child)),
             )
           case l: ActivatedLayer[ModeCommand[_]] =>
             Util.println(s"${node.layer.id}: synthesizing load bindings for ${l.id}")
             Vector(
-              HB(l.activateEvent, s"${l.id} syn act", () => activate("by action")(child)),
-              HB(l.deactivateEvent, s"${l.id} syn deact", () => deactivate("by action")(child)),
+              EB(l.activateEvent, s"${l.id} syn act", activate("by action")(child)),
+              EB(l.deactivateEvent, s"${l.id} syn deact", deactivate("by action")(child)),
             )
           // case _                     => Vector.empty
         }
@@ -88,8 +89,8 @@ object Graph {
           val smn = layerMap(sm)
           Util.println(s"${node.layer.id}: synthesizing load bindings for sub ${sm.id}")
           Vector(
-            HB(sm.activateEvent, s"${node.layer.id}->${sm.id} syn act", () => activate("by action")(smn), BB(tracked = false)),
-            HB(sm.deactivateEvent, s"${node.layer.id}->${sm.id} syn deact", () => deactivate("by action")(smn), BB(tracked = false)),
+            EB(sm.activateEvent, s"${node.layer.id}->${sm.id} syn act", activate("by action")(smn), BB(tracked = false)),
+            EB(sm.deactivateEvent, s"${node.layer.id}->${sm.id} syn deact", deactivate("by action")(smn), BB(tracked = false)),
           )
         }
         case _                           => Vector.empty

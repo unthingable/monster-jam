@@ -39,16 +39,16 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          HB(btn.btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          HB(btn.btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          EB(btn.st.press, s"clipPress $row:$col", handleClipPress(clip, clips, pressedAt(col))),
+          EB(btn.st.release, s"clipRelease $row:$col", handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
     } ++ Vector(
       // FIXME: last released combo button needs to be handled as combo, not single - fixed?
-      HB(j.duplicate.st.release, "dup clips: clear source", () => {
+      EB(j.duplicate.st.release, "dup clips: clear source", {
         source = None
       }, BB(tracked = false, managed = false)),
-      EB(j.ShiftDup, _.press, clip.duplicateContent)
+      EB(j.ShiftDup, _.press, "", clip.duplicateContent)
     )
 
 

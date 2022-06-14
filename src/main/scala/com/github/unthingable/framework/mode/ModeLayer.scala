@@ -12,6 +12,7 @@ import java.util.function.BooleanSupplier
 import com.bitwig.`extension`.controller.api.HardwareButton
 import com.github.unthingable.jam.surface.HasLight
 import com.github.unthingable.jam.surface.JamControl
+import com.github.unthingable.framework.binding.EB
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -71,7 +72,7 @@ trait ActivatedLayer[+A] {
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
 trait IntActivatedLayer extends ActivatedLayer[ModeCommand[IntActivatedLayer]] {
-  /* FIXME: actions are bindable and are called before (de)activate().
+  /* FIXME: actions are bindable and are called before (de)activate(). - fixed?
   However, the call to (de)activate() is wrapped in another action and wired in ModeGraph, can be confusing.
   */
   override final val activateEvent = ModeCommand.Activate(this)
@@ -127,7 +128,7 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, () => {
+    EB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -136,7 +137,7 @@ abstract class ModeButtonLayer(
       } else
         ext.events.eval(activateEvent)
     }),
-    HB(modeButton.st.release, s"$id: mode button released", () => released)
+    EB(modeButton.st.release, s"$id: mode button released", released)
   ) ++ maybeLightB(modeButton)
 
   // TODO inline
@@ -265,19 +266,19 @@ abstract class ModeButtonCycleLayer(
 
   // import reflect.Selectable.reflectiveSelectable
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    HB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
+    EB(modeButton.st.press, s"$name cycle load MB pressed", if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
   ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        HB(modeButton.st.press, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$name cycle", cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        HB(modeButton.st.press, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
-        HB(modeButton.st.release, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$name gate on", stickyPress(), BB(tracked = false, exclusive = false)),
+        EB(modeButton.st.release, s"$name gate off", stickyRelease(), BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }
