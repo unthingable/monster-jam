@@ -12,7 +12,7 @@ import java.util.function.BooleanSupplier
 import com.bitwig.`extension`.controller.api.HardwareButton
 import com.github.unthingable.jam.surface.HasLight
 import com.github.unthingable.jam.surface.JamControl
-import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.{EB, Noop}
 
 /**
  * A group of control bindings to specific host/app functions that plays well with other layers.
@@ -133,11 +133,13 @@ abstract class ModeButtonLayer(
       if (isOn) {
         // this press is only captured when the mode is still active
         if (gateMode != GateMode.OneWay)
-          ext.events.eval(deactivateEvent)
+          deactivateEvent
+        else
+          Noop
       } else
-        ext.events.eval(activateEvent)
+        activateEvent
     }),
-    EB(modeButton.st.release, s"$id: mode button released", released)
+    EB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
 
   // TODO inline
@@ -266,19 +268,19 @@ abstract class ModeButtonCycleLayer(
 
   // import reflect.Selectable.reflectiveSelectable
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    EB(modeButton.st.press, s"$name cycle load MB pressed", if (!isOn) ext.events.eval(activateEvent), BB(tracked = false))
+    EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Noop, BB(tracked = false))
   ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        EB(modeButton.st.press, s"$name cycle", cycle(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        EB(modeButton.st.press, s"$name gate on", stickyPress(), BB(tracked = false, exclusive = false)),
-        EB(modeButton.st.release, s"$name gate off", stickyRelease(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$name gate on", () => stickyPress(), BB(tracked = false, exclusive = false)),
+        EB(modeButton.st.release, s"$name gate off", () => stickyRelease(), BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }

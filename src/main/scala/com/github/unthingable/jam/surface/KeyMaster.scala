@@ -11,24 +11,24 @@ import scala.collection.mutable
 import com.bitwig.`extension`.controller.api.HardwareButton
 import com.github.unthingable.Util
 
-trait SurfaceState {
-  /**
-   * A button and all its combo neighbors
-   */
-  val comboMap: mutable.Map[String, Set[KeyMaster.JC]] = mutable.Map.empty
-}
+// trait SurfaceState {
+//   /**
+//    * A button and all its combo neighbors
+//    */
+//   val comboMap: mutable.Map[String, Set[KeyMaster.JC]] = mutable.Map.empty
+// }
 
 // key chords
 object KeyMaster {
-  implicit private val surfaceState: SurfaceState = new SurfaceState {}
+  // implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
   type NamedButton = HasButtonState & HasId & HasButton[_]
 
-  trait ComboSupplier {
-    def press: ComboEvent
-    def releaseOne: ComboEvent
-    def releaseAll: ComboEvent
-  }
+  // trait ComboSupplier {
+  //   def press: ComboEvent
+  //   def releaseOne: ComboEvent
+  //   def releaseAll: ComboEvent
+  // }
 
   trait HasModifier {
     val modifier: Seq[HasHwButton]

@@ -1,13 +1,14 @@
 package com.github.unthingable.framework.binding
 
 type Event = HwEvent | ExtEvent | Command
-type Outcome = Command | SideEffect
+type Outcome = Command | SideEffect | CmdEffect
 
 trait HwEvent // hardware events: button presses, etc.
 trait ExtEvent // extention events: mode activations, etc.
 trait Command
 
 case class SideEffect(f: Event => Unit)
+case class CmdEffect(f: Event => Command)
 
 enum ButtonEvt extends HwEvent:
   case Press(buttonId: String)
@@ -17,6 +18,8 @@ enum ModeCommand[+A] extends Command:
   case Activate(obj: A)
   case Deactivate(obj: A)
   // case Toggle(obj: A)
+
+object Noop extends Command
 
 /* What is the main problem?
 The difference between raw button press events and higher order events (combos and chords) is fuzzy.

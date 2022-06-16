@@ -14,6 +14,7 @@ import com.github.unthingable.jam.Jam
 
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
+import com.github.unthingable.framework.binding.EB
 
 object StepMode extends Enumeration {
   val One, Four, Eight = Value
@@ -132,13 +133,13 @@ trait StepSequencer { this: Jam =>
           SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor()),
         )
       } ++ Vector(
-        // FIXME
-        // HB[JC](j.ShiftSolo, _.pressed, "shift-solo pressed", () => patLength.activateAction.invoke()),
-        // HB[JC](j.ShiftSolo, _.releasedAll, "shift-solo released", () => patLength.deactivateAction.invoke()),
+        // FIXME - fixed?
+        EB(j.ShiftSolo, _.press, "shift-solo pressed", patLength.activateEvent),
+        EB(j.ShiftSolo, _.releaseAll, "shift-solo released", patLength.deactivateEvent),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.step.btn.pressedAction, "step toggle", () => ext.events.eval(toggleEvent)),
+      EB(j.step.st.press, "step toggle", toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

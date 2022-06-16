@@ -14,7 +14,6 @@ import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 /* Surface model with all the controls, wired to MIDI */
 
 class JamSurface(implicit ext: MonsterJamExt) extends Util {
-  implicit private val surfaceState: SurfaceState = new SurfaceState {}
 
   private def b(id: String) = {
     val info = ext.xmlMap.button(id)

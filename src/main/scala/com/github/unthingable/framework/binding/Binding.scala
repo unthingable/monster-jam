@@ -11,6 +11,7 @@ import java.time.Instant
 import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 import reflect.Selectable.reflectiveSelectable
+import com.github.unthingable.Util
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -193,9 +194,12 @@ case class EB[S](
 )(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
   var isActive = false
 
-  val receiver = (_: Event) => action match
-      case x: SideEffect => x.f(ev)
-      case x: Command => ext.events.eval(x)
+  val receiver = (_: Event) => 
+    if context.nonEmpty then Util.println(s"EB: $context $action")
+    action match
+      case x: Command     => ext.events.eval(x)
+      case SideEffect(f)  => f(ev)
+      case CmdEffect(f)   => ext.events.eval(f(ev))
 
   override def bind(): Unit = 
     if (!isActive) ext.events.addSub(ev, receiver)
@@ -221,15 +225,28 @@ object EB:
   type EventSpecOut[A, S] = A match 
     case Event => Event
     case (S, S => Event) => S
+  
+  type OutcomeSpec =  Command | (() => Unit) | (() => Command)
+  // type OutcomeSpec =  Command | (() => Command) | (() => Unit)
+  // type OutcomeSpec =  Command | (() => (Unit|Command))
 
-  inline def apply(ev: Event, ctx: String, f: => Unit)(using MonsterJamExt): EB[Event] = 
-    EB(ev, ev, SideEffect(_ => f), behavior = BindingBehavior(), context = ctx)
-  inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[Event] =
-    EB(ev, ev, SideEffect(_ => f), bb, context = ctx)
-  inline def apply[S](source: S, ev: S => Event, ctx: String, f: => Unit)(using MonsterJamExt): EB[S] = 
-    EB(source, ev(source), SideEffect(_ => f), behavior = BindingBehavior(), context = ctx)
-  inline def apply[S](source: S, ev: S => Event, ctx: String, f: => Unit, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
-    EB(source, ev(source), SideEffect(_ => f), bb, context = ctx)
+  inline def asOutcome(o: OutcomeSpec): Outcome =
+    inline o match
+      case c: Command         => c
+      case f: (() => Command) => CmdEffect(_ => f())
+      case f: (() => Unit)    => SideEffect(_ => f())
+
+  // all this insanity because we can't mix overloaded param types and defaults, but still want nice things at use site
+
+  inline def apply(ev: Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[Event] = 
+    EB(ev, ev, asOutcome(f), behavior = BindingBehavior(), context = ctx)
+  inline def apply(ev: Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[Event] =
+    EB(ev, ev, asOutcome(f), bb, context = ctx)
+
+  inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
+    EB(source, ev(source), asOutcome(f), behavior = BindingBehavior(), context = ctx)
+  inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
+    EB(source, ev(source), asOutcome(f), bb, context = ctx)
 
   // inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior()) = ???
   // inline def apply[S](es: EventSpec[S], ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior())(using ext: MonsterJamExt): EB[_] =
