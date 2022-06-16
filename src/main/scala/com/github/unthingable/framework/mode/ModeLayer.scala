@@ -2,7 +2,7 @@ package com.github.unthingable.framework.mode
 
 import com.bitwig.extension.controller.api.OnOffHardwareLight
 import com.github.unthingable.framework.binding.BindingDSL.*
-import com.github.unthingable.framework.binding.{Binding, ButtonEvt, HB, OutBinding, SupBooleanB, BindingBehavior as BB, ModeCommand}
+import com.github.unthingable.framework.binding.{Binding, ButtonEvt, OutBinding, SupBooleanB, BindingBehavior as BB, ModeCommand}
 import com.github.unthingable.jam.surface.{FakeAction, FakeButton, HasButtonState, HasHwButton, HasOnOffLight, JamOnOffButton}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.framework.{HasId}

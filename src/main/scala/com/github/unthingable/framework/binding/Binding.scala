@@ -12,6 +12,7 @@ import java.util.function.{BooleanSupplier, Supplier}
 import scala.collection.mutable
 import reflect.Selectable.reflectiveSelectable
 import com.github.unthingable.Util
+import com.github.unthingable.jam.surface.HasButtonState
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -162,20 +163,20 @@ object JCB extends BindingDSL {
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
-  inline def apply(name: String, b: HasRgbLight & HasHwButton, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
+  inline def apply(name: String, b: HasButtonState & HasRgbLight, press: () => Unit, release: () => Unit, color: Supplier[JamColorState])
     (using MonsterJamExt) =
     Vector(
       SupColorStateB(b.light, color),
-      HB(b.btn.pressedAction, s"$name press", press),
-      HB(b.btn.releasedAction, s"$name release", release),
+      EB(b.st.press, s"$name press", press),
+      EB(b.st.release, s"$name release", release),
     )
 
-  inline def apply(name: String, b: HasOnOffLight & HasHwButton, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
+  inline def apply(name: String, b: HasButtonState & HasOnOffLight, press: () => Unit, release: () => Unit, isOn: BooleanSupplier)
     (using MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
-      HB(b.btn.pressedAction, s"$name press", press),
-      HB(b.btn.releasedAction, s"$name release", release),
+      EB(b.st.press, s"$name press", press),
+      EB(b.st.release, s"$name release", release),
     )
 }
 

@@ -2,7 +2,7 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB, BindingBehavior => BB}
+import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB, BindingBehavior => BB}
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase

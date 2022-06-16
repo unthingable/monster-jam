@@ -4,7 +4,7 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.HB.action
-import com.github.unthingable.framework.binding.{BindingBehavior => BB, _}
+import com.github.unthingable.framework.binding.{BindingBehavior => BB, EB, HB, SupBooleanB, SupColorStateB, SupColorB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
 import com.github.unthingable.jam.Jam

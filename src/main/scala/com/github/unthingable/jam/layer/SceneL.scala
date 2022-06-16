@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Se
 import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{ModeCycleLayer, ModeLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.HB.BindingOps
-import com.github.unthingable.framework.binding.{Binding, HB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 import com.github.unthingable.jam.{Jam, TrackId}
@@ -32,7 +32,7 @@ trait SceneL { this: Jam =>
           else
             JamColorBase.OFF,
           1)),
-        HB(btn.btn.pressedAction, s"scene $i press", () => handlePress(scene)))
+        EB(btn.st.press, s"scene $i press", () => handlePress(scene)))
     }
 
     private def handlePress(scene: Scene): Unit = {
@@ -139,7 +139,7 @@ trait SceneL { this: Jam =>
       def pageOffset = pageIndex * 8
 
       Vector(
-        HB(j.sceneButtons(idx).btn.pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
+        EB(j.sceneButtons(idx).st.press, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
         SupColorStateB(j.sceneButtons(idx).light, () =>
           JamColorState(
             if (superScenes(pageOffset + idx).isEmpty)
@@ -178,7 +178,7 @@ trait SceneL { this: Jam =>
                 JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
-          HB(btn.btn.pressedAction, "shift-scroll page $idx", () => {
+          EB(btn.st.press, "shift-scroll page $idx", () => {
             trackBank.scrollPosition().set(col * 8)
             sceneBank.scrollPosition().set(row * 8)}))
       }).flatten
@@ -212,8 +212,8 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      HB(j.song.btn.pressedAction, "sceneCycle pressed", () => press()),
-      HB(j.song.btn.releasedAction, "sceneCycle released", () => release()),
+      EB(j.song.st.press, "sceneCycle pressed", () => press()),
+      EB(j.song.st.release, "sceneCycle released", () => release()),
     )
   }
 }

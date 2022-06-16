@@ -2,7 +2,7 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{BooleanValue, MasterTrack, Track}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.{Binding, HB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.Jam
 
@@ -67,8 +67,8 @@ trait TrackL { this: Jam =>
             case (false, _) => 0
           }
         ), JamColorState.empty),
-        //HB(btn.button.pressedAction(), () => trackBank.cursorIndex().set(idx))
-        HB(btn.btn.pressedAction, s"group $idx pressed: select in mixer", () => handlePress())
+        //HB(btn.button.press(), () => trackBank.cursorIndex().set(idx))
+        EB(btn.st.press, s"group $idx pressed: select in mixer", () => handlePress())
       )
     }
   }
@@ -101,19 +101,17 @@ trait TrackL { this: Jam =>
       SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Mod.blink3),
       SupBooleanB(j.dpad.left.light.isOn, () => true),
       SupBooleanB(j.dpad.right.light.isOn, () => true),
-      HB(j.dpad.up.btn.pressedAction, "exit group", () => ext.application.navigateToParentTrackGroup()),
-      HB(j.dpad.down.btn.pressedAction, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
-      HB(j.dpad.left.btn.pressedAction, "scroll left", () => scrollBy(idx - 7)),
-      HB(j.dpad.right.btn.pressedAction, "scroll right", () => scrollBy(idx)),
+      EB(j.dpad.up.st.press, "exit group", () => ext.application.navigateToParentTrackGroup()),
+      EB(j.dpad.down.st.press, "enter group", () => ext.application.navigateIntoTrackGroup(track)),
+      EB(j.dpad.left.st.press, "scroll left", () => scrollBy(idx - 7)),
+      EB(j.dpad.right.st.press, "scroll right", () => scrollBy(idx)),
       SupBooleanB(j.solo.light.isOn, track.solo()),
       SupBooleanB(j.mute.light.isOn, track.mute()),
       SupBooleanB(j.record.light.isOn, track.arm()),
       // FIXME - fixed?
       EB(j.solo.st.press, "track direct solo", () => track.solo().toggle()),
       EB(j.mute.st.press, "track direct mute", () => track.mute().toggle),
-      HB(j.record.btn.pressedAction, "track direct arm", track.arm().toggleAction()),
-
-      //EB()
+      EB(j.record.st.press, "track direct arm", () => track.arm().toggle()),
     )
   }
 
@@ -142,7 +140,7 @@ trait TrackL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
-      HB(j.master.btn.pressedAction, "focus on master", selectMaster),
+      EB(j.master.st.press, "focus on master", selectMaster),
     )
   }
 

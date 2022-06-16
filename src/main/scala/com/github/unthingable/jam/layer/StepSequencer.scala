@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.NoteStep.State
 import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
 import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{ListeningLayer, ModeLayer, MultiModeLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.{Binding, HB, JCB, SupBooleanB, SupColorB, SupColorStateB}
+import com.github.unthingable.framework.binding.{Binding, JCB, SupBooleanB, SupColorB, SupColorStateB}
 import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -122,14 +122,14 @@ trait StepSequencer { this: Jam =>
               }).getOrElse(JamColorState.empty)
             }
           }),
-          HB(j.matrix(row)(col).btn.pressedAction, "", () => clip.toggleStep(x, y, 100)))
+          EB(j.matrix(row)(col).st.press, "", () => clip.toggleStep(x, y, 100)))
       }).flatten ++
       EIGHT.flatMap { i =>
         val btn = j.sceneButtons(i)
         def hasContent = clip.getPlayStop.get() > i * 32 * stepSize
 
         Vector(
-          HB(btn.btn.pressedAction, "", () => if (hasContent) scrollX(i * 32)),
+          EB(btn.st.press, "", () => if (hasContent) scrollX(i * 32)),
           SupColorB(btn.light, () => if (hasContent) clip.color().get() else Color.blackColor()),
         )
       } ++ Vector(
@@ -139,7 +139,7 @@ trait StepSequencer { this: Jam =>
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      EB(j.step.st.press, "step toggle", toggleEvent),
+      EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }
