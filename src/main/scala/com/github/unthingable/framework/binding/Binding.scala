@@ -134,10 +134,6 @@ object HB extends BindingDSL {
   inline def apply(source: HBS, name: String, target: HardwareBindable)
     (implicit ext: MonsterJamExt): HB[HBS] =
     new HB(source, identity[HBS], name, target, BindingBehavior())
-
-  // FIXME - temporary shim for compilation
-  // inline def apply(source: Event, name: String, target: () => Unit)(using MonsterJamExt): EB[Event] = EB(source, name, target())
-  // inline def apply(source: Event, name: String, target: () => Unit, behavior: BindingBehavior)(using MonsterJamExt) = EB(source, source, SideEffect(_ => target()), behavior, context = name)
 }
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
@@ -209,7 +205,6 @@ case class EB[S](
 
   override val bindingSource: Event = ev
 
-  // override def clear(): Unit = ext.events.clearSub(ev) // FIXME
   override def clear(): Unit = 
     ext.events.rmSub(ev, receiver)
     isActive = false

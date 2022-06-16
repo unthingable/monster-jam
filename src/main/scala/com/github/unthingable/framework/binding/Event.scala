@@ -7,8 +7,11 @@ trait HwEvent // hardware events: button presses, etc.
 trait ExtEvent // extention events: mode activations, etc.
 trait Command
 
-case class SideEffect(f: Event => Unit)
-case class CmdEffect(f: Event => Command)
+case class SideEffect(f: Event => Unit):
+  override def toString: String = ""
+
+case class CmdEffect(f: Event => Command):
+  override def toString: String = ""
 
 enum ButtonEvt extends HwEvent:
   case Press(buttonId: String)

@@ -7,6 +7,7 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
 import com.github.unthingable.jam._
 import com.github.unthingable.framework.binding.{Binding, HB, SupColorStateB}
+import com.github.unthingable.framework.binding.EB
 
 trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
