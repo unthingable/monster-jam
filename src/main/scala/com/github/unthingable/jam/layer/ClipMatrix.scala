@@ -48,7 +48,7 @@ trait ClipMatrix { this: Jam =>
       EB(j.duplicate.st.release, "dup clips: clear source", () => {
         source = None
       }, BB(tracked = false, managed = false)),
-      EB(j.ShiftDup, _.press, "dup clips: duplicate content", () => clip.duplicateContent)
+      EB(j.ShiftDup.press, "dup clips: duplicate content", () => clip.duplicateContent)
     )
 
 

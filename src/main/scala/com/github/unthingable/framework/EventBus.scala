@@ -1,7 +1,9 @@
 package com.github.unthingable.framework
 
-import scala.collection.mutable
 import com.github.unthingable.Util
+import com.github.unthingable.jam.surface.WithSource
+
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -17,6 +19,8 @@ class EventBus[E] {
     val receivers = subs.get(e).toSeq.flatten
     if (receivers.nonEmpty) Util.println(s"evt: $e => ${receivers.size}")
     receivers.foreach(_(e))
+
+  def eval(e: WithSource[E, _]): Unit = eval(e.value)
 
   def addSub(e: E, r: Reactor): Unit =
     Util.println(s"evt+ $e")

@@ -3,7 +3,7 @@ package com.github.unthingable.framework.mode
 import com.bitwig.extension.controller.api.OnOffHardwareLight
 import com.github.unthingable.framework.binding.BindingDSL.*
 import com.github.unthingable.framework.binding.{Binding, ButtonEvt, OutBinding, SupBooleanB, BindingBehavior as BB, ModeCommand}
-import com.github.unthingable.jam.surface.{FakeAction, FakeButton, HasButtonState, HasHwButton, HasOnOffLight, JamOnOffButton}
+import com.github.unthingable.jam.surface.{FakeAction, FakeButton, HasButtonState, HasHwButton, HasOnOffLight, JamOnOffButton, WithSource}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.framework.{HasId}
 
@@ -71,12 +71,12 @@ trait ActivatedLayer[+A] {
 /**
  * (De)activation is triggered by internal actions: must invoke them explicitly
  */
-trait IntActivatedLayer extends ActivatedLayer[ModeCommand[IntActivatedLayer]] {
+trait IntActivatedLayer extends ActivatedLayer[WithSource[ModeCommand[IntActivatedLayer], _]] {
   /* FIXME: actions are bindable and are called before (de)activate(). - fixed?
   However, the call to (de)activate() is wrapped in another action and wired in ModeGraph, can be confusing.
   */
-  override final val activateEvent = ModeCommand.Activate(this)
-  override final val deactivateEvent = ModeCommand.Deactivate(this)
+  override final val activateEvent = WithSource(ModeCommand.Activate(this), this)
+  override final val deactivateEvent = WithSource(ModeCommand.Deactivate(this), this)
 }
 
 trait ListeningLayer {
@@ -133,11 +133,11 @@ abstract class ModeButtonLayer(
       if (isOn) {
         // this press is only captured when the mode is still active
         if (gateMode != GateMode.OneWay)
-          deactivateEvent
+          deactivateEvent.value
         else
           Noop
       } else
-        activateEvent
+        activateEvent.value
     }),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
@@ -268,7 +268,7 @@ abstract class ModeButtonCycleLayer(
 
   // import reflect.Selectable.reflectiveSelectable
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Noop, BB(tracked = false))
+    EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent.value else Noop, BB(tracked = false))
   ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
 
   // if overriding, remember to include these

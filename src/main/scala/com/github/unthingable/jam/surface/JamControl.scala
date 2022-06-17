@@ -18,30 +18,32 @@ import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 Jam controls, self-wired to midi
  */
 
+case class WithSource[+A, S](value: A, source: S)
+
 // universal interface, so that we can marry HardwareButton with FakeButton, make compiler happy and move on
 trait ButtonStateSupplier:
   def isPressed: Boolean
-  def press: ButtonEvt
-  def release: ButtonEvt
+  def press: WithSource[ButtonEvt, _]
+  def release: WithSource[ButtonEvt, _]
   def pressedAction: HBS
   def releasedAction: HBS
 
 object ButtonStateSupplier:
-  def apply(id: String, btn: HardwareButton): ButtonStateSupplier = {
+  def apply[S](source: S, id: String, btn: HardwareButton): ButtonStateSupplier = {
     btn.isPressed.markInterested()
     new ButtonStateSupplier {
       def isPressed: Boolean = btn.isPressed.get()
-      val press: ButtonEvt = ButtonEvt.Press(id)
-      val release: ButtonEvt = ButtonEvt.Release(id)
+      val press = WithSource(ButtonEvt.Press(id), source)
+      val release = WithSource(ButtonEvt.Release(id), source)
       val pressedAction = btn.pressedAction
       val releasedAction = btn.releasedAction
     }
   }
 
-  def apply(btn: FakeButton): ButtonStateSupplier = new ButtonStateSupplier {
+  def apply[S](source: S, btn: FakeButton): ButtonStateSupplier = new ButtonStateSupplier {
     def isPressed: Boolean = btn.isPressed
-    val press: ButtonEvt = ButtonEvt.Press(btn.id)
-    val release: ButtonEvt = ButtonEvt.Release(btn.id)
+    val press = WithSource(ButtonEvt.Press(btn.id), source)
+    val release = WithSource(ButtonEvt.Release(btn.id), source)
     val pressedAction = btn.pressedAction
     val releasedAction = btn.releasedAction
   }
@@ -170,7 +172,7 @@ object JamButton {
 
 abstract class JamButtonLight[L <: HardwareLight](id: String, btn: HardwareButton, light: L)
   extends HasButtonState, HasLight[L], HasHwButton, HasId {
-    val st: ButtonStateSupplier = ButtonStateSupplier(id, btn)
+    val st: ButtonStateSupplier = ButtonStateSupplier(this, id, btn)
   }
 
 case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight) 

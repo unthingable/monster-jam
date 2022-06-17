@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.*
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.framework.binding.HB.HBS
 import com.github.unthingable.framework.mode.Graph
-import com.github.unthingable.jam.surface.{HasHwButton, HasOnOffLight, HasRgbLight, JamColorState, JamOnOffButton, JamRgbButton}
+import com.github.unthingable.jam.surface.{HasHwButton, HasOnOffLight, HasRgbLight, JamColorState, JamOnOffButton, JamRgbButton, WithSource}
 
 import java.time.Instant
 import java.util.function.{BooleanSupplier, Supplier}
@@ -193,6 +193,7 @@ case class EB[S](
 
   val receiver = (_: Event) => 
     if context.nonEmpty then Util.println(s"EB: $context $action")
+    operatedAt = Some(Instant.now())
     action match
       case x: Command     => ext.events.eval(x)
       case SideEffect(f)  => f(ev)
@@ -208,6 +209,7 @@ case class EB[S](
 
   override def clear(): Unit = 
     ext.events.rmSub(ev, receiver)
+    operatedAt = None
     isActive = false
 
   //def eval(): Unit = action match
@@ -234,15 +236,15 @@ object EB:
 
   // all this insanity because we can't mix overloaded param types and defaults, but still want nice things at use site
 
-  inline def apply(ev: Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[Event] = 
-    EB(ev, ev, asOutcome(f), behavior = BindingBehavior(), context = ctx)
-  inline def apply(ev: Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[Event] =
-    EB(ev, ev, asOutcome(f), bb, context = ctx)
+  inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
+    EB(ev.source, ev.value, asOutcome(f), behavior = BindingBehavior(), context = ctx)
+  inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
+    EB(ev.source, ev.value, asOutcome(f), behavior = bb, context = ctx)
 
-  inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
-    EB(source, ev(source), asOutcome(f), behavior = BindingBehavior(), context = ctx)
-  inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
-    EB(source, ev(source), asOutcome(f), bb, context = ctx)
+  // inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
+  //   EB(source, ev(source), asOutcome(f), behavior = BindingBehavior(), context = ctx)
+  // inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
+  //   EB(source, ev(source), asOutcome(f), bb, context = ctx)
 
   // inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior()) = ???
   // inline def apply[S](es: EventSpec[S], ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior())(using ext: MonsterJamExt): EB[_] =

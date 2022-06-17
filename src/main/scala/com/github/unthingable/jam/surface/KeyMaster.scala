@@ -66,13 +66,10 @@ object KeyMaster {
     // val releasedOne = FakeAction() // combo no longer fully held
     // val releasedAll = FakeAction() // all combo buttons released
 
-    val press      = ComboEvent.Pressed(id)
-    val releaseOne = ComboEvent.ReleasedOne(id)
-    val releaseAll = ComboEvent.ReleasedAll(id)
+    val press      = WithSource(ComboEvent.Pressed(id), this)
+    val releaseOne = WithSource(ComboEvent.ReleasedOne(id), this)
+    val releaseAll = WithSource(ComboEvent.ReleasedAll(id), this)
 
-    // might not react fast enough?
-    // def isPressedAll = keysOn == 1 + mods.size
-    // def isPressedAny = keysOn > 0
     inline def isPressedAll = allb.forall(_.st.isPressed)
     inline def isPressedAny = allb.exists(_.st.isPressed)
     inline def isModPressed = mods.exists(_.st.isPressed)
@@ -88,7 +85,7 @@ object KeyMaster {
       keysOn = newState
       if (newState == 1 + mods.size && !quasiOn) {
           quasiOn = true
-          Some(press)
+          Some(press.value)
           // ext.events.eval(press)
           // pressed.invoke()
       } else None
@@ -97,12 +94,12 @@ object KeyMaster {
       val newState = keysOn - 1
       keysOn = newState
       if (newState == mods.size) // one less than all the buttons
-        Some(releaseOne)
+        Some(releaseOne.value)
         // ext.events.eval(releaseOne)
         // releasedOne.invoke()
       if (newState == 0 && quasiOn) {
         quasiOn = false
-        Some(releaseAll)
+        Some(releaseAll.value)
         // ext.events.eval(releaseAll)
         // releasedAll.invoke()
       } else None

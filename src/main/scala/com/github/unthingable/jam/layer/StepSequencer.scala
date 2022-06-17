@@ -134,12 +134,12 @@ trait StepSequencer { this: Jam =>
         )
       } ++ Vector(
         // FIXME - fixed?
-        EB(j.ShiftSolo, _.press, "shift-solo pressed", patLength.activateEvent),
-        EB(j.ShiftSolo, _.releaseAll, "shift-solo released", patLength.deactivateEvent),
+        EB(j.ShiftSolo.press, "shift-solo pressed", patLength.activateEvent.value),
+        EB(j.ShiftSolo.releaseAll, "shift-solo released", patLength.deactivateEvent.value),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      EB(j.step.st.press, "step toggle", () => toggleEvent),
+      EB(j.step.st.press, "step toggle", () => toggleEvent.value),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

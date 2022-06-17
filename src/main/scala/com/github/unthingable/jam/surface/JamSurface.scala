@@ -26,7 +26,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     object Shift extends HasButtonState, HasId, HasFakeButton {
       val id         = "SHIFT"
       val btn = FakeButton(id)
-      val st  = ButtonStateSupplier(btn)
+      val st  = ButtonStateSupplier(this, btn)
 
       btn.pressedAction.addBinding(JamControl.handle(id, RawButtonEvent.Press))
       btn.releasedAction.addBinding(JamControl.handle(id, RawButtonEvent.Release))
@@ -181,10 +181,10 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        ext.events.eval(Mod.Shift.st.press)
+        ext.events.eval(Mod.Shift.st.press.value)
         Mod.Shift.btn.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        ext.events.eval(Mod.Shift.st.release)
+        ext.events.eval(Mod.Shift.st.release.value)
         Mod.Shift.btn.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
