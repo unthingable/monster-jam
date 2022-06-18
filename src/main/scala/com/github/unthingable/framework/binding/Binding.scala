@@ -37,7 +37,7 @@ case class BindingBehavior(
 
 sealed trait Binding[S, B, T] extends Clearable {
   def bind(): Unit // watch out for idempotence
-  def source: S // will be indexed by ModeGraph for bumping calculus
+  def source: S // exclusivity object, will be indexed by ModeGraph for bumping calculus
   def target: T
 
   def bindingSource: B // actual thing we're binding to, provided by S

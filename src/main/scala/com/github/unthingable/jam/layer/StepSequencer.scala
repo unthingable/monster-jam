@@ -17,7 +17,8 @@ import com.github.unthingable.framework.binding.{
   JCB,
   SupBooleanB,
   SupColorB,
-  SupColorStateB
+  SupColorStateB,
+  Noop
 }
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -46,7 +47,7 @@ trait StepSequencer { this: Jam =>
     // follow track selection
     ext.cursorTrack
       .position()
-      .addValueObserver(v => if (isOn) selectedClipTrack.selectChannel(ext.cursorTrack))
+      .addValueObserver(v => selectedClipTrack.selectChannel(ext.cursorTrack))
 
     Vector(
       clip.getPlayStart,
@@ -57,6 +58,8 @@ trait StepSequencer { this: Jam =>
       clip.getLoopLength,
       clip.playingStep(),
       clip.color(),
+      clip.canScrollKeysDown(),
+      clip.canScrollKeysUp(),
       selectedClipTrack.color,
       ext.transport.isPlaying,
       devices.itemCount(), // hopefully this gets updated
@@ -70,10 +73,6 @@ trait StepSequencer { this: Jam =>
     var noteOffset                 = 0
     var stepOffset                 = 0
     var newPatLength               = 4
-
-    // // a mirror of the bitwig clip - not suitable for multiple channels 
-    // val steps: mutable.ArraySeq[mutable.ArraySeq[NoteStep]] =
-    //   ArraySeq.fill(cols)(ArraySeq.fill(rows)(null))
 
     clip.setStepSize(stepSize)
     clip.scrollToKey(12 * 3)
@@ -213,6 +212,14 @@ trait StepSequencer { this: Jam =>
       Vector(
         EB(j.ShiftSolo.press, "shift-solo pressed", () => cycle()),
         EB(j.ShiftSolo.releaseAll, "shift-solo released", () => select(0)),
+        EB(j.dpad.up.st.press, "scroll page up", () => clip.scrollKeysPageUp()),
+        EB(j.dpad.down.st.press, "scroll page down", () => clip.scrollKeysPageDown()),
+        EB(j.dpad.left.st.press, "", Noop),
+        EB(j.dpad.right.st.press, "", Noop),
+        SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
+        SupBooleanB(j.dpad.down.light.isOn(), clip.canScrollKeysDown()),
+        SupBooleanB(j.dpad.left.light.isOn(), () => false),
+        SupBooleanB(j.dpad.right.light.isOn(), () => false),
       )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
