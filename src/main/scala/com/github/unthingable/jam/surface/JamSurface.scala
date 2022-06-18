@@ -24,7 +24,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
   object Mod {
     object Shift extends HasButtonState, HasId, HasFakeButton {
-      val id         = "SHIFT"
+      val id  = "SHIFT"
       val btn = FakeButton(id)
       val st  = ButtonStateSupplier(this, btn)
 

@@ -6,8 +6,8 @@ import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, Pinnab
 import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{
   ListeningLayer,
-  ModeLayer,
   ModeCycleLayer,
+  ModeLayer,
   MultiModeLayer,
   SimpleModeLayer
 }
@@ -19,7 +19,6 @@ import com.github.unthingable.framework.binding.{
   SupColorB,
   SupColorStateB
 }
-import com.github.unthingable.jam.layer.StepMode.{Eight, Four, One}
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -28,11 +27,9 @@ import com.github.unthingable.jam.Jam
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
 
-object StepMode extends Enumeration {
-  val One, Four, Eight = Value
-}
-
 trait StepSequencer { this: Jam =>
+  enum StepMode:
+    case One, Four, Eight
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
     val rows                     = 8
@@ -40,7 +37,7 @@ trait StepSequencer { this: Jam =>
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(cols, rows)
     val devices: DeviceBank      = selectedClipTrack.createDeviceBank(1)
 
-    clip.addNoteStepObserver(ns => steps(ns.x()).update(ns.y(), ns))
+    // clip.addNoteStepObserver(ns => steps(ns.x()).update(ns.y(), ns))
 
     devices.itemCount().addValueObserver(v => Util.println(v.toString))
     clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
@@ -69,14 +66,14 @@ trait StepSequencer { this: Jam =>
     var velocity: Int              = 100
     var stepSize                   = 0.25
     var drumDevice: Option[Device] = None
-    var stepMode: StepMode.Value   = StepMode.One
+    var stepMode: StepMode         = StepMode.One
     var noteOffset                 = 0
     var stepOffset                 = 0
     var newPatLength               = 4
 
-    // a mirror of the bitwig clip
-    val steps: mutable.ArraySeq[mutable.ArraySeq[NoteStep]] =
-      ArraySeq.fill(cols)(ArraySeq.fill(rows)(null))
+    // // a mirror of the bitwig clip - not suitable for multiple channels 
+    // val steps: mutable.ArraySeq[mutable.ArraySeq[NoteStep]] =
+    //   ArraySeq.fill(cols)(ArraySeq.fill(rows)(null))
 
     clip.setStepSize(stepSize)
     clip.scrollToKey(12 * 3)
@@ -85,13 +82,13 @@ trait StepSequencer { this: Jam =>
 
     // translate step cache into a bindable
     def stepView(row: Int, col: Int) = stepMode match {
-      case One =>
+      case StepMode.One =>
         // expect 4x8
         val stepNum = row * 8 + col
         (stepNum, stepNum, noteOffset)
       // (stepNum, () => Option(steps(stepNum)(noteOffset)))
-      case Four  => ???
-      case Eight => ???
+      case StepMode.Four  => ???
+      case StepMode.Eight => ???
     }
 
     def scrollX(offset: Int) = {
@@ -99,10 +96,55 @@ trait StepSequencer { this: Jam =>
       stepOffset = offset
     }
 
+    case class Point(x: Int, y: Int)
+    enum StepState:
+      case Init
+      case Focus(p: Point, handled: Boolean)
+
+    var stepState = StepState.Init
+
+    def stepPress(x: Int, y: Int): Unit =
+      val newState = stepState match
+        case StepState.Init =>
+          val step = clip.getStep(1, x, y)
+          if (step.state == State.Empty)
+            clip.toggleStep(x, y, 100)
+            StepState.Focus(Point(x, y), true)
+          else
+            StepState.Focus(Point(x, y), false)
+        case st @ StepState.Focus(p @ Point(x0, y0), _) if y == y0 && x > x0 =>
+          val step: NoteStep = clip.getStep(0, x0, y0)
+          val newDuration    = stepSize * (x - x0 + 1)
+          if (step.duration() == newDuration)
+            step.setDuration(stepSize)
+          else
+            step.setDuration(newDuration)
+          st.copy(handled = true)
+        case st => st
+      stepState = newState
+      Util.println(stepState.toString())
+
+    def stepRelease(X: Int, Y: Int): Unit =
+      val newState = stepState match
+        case StepState.Focus(Point(X, Y), handled) =>
+          if (!handled)
+            clip.toggleStep(X, Y, 100)
+          StepState.Init
+        case st => st
+      stepState = newState
+      Util.println(stepState.toString())
+
     lazy val stepsLayer = new SimpleModeLayer("steps") {
+      inline val numSteps = 32
+
+      override def onActivate(): Unit = 
+        super.onActivate()
+        stepState = StepState.Init
+
       override val modeBindings: Seq[Binding[_, _, _]] =
         (for (col <- EIGHT; row <- EIGHT) yield {
           val (stepNum, x, y) = stepView(row, col)
+          def step = clip.getStep(0, x, y)
           Vector(
             SupColorStateB(
               j.matrix(row)(col).light,
@@ -113,27 +155,29 @@ trait StepSequencer { this: Jam =>
                 ) // not right yet
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
-                  Option(steps(x)(y))
-                    .map(_.state() match {
-                      case State.NoteOn      => JamColorState(clip.color().get(), 1)
-                      case State.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
-                      case State.Empty       => JamColorState.empty
-                    })
-                    .getOrElse(JamColorState.empty)
+                  step.state() match {
+                    case State.NoteOn      => JamColorState(clip.color().get(), 1)
+                    case State.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
+                    case State.Empty       => JamColorState.empty
+                  }
                 }
             ),
-            EB(j.matrix(row)(col).st.press, "", () => clip.toggleStep(x, y, 100))
+            EB(j.matrix(row)(col).st.press, "", () => stepPress(x, y)),
+            EB(j.matrix(row)(col).st.release, "", () => stepRelease(x, y))
           )
         }).flatten ++
           EIGHT.flatMap { i =>
             val btn        = j.sceneButtons(i)
-            def hasContent = clip.getPlayStop.get() > i * 32 * stepSize
+            def hasContent = clip.getLoopLength().get() > i * numSteps * stepSize
 
             Vector(
-              EB(btn.st.press, "", () => if (hasContent) scrollX(i * 32)),
+              EB(btn.st.press, "", () => if (hasContent) scrollX(i * numSteps)),
               SupColorB(
                 btn.light,
-                () => if (hasContent) clip.color().get() else Color.blackColor()
+                () =>
+                  if (hasContent)
+                    if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
+                  else Color.blackColor()
               ),
             )
           }
@@ -147,7 +191,8 @@ trait StepSequencer { this: Jam =>
           () => {
             Util.println(s"set playStop $idx")
             newPatLength = idx + 1
-            clip.getPlayStop.set(idx.toDouble + 1)
+            clip.getLoopLength.set(newPatLength.toDouble)
+            clip.getPlayStop.set(newPatLength.toDouble) // doesn't follow the first length change
           },
           () => (),
           () =>
