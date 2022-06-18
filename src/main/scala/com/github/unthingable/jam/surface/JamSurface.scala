@@ -30,6 +30,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
       btn.pressedAction.addBinding(JamControl.handle(id, RawButtonEvent.Press))
       btn.releasedAction.addBinding(JamControl.handle(id, RawButtonEvent.Release))
+
+      override def toString: String = "BtnSHIFT"
     }
 
     var blink : Boolean = false // on 50% of the time

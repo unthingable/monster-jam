@@ -125,13 +125,13 @@ object Graph {
       layerMap.getOrElseUpdate(l, ModeNode(l))
     }
 
-    def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} activate", () => {
-      activate("by action")(node)
-    })
+    // def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} activate", () => {
+    //   activate("by action")(node)
+    // })
 
-    def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} deactivate", () => {
-      deactivate("by action")(node)
-    })
+    // def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} deactivate", () => {
+    //   deactivate("by action")(node)
+    // })
 
     private def activate(reason: String)(node: ModeNode): Unit = {
       Util.println(s"activating node ${node.layer.id}: $reason")
@@ -203,8 +203,9 @@ object Graph {
 
       //Util.println(printBumpers(7, 0, node))
 
+      Util.println("-- restore map:")
       for (a <- node.nodesToRestore; b <- a.nodesToRestore)
-        yield Util.println(Seq(node, a, b).map(_.layer.id).mkString(" < "))
+        yield Util.println("  " + Seq(node, a, b).map(_.layer.id).mkString(" < "))
 
       // restore base
       node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.id} <:< $reason"))
