@@ -24,19 +24,15 @@ class EventBus[E] {
   def eval(e: WithSource[E, _]): Unit = eval(e.value)
 
   def addSub(e: E, r: Reactor): Unit =
-    // Util.println(s"evt+ $e")
     getSub(e).addOne(r)
 
   def rmSub(e: E, r: Reactor): Unit = 
-    // Util.println(s"evt- $e")
     getSub(e).filterInPlace(_ != r)
 
   def setSub(e: E, r: Reactor): Unit =
-    // Util.println(s"evt= $e")
     subs.update(e, mutable.HashSet(r))
     
   def clearSub(e: E): Unit =
-    Util.println(s"evt clear: $e")
     subs.remove(e)
 
   private def getSub(e: E): mutable.HashSet[Reactor] = subs.getOrElseUpdate(e, mutable.HashSet.empty[Reactor])
