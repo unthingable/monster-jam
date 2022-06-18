@@ -63,13 +63,13 @@ trait TransportL { this: Jam =>
       // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
       EB(j.play.st.press, "", () => playPress(), BB(tracked = false)),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
-      HB(j.noteRepeat.btn.pressedAction, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
-      HB(j.noteRepeat.btn.releasedAction, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
+      EB(j.noteRepeat.st.press, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
+      EB(j.noteRepeat.st.release, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
-      HB(j.record.btn.pressedAction, "record pressed", ext.transport.recordAction()),
+      EB(j.record.st.press, "record pressed", () => ext.transport.record()),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
 
-      HB(j.auto.btn.pressedAction, "auto pressed", () =>
+      EB(j.auto.st.press, "auto pressed", () =>
         if (ext.transport.isAutomationOverrideActive.get())
           ext.transport.resetAutomationOverrides()
         else
@@ -108,7 +108,7 @@ trait TransportL { this: Jam =>
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
     ).flatten ++ Vector(
-      HB(j.tempo.btn.pressedAction, "tap tempo", ext.transport.tapTempoAction(),
+      EB(j.tempo.st.press, "tap tempo", () => ext.transport.tapTempo(),
         // not exclusive so that tap tempo doesn't mess with tempo layer
         BB(tracked = false, exclusive = false))
     )
@@ -127,12 +127,12 @@ trait TransportL { this: Jam =>
       Vector(
         SupColorB(sceneButton.light, () =>
           if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-        HB(sceneButton.btn.pressedAction, "global quant grid", action(s"grid $idx", () => {
+        EB(sceneButton.st.press, "global quant grid", () => {
           if (quant.get == enumValues(idx))
             quant.set("none")
           else
             quant.set(enumValues(idx))
-        })))
+        }))
     }
   }
 
@@ -152,7 +152,7 @@ trait TransportL { this: Jam =>
     existsValue.markInterested()
 
     Vector(
-      HB(gButton.btn.pressedAction, s"group $idx pressed: $name", () => propValue.toggle()),
+      EB(gButton.st.press, s"group $idx pressed: $name", () => propValue.toggle()),
       SupColorStateB(gButton.light, () => {
         (existsValue.get(), propValue.get()) match {
           case (false, _) => JamColorState.empty
@@ -164,9 +164,6 @@ trait TransportL { this: Jam =>
   }
   )
 
-  import com.github.unthingable.jam.surface.KeyMaster._
-  //FIXME lazy val solo = buttonGroupChannelMode("solo", j.only(j.solo), j.groupButtons, _.solo(), JamColorBase.YELLOW)
   lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
-  // val solo = SimpleModeLayer("solo", Seq.empty)
   lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }
