@@ -134,7 +134,7 @@ trait StepSequencer { this: Jam =>
         )
       } ++ Vector(
         // FIXME - fixed?
-        EB(j.ShiftSolo.press, "shift-solo pressed", patLength.activateEvent.value),
+        EB(j.ShiftSolo.press, "shift-solo pressed", () => patLength.toggleEvent.value),
         EB(j.ShiftSolo.releaseAll, "shift-solo released", patLength.deactivateEvent.value),
       )
 

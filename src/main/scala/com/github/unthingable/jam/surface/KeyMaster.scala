@@ -83,7 +83,7 @@ object KeyMaster {
     private def onPress(): Option[ComboEvent] = 
       val newState = keysOn + 1
       keysOn = newState
-      if (newState == 1 + mods.size && !quasiOn) {
+      if (newState == 1 + mods.size) {
           quasiOn = true
           Some(press.value)
           // ext.events.eval(press)
@@ -93,11 +93,11 @@ object KeyMaster {
     private def onRelease(): Option[ComboEvent] = 
       val newState = keysOn - 1
       keysOn = newState
-      if (newState == mods.size) // one less than all the buttons
+      if (newState > 0 && newState <= mods.size) // one less than all the buttons
         Some(releaseOne.value)
         // ext.events.eval(releaseOne)
         // releasedOne.invoke()
-      if (newState == 0 && quasiOn) {
+      else if (newState == 0) {
         quasiOn = false
         Some(releaseAll.value)
         // ext.events.eval(releaseAll)
@@ -116,7 +116,7 @@ object KeyMaster {
     // Util.println(s"KeyMaster eval $buttonId $ev")
     val ret = ext.binder.sourceMap.keys
     .collect {case x: JC => x}
-      .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button
+      .filter(_.allbIds.contains(buttonId)) // only combos involving this button
       .flatMap(jc =>
         ev match
           case RawButtonEvent.Press => jc.onPress(buttonId)
@@ -129,11 +129,11 @@ object KeyMaster {
 
 
   // true if no currently active combo is using this button
-  inline def checkCombo(buttonId: String)(using ext: MonsterJamExt): Boolean =
-    ext.binder.sourceMap.keys
-    .collect {case x: JC => x}
-      .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button
-      .exists(_.isPressedAny)
+  // inline def checkCombo(buttonId: String)(using ext: MonsterJamExt): Boolean =
+  //   ext.binder.sourceMap.keys
+  //   .collect {case x: JC => x}
+  //     .filter(_.allb.exists(_.id == buttonId)) // only combos involving this button
+  //     .exists(_.isPressedAny)
 
   // type HWB = ButtonLight[_] with HasId
 
