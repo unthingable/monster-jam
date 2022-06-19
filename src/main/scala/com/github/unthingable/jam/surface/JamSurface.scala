@@ -183,10 +183,10 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        ext.events.eval(Mod.Shift.st.press.value)
+        // ext.events.eval(Mod.Shift.st.press.value)
         Mod.Shift.btn.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        ext.events.eval(Mod.Shift.st.release.value)
+        // ext.events.eval(Mod.Shift.st.release.value)
         Mod.Shift.btn.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
