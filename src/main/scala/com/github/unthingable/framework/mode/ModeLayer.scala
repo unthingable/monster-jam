@@ -216,7 +216,7 @@ abstract class ModeCycleLayer(
   /** Cycle among all submodes, from currently selected one 
    */
   def cycle(): Unit = {
-    selected.map(i => (i + 1) % subModes.length).orElse(Some(0)).foreach(select)
+    selected.map(i => (i + 1) % subModes.size).orElse(Some(0)).foreach(select)
   }
 
   /** Cycle among a subset of submodes

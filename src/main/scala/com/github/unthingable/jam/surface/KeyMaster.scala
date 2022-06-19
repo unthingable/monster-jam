@@ -99,13 +99,11 @@ object KeyMaster {
           case RawButtonEvent.Release => jc.onRelease(buttonId)
       )
     /* Compromise: let modifier keys though */
-    val ret = comboEvents ++ (if comboEvents.isEmpty || lookup.toSeq.contains(KeyType.Modifier)
+    comboEvents ++ (if comboEvents.isEmpty || lookup.toSeq.contains(KeyType.Modifier)
                     then
                       Seq(ev match
                         case RawButtonEvent.Press   => ButtonEvt.Press(buttonId)
                         case RawButtonEvent.Release => ButtonEvt.Release(buttonId)
                       )
                     else Seq.empty)
-    Util.println("KeyMaster: " + ret.toString())
-    ret
 }
