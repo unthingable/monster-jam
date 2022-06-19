@@ -38,10 +38,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   val stepModeMap = Map(0 -> StepMode.One, 3 -> StepMode.Four, 7 -> StepMode.Eight)
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
-    val gridHeight                     = 8
-    val gridWidth                     = 64
+    val gridHeight               = 8
+    val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
-    val superClip = selectedClipTrack.createLauncherCursorClip(1, 64*8)
     val devices: DeviceBank      = selectedClipTrack.createDeviceBank(1)
 
     // a mirror of the bitwig clip, channel / x / y
@@ -98,19 +97,17 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       case x: Int => s"$x"
 
     // state
-    var channel = 0
+    var channel                    = 0
     var velocity: Int              = 100
     var stepSizeIdx                = 5
     var drumDevice: Option[Device] = None
     var stepMode: StepMode         = StepMode.One
-    // var keyOffset                  = 0
-    // var stepOffset                 = 0
-    var stepScrollOffset = 0 // can't get it from Clip (for page buttons only)
-    var keyScrollOffset = 0
+    var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
+    var keyScrollOffset            = 12 * 3 // C1
     var keyPageSize                = 1
     var stepPageSize               = 64
-    var newPatLength               = 4
-    var stepState                  = StepState.Init
+    // var newPatLength               = 4
+    var stepState = StepState.Init
 
     clip.setStepSize(stepSize)
     clip.scrollToKey(12 * 3)
@@ -130,12 +127,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     // }
 
     /* Translate between matrix grid (row, col) and clip grid (x, y) */
-    def m2clip(row: Int, col: Int): (Int, Int) = 
-      val keyPages = 8 / keyPageSize
+    def m2clip(row: Int, col: Int): (Int, Int) =
       val offset = row * 8 + col // matrix grid scanned
-      (offset % stepPageSize, row / keyPageSize)
+      (offset % stepPageSize, offset / stepPageSize)
 
-    // inline def clip2m(x: Int, y: Int): (Int, Int) = 
+    // inline def clip2m(x: Int, y: Int): (Int, Int) =
     //   val keyPages = 8 / keyPageSize
     //   ((y / keyPageSize) )
 
@@ -158,7 +154,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.setStepSize(stepSize)
       ext.host.showPopupNotification(s"Step size: $stepString")
 
-    inline def guardX(x: Int) = x //x.max(0).min(gridWidth - 1)
+    inline def guardX(x: Int) = x // x.max(0).min(gridWidth - 1)
 
     inline def guardY(y: Int) = y.max(0).min(127)
 
@@ -178,7 +174,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       keyScrollOffset = guardY(keyScrollOffset + inc)
       clip.scrollToKey(keyScrollOffset)
 
-    def setStepPage(page: Int) = 
+    def setStepPage(page: Int) =
       stepScrollOffset = stepPageSize * page
       clip.scrollToStep(stepScrollOffset)
 
@@ -226,6 +222,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         (for (col <- EIGHT; row <- EIGHT) yield {
           // val (stepNum, x, y) = stepView(row, col)
           def xy = m2clip(row, col)
+          // def cachedClip = steps(channel)(xy._1)(xy._2)
           Vector(
             SupColorStateB(
               j.matrix(row)(col).light,
@@ -257,7 +254,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                 () =>
                   if (hasContent)
                     // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                    if (i == stepScrollOffset / stepPageSize) Color.whiteColor() else clip.color().get()
+                    if (i == stepScrollOffset / stepPageSize) Color.whiteColor()
+                    else clip.color().get()
                   else Color.blackColor()
               ),
             )
@@ -271,7 +269,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           j.matrix(idx / 8)(idx % 8),
           () => {
             Util.println(s"set playStop $idx")
-            newPatLength = idx + 1
+            val newPatLength = idx + 1
             clip.getLoopLength.set(newPatLength.toDouble)
             clip.getPlayStop.set(newPatLength.toDouble) // doesn't follow the first length change
           },
@@ -295,12 +293,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
               EB(btn.st.press, "", Noop),
               SupColorStateB(btn.light, () => JamColorState.empty)
             )
-          case Some(i) =>
+          case Some(sm) =>
             Vector(
-              EB(btn.st.press, "", () => stepMode = i),
+              EB(btn.st.press, "", () => setGrid(sm)),
               SupColorB(
                 btn.light,
-                () => if (stepMode == i) Color.whiteColor() else clip.color().get
+                () => if (stepMode == sm) Color.whiteColor() else clip.color().get
               )
             )
       } ++ Vector(
