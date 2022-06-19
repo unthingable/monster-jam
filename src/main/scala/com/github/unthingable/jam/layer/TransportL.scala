@@ -8,8 +8,9 @@ import com.github.unthingable.framework.binding.{BindingBehavior => BB, EB, HB, 
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.framework.binding.BindingDSL
 
-trait TransportL { this: Jam =>
+trait TransportL extends BindingDSL { this: Jam =>
   lazy val position = SimpleModeLayer("position",
     Vector(HB(j.encoder.turn, "position turn", ext.host.createRelativeHardwareControlStepTarget(
       ext.transport.fastForwardAction(),
@@ -18,11 +19,11 @@ trait TransportL { this: Jam =>
   lazy val tempoLayer = ModeButtonLayer("tempo",
     j.tempo,
     Vector(
-      HB(j.encoder.turn, "tempo turn", ext.host.createRelativeHardwareControlStepTarget(
-        action("inc tempo", () => ext.transport.increaseTempo(1,
-          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1))),
-        action("dec tempo", () => ext.transport.increaseTempo(-1,
-          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1)))))))
+      HB(j.encoder.turn, "tempo turn", stepTarget(
+        () => ext.transport.increaseTempo(1,
+          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1)),
+        () => ext.transport.increaseTempo(-1,
+          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1))))))
 
   lazy val play = new SimpleModeLayer("play") {
     ext.transport.isPlaying.markInterested()

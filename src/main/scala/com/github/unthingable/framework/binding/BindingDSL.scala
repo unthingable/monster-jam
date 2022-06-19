@@ -7,6 +7,7 @@ import com.github.unthingable.jam.surface.FakeAction
 
 import java.time.Instant
 import java.util.function.Supplier
+import com.bitwig.`extension`.controller.api.RelativeHardwarControlBindable
 
 transparent trait ActionDSL {
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
@@ -41,7 +42,7 @@ transparent trait BindingDSL extends ActionDSL {
   }
 
   // fake action detector (optimize later)
-  def isFakeAction(source: Any): Boolean = source match {
+  inline def isFakeAction(source: Any): Boolean = inline source match {
     case a: FakeAction => true // !a.masquerade
     case _             => false
   }
@@ -52,6 +53,12 @@ transparent trait BindingDSL extends ActionDSL {
     def operatedAfter(instant: Instant): Boolean =
       bindings.outBindings.exists(_.operatedAt.exists(_.isAfter(instant)))
   }
+
+  inline def stepTarget(inc: () => Unit, dec: () => Unit)(using ext: MonsterJamExt): RelativeHardwarControlBindable =
+    ext.host.createRelativeHardwareControlStepTarget(
+      action("inc", () => inc()),
+      action("dec", () => dec())
+    )
 }
 
 object ActionDSL extends ActionDSL
