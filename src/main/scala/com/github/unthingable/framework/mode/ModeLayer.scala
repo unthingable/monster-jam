@@ -128,7 +128,7 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    EB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, {
+    EB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, () => {
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active
@@ -213,16 +213,27 @@ abstract class ModeCycleLayer(
     super.onDeactivate()
   }
 
+  /** Cycle among all submodes, from currently selected one 
+   */
   def cycle(): Unit = {
     selected.map(i => (i + 1) % subModes.length).orElse(Some(0)).foreach(select)
   }
 
+  /** Cycle among a subset of submodes
+   */
+  def cycle(indices: Int*): Unit =
+    selected
+    .map(indices.indexOf)
+    .map(x => (x + 1) % indices.size)
+    .foreach(select)
+
   def select(idx: Int): Unit = {
-    if (isOn) selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval)
-    val mode = subModes(idx)
-    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
-    selected = Some(idx)
-    if (isOn) ext.events.eval(mode.activateEvent)
+    if (isOn && !selected.contains(idx))
+      selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval)
+      val mode = subModes(idx)
+      Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
+      selected = Some(idx)
+      ext.events.eval(mode.activateEvent)
   }
 }
 
