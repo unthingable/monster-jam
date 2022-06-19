@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.bitwig</groupId>
             <artifactId>extension-api</artifactId>
-            <version>16</version>
+            <version>17</version>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>
