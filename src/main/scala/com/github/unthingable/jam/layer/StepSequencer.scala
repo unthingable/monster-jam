@@ -229,7 +229,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
               () =>
                 // chasing light
                 if (
-                  ext.transport.isPlaying.get() && clip.playingStep().get() == xy._1
+                  ext.transport.isPlaying.get() && clip.playingStep().get() - stepScrollOffset == xy._1
                 ) // not right yet
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
@@ -317,7 +317,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       Vector(
         EB(j.ShiftSolo.press, "shift-solo pressed", () => cycle(0, 1)),
         EB(j.ShiftSolo.releaseAll, "shift-solo released", () => select(0)),
-        // TODO next: multiline
         EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
         EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
         EB(j.dpad.left.st.press, "", Noop),
