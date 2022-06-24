@@ -115,25 +115,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
-    // // translate step cache into a bindable
-    // def stepView(row: Int, col: Int) = stepMode match {
-    //   case StepMode.One =>
-    //     // expect 4x8
-    //     val stepNum = row * 8 + col
-    //     (stepNum, stepNum, keyOffset)
-    //   // (stepNum, () => Option(steps(stepNum)(noteOffset)))
-    //   case StepMode.Four  => ???
-    //   case StepMode.Eight => ???
-    // }
-
     /* Translate between matrix grid (row, col) and clip grid (x, y) */
     def m2clip(row: Int, col: Int): (Int, Int) =
       val offset = row * 8 + col // matrix grid scanned
       (offset % stepPageSize, offset / stepPageSize)
-
-    // inline def clip2m(x: Int, y: Int): (Int, Int) =
-    //   val keyPages = 8 / keyPageSize
-    //   ((y / keyPageSize) )
 
     def setGrid(mode: StepMode): Unit =
       mode match
@@ -154,21 +139,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.setStepSize(stepSize)
       ext.host.showPopupNotification(s"Step size: $stepString")
 
-    inline def guardX(x: Int) = x // x.max(0).min(gridWidth - 1)
-
     inline def guardY(y: Int) = y.max(0).min(127)
-
-    // def scrollX(offset: Int) =
-    //   stepOffset = guardX(offset)
-    //   clip.scrollToStep(stepOffset)
 
     def scrollY(offset: Int) =
       keyScrollOffset = guardY(offset)
       clip.scrollToKey(keyScrollOffset)
-
-    // def scrollXinc(inc: Int) =
-    //   stepOffset = guardX(stepOffset + inc)
-    //   clip.scrollToStep(stepOffset)
 
     def scrollYinc(inc: Int) =
       keyScrollOffset = guardY(keyScrollOffset + inc)

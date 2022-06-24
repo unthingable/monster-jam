@@ -168,17 +168,15 @@ object ModeButtonLayer {
   }
 }
 
-sealed trait CycleMode
-object CycleMode {
+enum CycleMode:
   // Cycle through each sublayer on modebutton press
-  case object Cycle extends CycleMode
+  case Cycle
   // No cycling, select sublayers externally
-  case object Select extends CycleMode
+  case Select
   // Active when button held down, no cycling
-  case object Gate extends CycleMode
+  case Gate 
   // Like GateSelect, but sticks after a long press
-  case object Sticky extends CycleMode
-}
+  case Sticky 
 
 // duplicates ModeGraph functionality, some day will need a rewrite
 abstract class MultiModeLayer(
