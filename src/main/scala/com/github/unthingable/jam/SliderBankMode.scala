@@ -2,22 +2,24 @@ package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
 import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.binding.{Binding, HB, BindingBehavior => BB}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 abstract class SliderBankMode[P <: ObjectProxy](
-  override val name: String,
+  override val id: String,
   val obj: Int => P,
   val param: P => Parameter,
   val stripColor: Option[Int => Int] = None
 )
   (implicit ext: MonsterJamExt, j: JamSurface)
-  extends SimpleModeLayer(name) with Util {
+  extends SimpleModeLayer(id) with Util {
 
   import SliderBankMode._
 
@@ -44,7 +46,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
 
   def stripObserver(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
-      if (isOn && !j.clear.isPressed()) {
+      if (isOn && !j.clear.btn.isPressed().get) {
         j.stripBank.setValue(idx,
           (1.0.min(v / paramRange(idx)._2) * 127).toInt)
         paramValueCache.update(idx, v)
@@ -68,7 +70,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       import Event._
       import State._
 
-      val shiftOn = j.Modifiers.Shift.isPressed()
+      val shiftOn = j.Mod.Shift.btn.isPressed
       val stripOn = strip.slider.isBeingTouched.get()
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
@@ -78,7 +80,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
         case (_,_,ClearR,_) =>
           bindWithRange(idx, force = true)
           Normal
-        case (_,_,StripP,_) if j.clear.isPressed() =>
+        case (_,_,StripP,_) if j.clear.btn.isPressed().get =>
           param.reset()
           Normal
         case (_,_,ShiftP,_) =>
@@ -89,7 +91,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
             strip.slider.clearBindings()
           val current = param.get()
           startValue = None
-          offsetObserver = { v: Double =>
+          offsetObserver = { v =>
             val offset = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
             param.set(floored)
@@ -143,12 +145,12 @@ abstract class SliderBankMode[P <: ObjectProxy](
     import Event._
     if (paramKnowsValue)
       Vector(
-        HB(j.clear.pressedAction, s"clear $idx pressed", () => engage(ClearP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.clear.releasedAction, s"clear $idx released", () => engage(ClearR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.pressedAction, s"shift $idx pressed", () => engage(ShiftP), tracked = false, BindingBehavior(exclusive = false)),
-        HB(j.Modifiers.Shift.releasedAction, s"shift $idx released", () => engage(ShiftR), tracked = false, BindingBehavior(exclusive = false)),
-        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), tracked = true, BindingBehavior(exclusive = false)),
-        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), tracked = true, BindingBehavior(exclusive = false)),
+        HB(j.clear.btn.pressedAction, s"clear $idx pressed", () => engage(ClearP), BB(tracked = false, exclusive = false)),
+        HB(j.clear.btn.releasedAction, s"clear $idx released", () => engage(ClearR), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.pressedAction, s"shift $idx pressed", () => engage(ShiftP), BB(tracked = false, exclusive = false)),
+        HB(j.Mod.Shift.btn.releasedAction, s"shift $idx released", () => engage(ShiftR), BB(tracked = false, exclusive = false)),
+        HB(strip.slider.beginTouchAction, s"strip $idx pressed", () => engage(StripP), BB(tracked = true, exclusive = false)),
+        HB(strip.slider.endTouchAction, s"strip $idx released", () => engage(StripR), BB(tracked = true, exclusive = false)),
       )
     else Vector.empty
   }
@@ -159,7 +161,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
       flush)
   }
 
-  override def activate(): Unit = {
+  override def onActivate(): Unit = {
 
     //ext.host.println(barMode.toString)
     //ext.host.println(sliderParams.map(_.name().get()).mkString(","))
@@ -181,7 +183,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
             Some(Util.rainbow(idx))
           case _: Parameter     =>
             // a random parameter we know nothing about (probably from UserControlBank)
-            Some(JAMColorBase.RED)
+            Some(JamColorBase.RED)
         }).foreach(c => j.stripBank.setColor(idx, c))
 
       j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
@@ -194,11 +196,11 @@ abstract class SliderBankMode[P <: ObjectProxy](
       j.stripBank.flushValues()
 
     j.stripBank.strips.indices.foreach(bindWithRange(_))
-    super.activate()
+    super.onActivate()
   }
 
-  override def deactivate(): Unit = {
-    super.deactivate()
+  override def onDeactivate(): Unit = {
+    super.onDeactivate()
     j.stripBank.strips.foreach(_.slider.clearBindings())
   }
 }

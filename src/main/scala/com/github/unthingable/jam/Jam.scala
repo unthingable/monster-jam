@@ -3,14 +3,14 @@ package com.github.unthingable.jam
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, ModeCommander, SimpleModeLayer}
+import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 
 class Jam(implicit val ext: MonsterJamExt)
-  extends BindingDSL
-  with Aux with TransportL with Level with Dpad with TrackL
-  with ClipMatrix with Shift with Control with MacroL with SceneL {
+  extends BindingDSL, Aux, TransportL, Level, Dpad, TrackL, ClipMatrix, Shift, Control, MacroL, SceneL, StepSequencer {
 
   implicit val j: JamSurface = new JamSurface()
 
@@ -29,6 +29,15 @@ class Jam(implicit val ext: MonsterJamExt)
   lazy val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
   superBank.itemCount().markInterested()
   superBank.scrollPosition().markInterested()
+
+  lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
+
+  (0 until 256).foreach { i =>
+    val t = superBank.getItemAt(i)
+    t.clipLauncherSlotBank().addIsSelectedObserver((idx, selected) =>
+      if (selected)
+        selectedClipTrack.selectChannel(t))
+  }
 
   ext.preferences.smartTracker.markInterested()
   implicit val tracker: TrackTracker = {
@@ -66,20 +75,33 @@ class Jam(implicit val ext: MonsterJamExt)
   val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
-  new ModeDGraph(
-    init = Vector(levelCycle, sceneLayer, clipMatrix),
+  val graph = new ModeDGraph(
+    init = Vector(levelCycle, sceneCycle, clipMatrix),
     dpad -> top,
     play -> top,
     position -> Coexist(tempoLayer),
-    sceneLayer -> top,
-    bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, globalShift, shiftPages),
+    sceneCycle -> top,
+    bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
     bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup -> Exclusive(solo, mute),
-    bottom -> Coexist(clipMatrix, pageMatrix),
+    bottom -> Coexist(clipMatrix, pageMatrix, stepSequencer),
     bottom -> stripGroup,
     bottom -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup -> Exclusive(EIGHT.map(trackGate): _*),
     masterButton -> top,
     bottom -> Coexist(unmanaged),
   )
+  /*
+  - some modes are mutually exclusive (activating one will deactivate others)
+  - some modes will activate others when activated (e.g. level button -> level sliders | pan sliders)
+  - some modes are "main" and others "temporary" (for restoration purposes)
+
+  can mode's activate() return an activatable?
+   */
+
+  // val newGraph = ModeCommander(
+  //   clipMatrix,
+  //   sceneLayer,
+  //   levelCycle,
+  // )
 }

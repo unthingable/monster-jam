@@ -3,9 +3,12 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Setting}
 import com.github.unthingable.Util
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.framework.mode.{ModeCycleLayer, ModeLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.HB.BindingOps
+import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.{Binding, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeCycleLayer, ModeLayer, SimpleModeLayer, SupBooleanB, SupColorB, SupColorStateB, TrackId}
+import com.github.unthingable.jam.{Jam, TrackId}
 
 import java.time.Instant
 import scala.collection.mutable
@@ -27,9 +30,9 @@ trait SceneL { this: Jam =>
           if (scene.clipCount().get() > 0)
             JamColorState.toColorIndex(scene.color().get())
           else
-            JAMColorBase.OFF,
+            JamColorBase.OFF,
           1)),
-        HB(btn.pressedAction, s"scene $i press", () => handlePress(scene)))
+        EB(btn.st.press, s"scene $i press", () => handlePress(scene)))
     }
 
     private def handlePress(scene: Scene): Unit = {
@@ -42,7 +45,7 @@ trait SceneL { this: Jam =>
     }
   }
 
-  lazy val superSceneSub = new SimpleModeLayer("superSceneSub") with Util {
+  object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
     val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes              = superBank.sceneBank().getSizeOfBank
     val bufferSize             = maxTracks * maxScenes * 4
@@ -87,7 +90,7 @@ trait SceneL { this: Jam =>
     }
 
     def recall(sceneIdx: Int): Unit = {
-      (0 until maxTracks).map(TrackId).foreach { trackId =>
+      (0 until maxTracks).map(TrackId.apply).foreach { trackId =>
         superScenes(sceneIdx).get(trackId) match {
           case Some(clip) =>
             // If a scene has a clip for a track id, attempt to launch it
@@ -136,12 +139,12 @@ trait SceneL { this: Jam =>
       def pageOffset = pageIndex * 8
 
       Vector(
-        HB(j.sceneButtons(idx).pressedAction, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
+        EB(j.sceneButtons(idx).st.press, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
         SupColorStateB(j.sceneButtons(idx).light, () =>
           JamColorState(
             if (superScenes(pageOffset + idx).isEmpty)
-              JAMColorBase.OFF
-            else if (lastScene.contains(pageOffset + idx)) JAMColorBase.WHITE
+              JamColorBase.OFF
+            else if (lastScene.contains(pageOffset + idx)) JamColorBase.WHITE
                  else (((pageOffset + idx) % 16) + 1) * 4,
             if (lastScene.contains(pageOffset + idx)) 2 else 0), JamColorState.empty),
       )
@@ -156,8 +159,8 @@ trait SceneL { this: Jam =>
 
     trackBank.scrollPosition().addValueObserver(v => trackPos = v)
     sceneBank.scrollPosition().addValueObserver(v => scenePos = v)
-    trackBank.itemCount().addValueObserver(v => trackLen = v / 8)
-    sceneBank.itemCount().addValueObserver(v => sceneLen = v / 8)
+    trackBank.itemCount().addValueObserver(v => trackLen = (v - 1) / 8)
+    sceneBank.itemCount().addValueObserver(v => sceneLen = (v - 1) / 8)
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       (for (row <- EIGHT; col <- EIGHT) yield {
@@ -170,20 +173,20 @@ trait SceneL { this: Jam =>
           SupColorStateB(btn.light, () =>
             if (hasContent)
               if (ourPage)
-                JamColorState(JAMColorBase.WHITE, 2)
+                JamColorState(JamColorBase.WHITE, 2)
               else
-                JamColorState(JAMColorBase.WARM_YELLOW, 0)
+                JamColorState(JamColorBase.WARM_YELLOW, 0)
             else JamColorState.empty
             , JamColorState.empty),
-          HB(btn.pressedAction, "shift-scroll page $idx", () => {
+          EB(btn.st.press, "shift-scroll page $idx", () => {
             trackBank.scrollPosition().set(col * 8)
             sceneBank.scrollPosition().set(row * 8)}))
       }).flatten
   }
 
   // a hybrid: both a cycle layer for scene buttons and a controller for page matrix
-  lazy val sceneLayer = new ModeCycleLayer("sceneCycle") {
-    override val subModes: Seq[ModeLayer] = Vector(
+  lazy val sceneCycle = new ModeCycleLayer("sceneCycle") {
+    override val subModes: Vector[ModeLayer] = Vector(
       sceneSub,
       superSceneSub
     )
@@ -192,12 +195,12 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.isPressed()) pageMatrix.activateAction.invoke(), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval(pageMatrix.activateEvent*), 50)
     }
 
     def release(): Unit = {
       if (pageMatrix.isOn)
-        pageMatrix.deactivateAction.invoke()
+        ext.events.eval(pageMatrix.deactivateEvent*)
 
       if (pressedAt.exists(instant =>
         instant.plusMillis(400).isAfter(Instant.now())
@@ -209,8 +212,8 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      HB(j.song.pressedAction, "sceneCycle pressed", () => press()),
-      HB(j.song.releasedAction, "sceneCycle released", () => release()),
+      EB(j.song.st.press, "sceneCycle pressed", () => press()),
+      EB(j.song.st.release, "sceneCycle released", () => release()),
     )
   }
 }

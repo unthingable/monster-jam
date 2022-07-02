@@ -50,16 +50,17 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 ## Global
 
+* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
+* **SONG**: **SuperScene** mode (see below)
+* **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
-* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
 * **SHIFT-PAD (second row)**: Additional functions and settings
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
-* **SONG**: **SuperScene** mode (see below)
-* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 * **NOTE REPEAT**: Fill mode
+* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 
 ## Transport
 
@@ -169,6 +170,18 @@ to the previously selected parameter when track button is released. This is usef
 
 To select a device and a page: whichever device was selected last on a track will be the device controlled in Slice mode.
 Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
+
+# Step Sequencer
+* **STEP**: Toggle sequencer mode
+
+## Layout
+### Scene buttons 
+### Pad matrix
+
+
+## Entering legato notes
+
+Press and hold a pad to either select or create a step. Click another pad on the left to make the step longer.
 
 # Modes and notes
 

@@ -1,16 +1,21 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{ClipLauncherSlot, ClipLauncherSlotBank, Track}
-import com.github.unthingable.jam.{Binding, BindingBehavior, HB, Jam, SimpleModeLayer, SupColorStateB}
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB, BindingBehavior => BB}
+import com.github.unthingable.jam.surface.KeyMaster.JC
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 
 import java.time.{Duration, Instant}
 import scala.collection.mutable
+import com.github.unthingable.framework.binding.EB
 
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)
+    val clip: Clip = ext.host.createLauncherCursorClip(0, 0)
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
@@ -21,7 +26,7 @@ trait ClipMatrix { this: Jam =>
 
       val pressedAt: mutable.Seq[PressedAt] = mutable.ArraySeq.fill(8)(PressedAt(Instant.now()))
 
-      (0 to 7).flatMap { row =>
+      EIGHT.flatMap { row =>
         val btn  = j.matrix(row)(col)
         val clip = clips.getItemAt(row)
         clip.color().markInterested()
@@ -34,13 +39,18 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          HB(btn.pressedAction, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          HB(btn.releasedAction, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          EB(btn.st.press, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
+          EB(btn.st.release, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
         )
       }
-    } :+ HB(GlobalMode.Duplicate.deactivateAction, "dup clips: clear source", () => {
-      source = None
-    }, tracked = false, behavior = BindingBehavior(managed = false))
+    } ++ Vector(
+      // FIXME: last released combo button needs to be handled as combo, not single - fixed?
+      EB(j.duplicate.st.release, "dup clips: clear source", () => {
+        source = None
+      }, BB(tracked = false, managed = false)),
+      EB(j.ShiftDup.press, "dup clips: duplicate content", () => clip.duplicateContent)
+    )
+
 
     // for duplication
     private var source: Option[ClipLauncherSlot] = None
@@ -63,26 +73,26 @@ trait ClipMatrix { this: Jam =>
     private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         clip.select()
-      else if (clip.isPlaying.get()) clips.stop()
+      else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
            else clip.launch()
     }
 
     private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
       if (GlobalMode.Select.isOn && clip.isSelected.get())
-        JamColorState(JAMColorBase.WHITE, 3)
+        JamColorState(JamColorBase.WHITE, 3)
       else if (!GlobalMode.Select.isOn && source.contains(clip))
-             JamColorState(JAMColorBase.WHITE, if (j.Modifiers.blink) 3 else 1)
+             JamColorState(JamColorBase.WHITE, if (j.Mod.blink) 3 else 1)
            else
              JamColorState(
                if (clip.hasContent.get())
                  JamColorState.toColorIndex(clip.color().get())
                else
-                 JAMColorBase.OFF,
+                 JamColorBase.OFF,
                brightness = {
                  if (clip.isPlaying.get())
-                   if (track.isQueuedForStop.get()) if (j.Modifiers.blink) 3 else -1
+                   if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
                    else 3
-                 else if (clip.isPlaybackQueued.get()) if (j.Modifiers.blink) 0 else 3
+                 else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
                       else 0
                }
              )

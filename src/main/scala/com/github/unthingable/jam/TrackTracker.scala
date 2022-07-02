@@ -33,10 +33,6 @@ class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends
 
   var sequence: Int = 0
 
-  //val trackIds = Array.from(LazyList.iterate(0)(_+1).take(bank.getCapacityOfBank))
-  //
-  //val track2color = mutable.ArrayBuffer()
-
   private val rescanCallbacks = mutable.ArrayDeque.empty[() => Unit]
 
   bank.itemCount().markInterested()

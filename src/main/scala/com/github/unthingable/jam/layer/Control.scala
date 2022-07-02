@@ -1,14 +1,19 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{CursorDevice, CursorRemoteControlsPage, Device, DeviceBank, Parameter, PinnableCursorDevice, RemoteControl, Track, UserControlBank}
-import com.github.unthingable.{FilteredPage, Util}
+import com.bitwig.extension.controller.api._
+import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer, ModeLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB, SupColorStateB, BindingBehavior => BB}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, BindingBehavior, CycleMode, HB, IntActivatedLayer, Jam, ModeButtonCycleLayer, ModeLayer, SimpleModeLayer, SliderBankMode, SupBooleanB, SupColorStateB}
+import com.github.unthingable.jam._
+import com.github.unthingable.framework.binding.HB.BindingOps
+import com.github.unthingable.Util
+import com.github.unthingable.util.FilteredPage
 
 import java.time.{Duration, Instant}
 import java.util.function.BooleanSupplier
+import com.github.unthingable.jam.surface.HasHwButton
 
 trait Control { this: Jam with MacroL =>
   // devices!
@@ -48,7 +53,7 @@ trait Control { this: Jam with MacroL =>
     /* User mode */
     override def lightOn: BooleanSupplier = () =>
       if (deviceSelector.isOn && deviceSelector.selected.contains(0))
-        j.Modifiers.blink
+        j.Mod.blink
       else
         isOn
 
@@ -56,7 +61,7 @@ trait Control { this: Jam with MacroL =>
 
     def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
-    override val subModes: Seq[ModeLayer] = (
+    override val subModes: Vector[ModeLayer] = (
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -69,20 +74,21 @@ trait Control { this: Jam with MacroL =>
           param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
         }
 
-        override def activate(): Unit = {
+        override def onActivate(): Unit = {
           sliderParams.forindex { case (param, idx) =>
             j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
           }
-          super.activate()
+          super.onActivate()
         }
 
         override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
           SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
           SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
-          HB(j.left.releasedAction, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
-          HB(j.right.releasedAction, "scroll right", m(() => device.selectNext(), page.selectNext)),
-          HB(j.left.pressedAction, "left", () => if (j.right.isPressed()) select(currentSlice + 1)),
-          HB(j.right.pressedAction, "right", () => if (j.left.isPressed()) select(currentSlice + 1)),
+          EB(j.left.st.release, "scroll left", m(() => device.selectPrevious(), page.selectPrevious)),
+          EB(j.right.st.release, "scroll right", m(() => device.selectNext(), page.selectNext)),
+          // FIXME make combo
+          EB(j.left.st.press, "left", () => if (j.right.st.isPressed) select(currentSlice + 1)),
+          EB(j.right.st.press, "right", () => if (j.left.st.isPressed) select(currentSlice + 1)),
         )
       } +:
         EIGHT.map(idx => new SliderBankMode[CursorDevice](
@@ -120,34 +126,34 @@ trait Control { this: Jam with MacroL =>
 
           var (pressL, pressR) = (false, false)
 
-          override def activate(): Unit = {
+          override def onActivate(): Unit = {
             currentSlice = idx
             sliderParams.forindex { case (param, idx) =>
               j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
             }
             pressL = false
             pressR = false
-            super.activate()
+            super.onActivate()
           }
 
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.left.light.isOn, () => true),
             SupBooleanB(j.right.light.isOn, () => true),
             // must press both and then release to deactivate, so that releases don't end up in remote layer
-            HB(j.left.pressedAction, "slice left press", () => pressL = true),
-            HB(j.right.pressedAction, "slice right press", () => pressR = true),
-            HB(j.left.releasedAction, "slice left release", () => if (pressL && !j.right.isPressed()) select(0)),
-            HB(j.right.releasedAction, "slice right release", () => if (pressR && !j.left.isPressed()) select(0)),
+            EB(j.left.st.press, "slice left press", () => pressL = true),
+            EB(j.right.st.press, "slice right press", () => pressR = true),
+            EB(j.left.st.release, "slice left release", () => if (pressL && !j.right.st.isPressed) select(0)),
+            EB(j.right.st.release, "slice right release", () => if (pressR && !j.left.st.isPressed) select(0)),
           ) ++ EIGHT.flatMap { idx =>
             val button = j.groupButtons(idx)
             Vector(
-              HB(button.pressedAction, s"control slice $idx", () => selectSlice(idx)),
-              HB(button.releasedAction, s"control slice $idx release", () =>
+              EB(button.st.press, s"control slice $idx", () => selectSlice(idx)),
+              EB(button.st.release, s"control slice $idx release", () =>
                 if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt))))
                   selectSlice(previousSlice)
               ),
               SupColorStateB(button.light, () => JamColorState(
-                if (selected.contains(idx + 1)) JAMColorBase.WHITE else Util.rainbow(idx),
+                if (selected.contains(idx + 1)) JamColorBase.WHITE else Util.rainbow(idx),
                 if (selected.contains(idx + 1)) 3 else 0
               ))
           )}
@@ -161,12 +167,12 @@ trait Control { this: Jam with MacroL =>
           override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
             SupBooleanB(j.macroButton.light.isOn, () => true)
           ) ++ EIGHT.flatMap(idx => Vector(
-            HB(j.groupButtons(idx).pressedAction, s"user bank $idx", () => {
+            EB(j.groupButtons(idx).st.press, s"user bank $idx", () => {
               previousUserPage = currentUserPage
               currentUserPage = idx
               selectUser()
             }),
-            HB(j.groupButtons(idx).releasedAction, s"user bank $idx release", () =>
+            EB(j.groupButtons(idx).st.release, s"user bank $idx release", () =>
               if (Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings.exists(_.operatedAt.exists(_.isAfter(activeAt)))) {
                 currentUserPage = previousUserPage
                 selectUser()
@@ -174,19 +180,19 @@ trait Control { this: Jam with MacroL =>
             ),
             SupColorStateB(j.groupButtons(idx).light, () =>
               if (currentUserPage == idx)
-                JamColorState(JAMColorBase.WHITE, 3)
+                JamColorState(JamColorBase.WHITE, 3)
               else
-                JamColorState(JAMColorBase.WHITE, 0))
+                JamColorState(JamColorBase.WHITE, 0))
           ))
         }
       }
 
     /* Control mode */
     def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
-      () => if (modeButton.isPressed()) modePressed() else default()
+      () => if (modeButton.asInstanceOf[HasHwButton].btn.isPressed().get) modePressed() else default()
 
     def m(default: () => Unit, modePressed: () => Unit): () => Unit =
-      () => if (modeButton.isPressed()) modePressed() else default()
+      () => if (modeButton.asInstanceOf[HasHwButton].btn.isPressed().get) modePressed() else default()
 
     def selectSlice(slice: Int): Unit = {
       previousSlice = currentSlice
@@ -194,7 +200,7 @@ trait Control { this: Jam with MacroL =>
     }
 
     /* Main */
-    override def activate(): Unit = {
+    override def onActivate(): Unit = {
       val idx       = page.c.selectedPageIndex().get()
       val pageNames = page.c.pageNames().get()
       if (idx >= 0 && idx < pageNames.length && pageNames(idx) == touchFX)
@@ -202,12 +208,12 @@ trait Control { this: Jam with MacroL =>
           page.selectPrevious()
         else
           page.selectNext()
-      super.activate()
+      super.onActivate()
     }
 
-    override def deactivate(): Unit = {
-      deviceSelector.deactivateAction.invoke() // if it was active we don't want it
-      super.deactivate()
+    override def onDeactivate(): Unit = {
+      ext.events.eval(deviceSelector.deactivateEvent*) // if it was active we don't want it
+      super.onDeactivate()
     }
   }
 
@@ -222,7 +228,7 @@ trait Control { this: Jam with MacroL =>
 
     override def operatedBindings: Iterable[Binding[_, _, _]] = super.operatedBindings ++ macroLayer.loadBindings
 
-    override val subModes    : Seq[ModeLayer] = Vector(
+    override val subModes    : Vector[ModeLayer] = Vector(
       // all device matrix
       new SimpleModeLayer("device matrixSelector") {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))
@@ -255,39 +261,41 @@ trait Control { this: Jam with MacroL =>
         }
 
         def deviceColor(device: Device): Int = (device.isPlugin.get(), device.deviceType().get()) match {
-          case (false, "audio-effect") => JAMColorBase.ORANGE
-          case (false, "instrument")   => JAMColorBase.WARM_YELLOW
-          case (false, "note-effect")  => JAMColorBase.CYAN
-          case (true, "audio-effect")  => JAMColorBase.MAGENTA
-          case (true, "instrument")    => JAMColorBase.LIME
-          case (true, "note-effect")   => JAMColorBase.PLUM
+          case (false, "audio-effect") => JamColorBase.ORANGE
+          case (false, "instrument")   => JamColorBase.WARM_YELLOW
+          case (false, "note-effect")  => JamColorBase.CYAN
+          case (true, "audio-effect")  => JamColorBase.MAGENTA
+          case (true, "instrument")    => JamColorBase.LIME
+          case (true, "note-effect")   => JamColorBase.PLUM
           case (_, s)                  =>
             Util.println(s"unknown device $s")
-            JAMColorBase.RED
+            JamColorBase.RED
         }
 
         override val modeBindings: Seq[Binding[_, _, _]] = deviceBanks.zipWithIndex.flatMap { case (bank, col) =>
           EIGHT.flatMap { row =>
             val mButton = j.matrix(row)(col)
             val device  = bank.getItemAt(row)
+
             device.exists().markInterested()
             device.isEnabled.markInterested()
             device.position().markInterested()
             device.deviceType().markInterested()
             device.isPlugin.markInterested()
+
             val isSelected = device.createEqualsValue(cursorDevice)
             isSelected.markInterested()
 
             Vector(
-              HB(mButton.pressedAction, s"select device $col:$row", () => selectDevice(col, device)),
-              HB(mButton.releasedAction, s"noop $col:$row", () => ()),
+              EB(mButton.st.press, s"select device $col:$row", () => selectDevice(col, device)),
+              EB(mButton.st.release, s"noop $col:$row", () => ()),
               SupColorStateB(mButton.light,
                 () => if (device.exists().get())
                         JamColorState(
                           deviceColor(device),
                           (isSelected.get(), device.isEnabled.get()) match {
-                            case (true, true) => if (j.Modifiers.blink3) 3 else 0
-                            case (true, false) => if (j.Modifiers.blink3) 2 else 0
+                            case (true, true) => if (j.Mod.blink3) 3 else 0
+                            case (true, false) => if (j.Mod.blink3) 2 else 0
                             case (false, true) => 2
                             case (false, false) => 0
                           })
@@ -298,8 +306,8 @@ trait Control { this: Jam with MacroL =>
         } ++ Vector(
           SupBooleanB(j.dpad.up.light.isOn, () => deviceBanks.exists(_.canScrollBackwards.get())),
           SupBooleanB(j.dpad.down.light.isOn, () => deviceBanks.exists(_.canScrollForwards.get())),
-          HB(j.dpad.up.pressedAction, "device bank up", () => deviceBanks.foreach(_.scrollPageBackwards())),
-          HB(j.dpad.down.pressedAction, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
+          EB(j.dpad.up.st.press, "device bank up", () => deviceBanks.foreach(_.scrollPageBackwards())),
+          EB(j.dpad.down.st.press, "device bank down", () => deviceBanks.foreach(_.scrollPageForwards())),
         )
       },
       // noop mode (disable device selector)
@@ -309,9 +317,9 @@ trait Control { this: Jam with MacroL =>
 
     )
     override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
-      HB(j.select.pressedAction, "cycle device selectors", () => if (j.control.isPressed()) cycle(),
-        tracked = false,
-        behavior = BindingBehavior(exclusive = false)),
+      EB(j.select.st.press, "cycle device selectors", () => if (j.control.st.isPressed) cycle(),
+        BB(tracked = false,
+        exclusive = false)),
       //HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )
   }

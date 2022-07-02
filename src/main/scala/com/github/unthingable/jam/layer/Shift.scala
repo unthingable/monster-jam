@@ -2,34 +2,37 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Bank, Clip}
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
-import com.github.unthingable.jam.{Binding, CycleMode, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, ModeButtonCycleLayer, SimpleModeLayer, SupColorStateB}
+import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButtonCycleLayer, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
+import com.github.unthingable.jam._
+import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB}
+import com.github.unthingable.framework.binding.EB
 
-trait Shift { this: Jam with SceneL =>
+trait Shift { this: Jam with SceneL with StepSequencer =>
   /**
    * Shift matrix row
    */
-  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Modifiers.Shift, GateMode.Gate) {
+  lazy val shiftMatrix = new ModeButtonLayer("shiftMatrix", j.Mod.Shift, GateMode.Gate) {
     val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
     override val modeBindings: Seq[Binding[_, _, _]] =
       (Vector(
-        (JAMColorBase.RED, () => ext.application.undo()),
-        (JAMColorBase.GREEN, () => ext.application.redo()),
-        (JAMColorBase.LIME, () => clip.quantize(1.0)),
-        (JAMColorBase.LIME, () => clip.quantize(0.5)),
-        (JAMColorBase.MAGENTA, () => clip.transpose(-1)),
-        (JAMColorBase.MAGENTA, () => clip.transpose(1)),
-        (JAMColorBase.FUCHSIA, () => clip.transpose(-12)),
-        (JAMColorBase.FUCHSIA, () => clip.transpose(12)),
+        (JamColorBase.RED, () => ext.application.undo()),
+        (JamColorBase.GREEN, () => ext.application.redo()),
+        (JamColorBase.LIME, () => clip.quantize(1.0)),
+        (JamColorBase.LIME, () => clip.quantize(0.5)),
+        (JamColorBase.MAGENTA, () => clip.transpose(-1)),
+        (JamColorBase.MAGENTA, () => clip.transpose(1)),
+        (JamColorBase.FUCHSIA, () => clip.transpose(-12)),
+        (JamColorBase.FUCHSIA, () => clip.transpose(12)),
       ).zipWithIndex.flatMap { case ((color, action), idx) =>
         val button = j.matrix(0)(idx)
-        Vector(HB(button.pressedAction, s"shift-$idx matrix pressed", action)) ++ (
+        Vector(EB(button.st.press, s"shift-$idx matrix pressed", action)) ++ (
           if (ext.preferences.shiftRow.get())
             Vector(SupColorStateB(
               button.light, () => JamColorState(
                 color,
-                brightness = if (button.isPressed()) 2 else 0),
+                brightness = if (button.btn.isPressed().get) 2 else 0),
               JamColorState.empty))
           else Vector.empty
           )
@@ -37,19 +40,19 @@ trait Shift { this: Jam with SceneL =>
        ++ (if (ext.preferences.shiftRow.get()) Vector(
         SupColorStateB(j.matrix(1)(0).light, () =>
           if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
-            JamColorState(JAMColorBase.RED, 0)
-          else JamColorState(JAMColorBase.YELLOW, 0)
+            JamColorState(JamColorBase.RED, 0)
+          else JamColorState(JamColorBase.YELLOW, 0)
         )) else Vector.empty)
        ++ Vector(
-        HB(j.matrix(1)(0).pressedAction, "toggle hide disabled", () => {
+        EB(j.matrix(1)(0).st.press, "toggle hide disabled", () => {
           if (ext.docPrefs.hideDisabled.get() == ShowHide.Hide)
             ext.docPrefs.hideDisabled.set(ShowHide.Show)
           else ext.docPrefs.hideDisabled.set(ShowHide.Hide)
-        })
+        }),
       ))
   }
 
-  lazy val shiftPages = new ModeButtonCycleLayer("shiftMatrix", j.Modifiers.Shift, CycleMode.Gate) {
+  lazy val shiftPages = new ModeButtonCycleLayer("shiftPages", j.Mod.Shift, CycleMode.Gate) {
     trackBank.itemCount().markInterested()
     trackBank.scrollPosition().markInterested()
     sceneBank.itemCount().markInterested()
@@ -60,12 +63,12 @@ trait Shift { this: Jam with SceneL =>
       SupColorStateB(btn(idx).light, () =>
         if (b.itemCount().get() > idx * 8)
           if (((idx * 8) - 7 until (idx * 8) + 7) contains b.scrollPosition().get())
-            JamColorState(JAMColorBase.WHITE, 2)
+            JamColorState(JamColorBase.WHITE, 2)
           else
-            JamColorState(JAMColorBase.WARM_YELLOW, 0)
+            JamColorState(JamColorBase.WARM_YELLOW, 0)
         else JamColorState.empty
         , JamColorState.empty),
-      HB(btn(idx).pressedAction, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
+      EB(btn(idx).st.press, "shift-scroll page $idx", () => b.scrollPosition().set(idx * 8))
     )
 
     val trackPages: Vector[Binding[_, _, _]] =
@@ -75,41 +78,33 @@ trait Shift { this: Jam with SceneL =>
         Vector.empty
 
     override val subModes = Vector(
-      new SimpleModeLayer("scene pages") {
+      new SimpleModeLayer("scenePagesSub") {
         override val modeBindings: Vector[Binding[_, _, _]] =
           EIGHT.flatMap(bankB(sceneBank, j.sceneButtons, _)) ++ trackPages
       },
-      new SimpleModeLayer("superscene pages") {
+      new SimpleModeLayer("superscenePagesSub") {
         override val modeBindings: Vector[Binding[_, _, _]] = {
           trackPages ++
           EIGHT.flatMap(idx => bankB(sceneBank, j.matrix(7), idx) ++ Vector(
             SupColorStateB(j.sceneButtons(idx).light, () =>
-              if (idx == superSceneSub.pageIndex)
-                JamColorState(JAMColorBase.WHITE, 3)
-              else if (superSceneSub.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i)))
-                     JamColorState(JAMColorBase.LIME, 0)
-                   else if (superSceneSub.page(idx).exists(_.nonEmpty))
-                          JamColorState(JAMColorBase.ORANGE, 0)
-                        else JamColorState.empty
+              if (idx == superSceneSub.pageIndex) then
+                JamColorState(JamColorBase.WHITE, 3)
+              else if (superSceneSub.lastScene.exists(i => EIGHT.map(_ + (idx * 8)).contains(i))) then
+                     JamColorState(JamColorBase.LIME, 0)
+              else if (superSceneSub.page(idx).exists(_.nonEmpty)) then
+                          JamColorState(JamColorBase.ORANGE, 0)
+              else JamColorState.empty
               , JamColorState.empty),
-            HB(j.sceneButtons(idx).pressedAction, "super scene page $idx", () => superSceneSub.pageIndex = idx)
+            EB(j.sceneButtons(idx).st.press, "super scene page $idx", () => superSceneSub.pageIndex = idx)
           ))
         }
       }
     )
 
-    override def activate(): Unit = {
+    override def onActivate(): Unit = {
       //selected = if (superSceneSub.isOn) Some(1) else Some(0)
-      super.activate()
+      super.onActivate()
       select(if (superSceneSub.isOn) 1 else 0)
     }
   }
-
-  lazy val globalShift = new ModeButtonLayer("globalShift", j.Modifiers.Shift, GateMode.Gate) {
-    val clip: Clip = ext.host.createLauncherCursorClip(8, 128)
-    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.duplicate.pressedAction, "shift dup clip content", () => clip.duplicateContent())
-    )
-  }
-
 }
