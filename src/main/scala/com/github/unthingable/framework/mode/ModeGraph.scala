@@ -44,8 +44,8 @@ object Graph {
         case _                 => Seq.empty
       val causeId = cause.map(c => s"${c.layer.id}->${layer.id}").getOrElse(layer.id)
       layerBindings ++ Vector(
-        EB(layer.selfActivateEvent, s"${causeId} syn act", () => activate(s"by ${layer.activateEvent}")(node)),
-        EB(layer.selfDeactivateEvent, s"${causeId} syn deact", () => deactivate(s"by ${layer.deactivateEvent}")(node)),
+        EB(layer.selfActivateEvent, s"${causeId} syn act", () => activate(s"by ${layer.selfActivateEvent}")(node)),
+        EB(layer.selfDeactivateEvent, s"${causeId} syn deact", () => deactivate(s"by ${layer.selfDeactivateEvent}")(node)),
       )
   }
 
@@ -196,7 +196,10 @@ object Graph {
             .filter(_.behavior.exclusive)
             .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
-      val bumpNodes: Iterable[ModeNode] = bumpBindings.flatMap(_.bumped.flatMap(_.node)) ++ bumpedExc
+      val bumpNodes: Iterable[ModeNode] = bumpBindings
+      .flatMap(_.bumped.flatMap(_.node))
+      // FIXME hack: can't bump own submodes
+      .filter(!_.parent.contains(node)) ++ bumpedExc
 
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB[_] => b.name}

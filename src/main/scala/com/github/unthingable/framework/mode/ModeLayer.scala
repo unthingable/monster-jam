@@ -229,7 +229,9 @@ abstract class ModeCycleLayer(
   var selected: Option[Int] = Some(0)
 
   override def subModesToActivate: Vector[ModeLayer] = 
-    val ret = selected.map(subModes(_)).toVector
+    val ret = (selected.map(subModes(_)).toVector ++
+      subModes.filter(_.isOn) // in case they were bumped
+    ).distinct
     Util.println(s"debug: for $id submode activators are $ret")
     ret
 
