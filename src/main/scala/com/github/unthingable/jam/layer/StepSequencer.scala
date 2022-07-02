@@ -118,7 +118,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     /* Translate between matrix grid (row, col) and clip grid (x, y) */
     def m2clip(row: Int, col: Int): (Int, Int) =
       val offset = row * 8 + col // matrix grid scanned
-      (offset % stepPageSize, offset / stepPageSize)
+      (offset % stepPageSize, 7 - (offset / stepPageSize))
 
     def setGrid(mode: StepMode): Unit =
       mode match
