@@ -15,7 +15,7 @@ import com.github.unthingable.framework.binding.{
   Binding,
   EB,
   JCB,
-  Noop,
+  // Noop,
   SupBooleanB,
   SupColorB,
   SupColorStateB
@@ -265,7 +265,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         stepModeMap.get(idx) match
           case None =>
             Vector(
-              EB(btn.st.press, "", Noop),
+              // FIXME EB(btn.st.press, "", Noop),
               SupColorStateB(btn.light, () => JamColorState.empty)
             )
           case Some(sm) =>
@@ -282,7 +282,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
     )
 
-    override val subModes: Seq[ModeLayer] = Vector(
+    override val subModes: Vector[ModeLayer] = Vector(
       stepsLayer,
       patLength,
       gridSelect,
@@ -294,8 +294,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         EB(j.ShiftSolo.releaseAll, "shift-solo released", () => select(0)),
         EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
         EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
-        EB(j.dpad.left.st.press, "", Noop),
-        EB(j.dpad.right.st.press, "", Noop),
+        // FIXME EB(j.dpad.left.st.press, "", Noop),
+        // EB(j.dpad.right.st.press, "", Noop),
         SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
         SupBooleanB(j.dpad.down.light.isOn(), clip.canScrollKeysDown()),
         SupBooleanB(j.dpad.left.light.isOn(), () => false),
@@ -303,7 +303,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       ) ++ gridSelect.loadBindings
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
-      EB(j.step.st.press, "step toggle", () => toggleEvent.value),
+      EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
   }

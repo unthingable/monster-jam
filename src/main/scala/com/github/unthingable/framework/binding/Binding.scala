@@ -197,7 +197,7 @@ case class EB[S](
     action match
       case x: Command     => ext.events.eval(x)
       case SideEffect(f)  => f(ev)
-      case CmdEffect(f)   => ext.events.eval(f(ev))
+      case CmdEffect(f)   => ext.events.eval(f(ev)*)
 
   override def bind(): Unit = 
     if (!isActive) ext.events.addSub(ev, receiver)
@@ -224,14 +224,14 @@ object EB:
     case Event => Event
     case (S, S => Event) => S
   
-  type OutcomeSpec =  Command | (() => Unit) | (() => Command)
+  type OutcomeSpec =  Command | (() => Unit) | (() => Seq[Command])
   // type OutcomeSpec =  Command | (() => Command) | (() => Unit)
   // type OutcomeSpec =  Command | (() => (Unit|Command))
 
   inline def asOutcome(o: OutcomeSpec): Outcome =
     inline o match
       case c: Command         => c
-      case f: (() => Command) => CmdEffect(_ => f())
+      case f: (() => Seq[Command]) => CmdEffect(_ => f())
       case f: (() => Unit)    => SideEffect(_ => f())
 
   // all this insanity because we can't mix overloaded param types and defaults, but still want nice things at use site

@@ -185,8 +185,8 @@ trait SceneL { this: Jam =>
   }
 
   // a hybrid: both a cycle layer for scene buttons and a controller for page matrix
-  lazy val sceneLayer = new ModeCycleLayer("sceneCycle") {
-    override val subModes: Seq[ModeLayer] = Vector(
+  lazy val sceneCycle = new ModeCycleLayer("sceneCycle") {
+    override val subModes: Vector[ModeLayer] = Vector(
       sceneSub,
       superSceneSub
     )
@@ -195,12 +195,12 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval(pageMatrix.activateEvent), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval(pageMatrix.activateEvent*), 50)
     }
 
     def release(): Unit = {
       if (pageMatrix.isOn)
-        ext.events.eval(pageMatrix.deactivateEvent)
+        ext.events.eval(pageMatrix.deactivateEvent*)
 
       if (pressedAt.exists(instant =>
         instant.plusMillis(400).isAfter(Instant.now())

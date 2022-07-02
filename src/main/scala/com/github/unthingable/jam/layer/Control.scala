@@ -61,7 +61,7 @@ trait Control { this: Jam with MacroL =>
 
     def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
-    override val subModes: Seq[ModeLayer] = (
+    override val subModes: Vector[ModeLayer] = (
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
         override val barMode: BarMode = BarMode.DUAL
 
@@ -212,7 +212,7 @@ trait Control { this: Jam with MacroL =>
     }
 
     override def onDeactivate(): Unit = {
-      ext.events.eval(deviceSelector.deactivateEvent) // if it was active we don't want it
+      ext.events.eval(deviceSelector.deactivateEvent*) // if it was active we don't want it
       super.onDeactivate()
     }
   }
@@ -228,7 +228,7 @@ trait Control { this: Jam with MacroL =>
 
     override def operatedBindings: Iterable[Binding[_, _, _]] = super.operatedBindings ++ macroLayer.loadBindings
 
-    override val subModes    : Seq[ModeLayer] = Vector(
+    override val subModes    : Vector[ModeLayer] = Vector(
       // all device matrix
       new SimpleModeLayer("device matrixSelector") {
         val deviceBanks: Seq[DeviceBank] = EIGHT.map(trackBank.getItemAt).map(_.createDeviceBank(8))

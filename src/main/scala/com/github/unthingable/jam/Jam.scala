@@ -76,11 +76,11 @@ class Jam(implicit val ext: MonsterJamExt)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
   val graph = new ModeDGraph(
-    init = Vector(levelCycle, sceneLayer, clipMatrix),
+    init = Vector(levelCycle, sceneCycle, clipMatrix),
     dpad -> top,
     play -> top,
     position -> Coexist(tempoLayer),
-    sceneLayer -> top,
+    sceneCycle -> top,
     bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
     bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup -> Exclusive(solo, mute),

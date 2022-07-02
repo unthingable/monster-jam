@@ -10,7 +10,7 @@ trait Command
 case class SideEffect(f: Event => Unit):
   override def toString: String = ""
 
-case class CmdEffect(f: Event => Command):
+case class CmdEffect(f: Event => Seq[Command]):
   override def toString: String = ""
 
 enum ButtonEvt extends HwEvent:
@@ -22,7 +22,7 @@ enum ModeCommand[+A] extends Command:
   case Deactivate(obj: A)
   // case Toggle(obj: A)
 
-object Noop extends Command
+// object Noop extends Command
 
 /* What is the main problem?
 The difference between raw button press events and higher order events (combos and chords) is fuzzy.

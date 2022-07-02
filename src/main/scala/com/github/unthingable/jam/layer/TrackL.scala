@@ -141,6 +141,8 @@ trait TrackL { this: Jam =>
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
       EB(j.master.st.press, "focus on master", selectMaster),
+      // FIXME remove before flight
+      EB(j.tune.st.press, "crash for science", () => println(1 / 0)),
     )
   }
 

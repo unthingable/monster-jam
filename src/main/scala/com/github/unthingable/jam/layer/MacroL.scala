@@ -34,12 +34,12 @@ trait MacroL { this: Jam =>
           bumpedSubMode = controlLayer.selected
           controlLayer.selectUser()
         }
-        if (!controlLayer.isOn) ext.events.eval(controlLayer.activateEvent)
+        if (!controlLayer.isOn) ext.events.eval(controlLayer.activateEvent*)
       }
     }
 
     override def onDeactivate(): Unit = {
-      bumpedStrip.map(_.activateEvent).foreach(ext.events.eval)
+      bumpedStrip.map(_.activateEvent).foreach(ext.events.eval(_*))
       bumpedSubMode.foreach(controlLayer.select)
       bumpedStrip = None
       bumpedSubMode = None
