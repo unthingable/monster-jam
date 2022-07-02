@@ -285,10 +285,25 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       ),
     )
 
+    lazy val chanSelect = ModeButtonLayer(
+      "chanSelect",
+      j.notes,
+      (for (row <- 0 until 4; col <- 0 until 4) yield
+        val btn = j.matrix(row + 4)(col + 4)
+        val idx = row * 4 + col
+        Vector(
+          SupColorB(btn.light, () => if (idx == channel) Color.whiteColor else clip.color().get),
+          EB(btn.st.press, s"select channel $idx", () => channel = idx)
+        )
+      ).flatten,
+      GateMode.Gate
+    )
+
     override val subModes: Vector[ModeLayer] = Vector(
       stepsLayer,
       patLength,
       gridSelect,
+      chanSelect,
     )
 
     override val modeBindings: Seq[Binding[_, _, _]] =
