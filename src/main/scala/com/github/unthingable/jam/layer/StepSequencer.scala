@@ -279,7 +279,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       } ++ Vector(
         HB(j.encoder.touch.pressedAction, "", () => incStepSize(0)),
         HB(j.encoder.turn, "", stepTarget(() => incStepSize(1), () => incStepSize(-1)))
-      )
+      ),
+      gateMode = GateMode.Gate
     )
 
     override val subModes: Vector[ModeLayer] = Vector(

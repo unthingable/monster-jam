@@ -96,11 +96,12 @@ object Graph {
 
       node.addBinding(modeb*)
 
-      // node.parent match
-      //   case Some(p) => p.addBinding(activateb*)
-      //   case None => activateb.foreach(_.bind()) // they're unmanaged for orphan nodes
+      node.parent match
+        case Some(p) => p.addBinding(activateb*)
+        case None => activateb.foreach(_.bind()) // they're unmanaged for orphan nodes
 
-      activateb.foreach(_.bind())
+      // activateb.foreach(_.bind())
+      // node.addBinding(activateb*)
 
       // val bindings: Seq[Binding[_, _, _]] = node.layer.modeBindings ++ node.children.flatMap { child =>
       //   child.layer match {
@@ -147,11 +148,11 @@ object Graph {
 
     ext.host.scheduleTask(() =>
     {
+      // activate entry nodes - must come before init layers so that activation events are bound
+      ext.events.eval("init entry", entryNodes.filter(!_.isActive).flatMap(_.layer.activateEvent)*)
+
       // activate init layers
       ext.events.eval("init", init.flatMap(layerMap.get).flatMap(_.layer.activateEvent)*)
-
-      // activate entry nodes
-      ext.events.eval("init entry", entryNodes.filter(!_.isActive).flatMap(_.layer.activateEvent)*)
     }, 100)
 
     def indexLayer(l: ModeLayer): ModeNode = {
