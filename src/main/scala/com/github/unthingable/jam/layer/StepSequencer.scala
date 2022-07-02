@@ -161,13 +161,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def stepPress(x: Int, y: Int): Unit =
       val newState = stepState match
         case StepState.Init =>
-          val step = clip.getStep(1, x, y)
+          val step = clip.getStep(channel, x, y)
           if (step.state == State.Empty)
-            clip.toggleStep(x, y, 100)
+            clip.setStep(channel, x, y, 100, stepSize)
             StepState.Focus(Point(x, y), true)
           else StepState.Focus(Point(x, y), false)
         case st @ StepState.Focus(p @ Point(x0, y0), _) if y == y0 && x > x0 =>
-          val step: NoteStep = clip.getStep(0, x0, y0)
+          val step: NoteStep = clip.getStep(channel, x0, y0)
           val newDuration    = stepSize * (x - x0 + 1)
           if (step.duration() == newDuration)
             step.setDuration(stepSize)
@@ -176,17 +176,20 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           st.copy(handled = true)
         case st => st
       stepState = newState
-      Util.println(stepState.toString())
+      // Util.println(stepState.toString())
 
     def stepRelease(X: Int, Y: Int): Unit =
       val newState = stepState match
         case StepState.Focus(Point(X, Y), handled) =>
           if (!handled)
-            clip.toggleStep(X, Y, 100)
+            val step = clip.getStep(channel, X, Y)
+            step.state match
+              case State.NoteOn => clip.clearStep(channel, X, Y)
+              case State.Empty | State.NoteSustain => clip.setStep(channel, X, Y, 100, stepSize)
           StepState.Init
         case st => st
       stepState = newState
-      Util.println(stepState.toString())
+      // Util.println(stepState.toString())
 
     lazy val stepsLayer = new SimpleModeLayer("steps") {
       override def onActivate(): Unit =
