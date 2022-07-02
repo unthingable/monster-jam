@@ -227,17 +227,19 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val stepPages = new SimpleModeLayer("stepPages") {
       override val modeBindings =
         j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-          def hasContent = clip.getLoopLength().get() / (stepPageSize * stepSize) > i
+          def hasContent = clip.getLoopLength().get() > i * stepSize * stepPageSize
           Vector(
             EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
-            SupColorB(
+            SupColorStateB(
               btn.light,
               () =>
                 if (hasContent)
                   // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                  if (i == stepScrollOffset / stepPageSize) Color.whiteColor()
-                  else clip.color().get()
-                else Color.blackColor()
+                  if (i == stepScrollOffset / stepPageSize) JamColorState(JamColorBase.WHITE, 3)
+                  else if (clip.playingStep().get() / stepPageSize == i)
+                    JamColorState(JamColorBase.WHITE, 0)
+                  else JamColorState(clip.color().get(), 1)
+                else JamColorState.empty
             ),
           )
         }
