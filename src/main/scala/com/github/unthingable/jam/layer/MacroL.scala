@@ -24,7 +24,7 @@ trait MacroL { this: Jam =>
         if (!controlLayer.isUserSelected) {
           controlToggleSub = controlLayer.selected
           controlLayer.selectUser()
-        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select)
+        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
       }
       else {
         bumpedStrip = stripGroup.layers.find(_.isOn)
@@ -40,7 +40,7 @@ trait MacroL { this: Jam =>
 
     override def onDeactivate(): Unit = {
       bumpedStrip.map(_.activateEvent).foreach(ext.events.eval(_*))
-      bumpedSubMode.foreach(controlLayer.select)
+      bumpedSubMode.foreach(controlLayer.select(_))
       bumpedStrip = None
       bumpedSubMode = None
       super.onDeactivate()

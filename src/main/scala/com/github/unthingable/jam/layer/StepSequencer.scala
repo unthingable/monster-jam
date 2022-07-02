@@ -223,11 +223,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           )
         }).flatten
     }
+
     lazy val stepPages = new SimpleModeLayer("stepPages") {
       override val modeBindings =
         j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-          def hasContent = clip.getLoopLength().get() > i * stepPageSize
-
+          def hasContent = clip.getLoopLength().get() / (stepPageSize * stepSize) > i
           Vector(
             EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
             SupColorB(
@@ -314,8 +314,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
-        EB(j.ShiftSolo.press, "shift-solo pressed", () => cycle(0, 1)),
-        EB(j.ShiftSolo.releaseAll, "shift-solo released", () => select(0)),
+        EB(j.ShiftSolo.press, "shift-solo pressed", () => patLength.activateEvent),
+        EB(j.ShiftSolo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
         EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
         EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
         // FIXME EB(j.dpad.left.st.press, "", Noop),
