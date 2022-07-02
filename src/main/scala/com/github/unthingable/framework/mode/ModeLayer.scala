@@ -167,7 +167,7 @@ abstract class ModeButtonLayer(
       case GateMode.Auto                     =>
         if (isOn) {
           val operated = modeBindings.collect{case x: OutBinding[_,_,_] => x}.exists(_.operatedAt.nonEmpty)
-          val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofSeconds(1)))
+          val elapsed  = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
           if (operated || elapsed)
             deactivateEvent
             // Vector(deactivateEvent.value)
