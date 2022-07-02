@@ -219,6 +219,8 @@ abstract class MultiModeLayer(
   //   subModes.filter(_.isOn).map(_.deactivateEvent).foreach(ext.events.eval(_))
   //   super.onDeactivate()
   // }
+  override def subModesToActivate: Vector[ModeLayer] = subModes.filter(_.isOn)
+  override def subModesToDeactivate: Vector[ModeLayer] = subModes.filter(_.isOn)
 }
 
 abstract class ModeCycleLayer(
@@ -230,12 +232,10 @@ abstract class ModeCycleLayer(
 
   override def subModesToActivate: Vector[ModeLayer] = 
     val ret = (selected.map(subModes(_)).toVector ++
-      subModes.filter(_.isOn) // in case they were bumped
+      super.subModesToActivate // in case they were bumped
     ).distinct
     Util.println(s"debug: for $id submode activators are $ret")
     ret
-
-  override def subModesToDeactivate: Vector[ModeLayer] = subModes.filter(_.isOn)
 
   // override def onActivate(): Unit = {
   //   super.onActivate()

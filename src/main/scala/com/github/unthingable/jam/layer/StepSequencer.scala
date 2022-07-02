@@ -191,7 +191,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       stepState = newState
       // Util.println(stepState.toString())
 
-    lazy val stepsLayer = new SimpleModeLayer("steps") {
+    lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
       override def onActivate(): Unit =
         super.onActivate()
         stepState = StepState.Init
@@ -221,23 +221,26 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             EB(j.matrix(row)(col).st.press, "", () => stepPress.tupled(xy)),
             EB(j.matrix(row)(col).st.release, "", () => stepRelease.tupled(xy))
           )
-        }).flatten ++
-          j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-            def hasContent = clip.getLoopLength().get() > i * stepPageSize
+        }).flatten
+    }
+    lazy val stepPages = new SimpleModeLayer("stepPages") {
+      override val modeBindings =
+        j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
+          def hasContent = clip.getLoopLength().get() > i * stepPageSize
 
-            Vector(
-              EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
-              SupColorB(
-                btn.light,
-                () =>
-                  if (hasContent)
-                    // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                    if (i == stepScrollOffset / stepPageSize) Color.whiteColor()
-                    else clip.color().get()
-                  else Color.blackColor()
-              ),
-            )
-          }
+          Vector(
+            EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
+            SupColorB(
+              btn.light,
+              () =>
+                if (hasContent)
+                  // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
+                  if (i == stepScrollOffset / stepPageSize) Color.whiteColor()
+                  else clip.color().get()
+                else Color.blackColor()
+            ),
+          )
+        }
     }
 
     lazy val patLength = new SimpleModeLayer("patLength") {
@@ -300,11 +303,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     override val subModes: Vector[ModeLayer] = Vector(
-      stepsLayer,
+      stepMatrix,
+      stepPages,
       patLength,
       gridSelect,
       chanSelect,
     )
+
+    override val subModesToActivate = Vector(stepMatrix, stepPages)
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
