@@ -109,8 +109,6 @@ object SimpleModeLayer {
     val x = modeBindings
     new SimpleModeLayer(name) {
       override val modeBindings: Seq[Binding[_, _, _]] = x
-      val subActivate: Vector[ModeCommand[_]] = Vector.empty
-      val subDeactivate: Vector[ModeCommand[_]] = Vector.empty
     }
   }
 }
