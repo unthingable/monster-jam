@@ -58,6 +58,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     case Init
     case Focus(p: Point, handled: Boolean, ts: Instant)
 
+  inline def Noop = () => Vector.empty
+
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
     val gridHeight               = 8
     val gridWidth                = 64
@@ -290,7 +292,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         stepModeMap.get(idx) match
           case None =>
             Vector(
-              // FIXME EB(btn.st.press, "", Noop),
+              EB(btn.st.press, "", Noop),
               SupColorStateB(btn.light, () => JamColorState.empty)
             )
           case Some(sm) =>
@@ -358,8 +360,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val dpad = SimpleModeLayer("dpadStep", Vector(        
       EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
       EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
-      // FIXME EB(j.dpad.left.st.press, "", Noop),
-      // EB(j.dpad.right.st.press, "", Noop),
+      EB(j.dpad.left.st.press, "", Noop),
+      EB(j.dpad.right.st.press, "", Noop),
       SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
       SupBooleanB(j.dpad.down.light.isOn(), clip.canScrollKeysDown()),
       SupBooleanB(j.dpad.left.light.isOn(), () => false),
