@@ -32,10 +32,14 @@ import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.BindingDSL
 import java.time.Instant
-
+  
 trait StepSequencer extends BindingDSL { this: Jam =>
-  enum StepMode:
-    case One, OneFull, Four, Eight
+  enum StepMode(val keyRows: Int):
+    case One extends StepMode(1)
+    case OneFull extends StepMode(1)
+    case Four extends StepMode(4)
+    case Eight extends StepMode(8)
+
   val stepModeMap = Map(
     0 -> StepMode.One, 
     1 -> StepMode.OneFull,
@@ -46,6 +50,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   case class ViewPort(row1: Int, col1: Int, row2: Int, col2: Int):
     lazy val height = row2 - row1
     lazy val width = col2 - col1
+    lazy val size = height * width
+
+  case class Point(x: Int, y: Int)
+
+  enum StepState:
+    case Init
+    case Focus(p: Point, handled: Boolean, ts: Instant)
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
     val gridHeight               = 8
@@ -98,11 +109,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       8
     )
 
-    def stepSize: Double = stepSizes(state.stepSizeIdx) match
+    inline def stepSize: Double = stepSizes(state.stepSizeIdx) match
       case (a, b) => a.toDouble / b.toDouble
       case x: Int => x
 
-    def stepString: String = stepSizes(state.stepSizeIdx) match
+    inline def stepString: String = stepSizes(state.stepSizeIdx) match
       case (a, b) => s"$a/$b"
       case x: Int => s"$x"
 
@@ -114,8 +125,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       var stepMode: StepMode         = StepMode.One
       var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
       var keyScrollOffset            = 12 * 3 // C1
-      var keyPageSize                = 1
-      var stepPageSize               = 64
+      // var keyPageSize                = 1
+      // var stepPageSize               = 64
       // var newPatLength               = 4
       var stepState = StepState.Init
       var stepViewPort = ViewPort(0,0,8,8) // row/col
@@ -128,30 +139,22 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     /* Translate between matrix grid (row, col) and clip grid (x, y) */
     def m2clip(row: Int, col: Int): (Int, Int) =
+      // no need to account for view port as long as starts at 0,0
       val offset = row * 8 + col // matrix grid scanned
-      (offset % state.stepPageSize, 7 - (offset / state.stepPageSize))
+      (offset % stepPageSize, 7 - (offset / stepPageSize))
 
     def setGrid(mode: StepMode): Unit =
-      mode match
-        case StepMode.One =>
-          state.keyPageSize = 1
-          state.stepPageSize = 64
-        case StepMode.OneFull =>
-          state.keyPageSize = 1
-          state.stepPageSize = 32
-        case StepMode.Four =>
-          state.keyPageSize = 4
-          state.stepPageSize = 16
-        case StepMode.Eight =>
-          state.keyPageSize = 8
-          state.stepPageSize = 8
-      ext.host.showPopupNotification(s"Step grid: ${state.keyPageSize} x ${state.stepPageSize}")
+      state.stepMode = mode
+      ext.host.showPopupNotification(s"Step grid: ${keyPageSize} x ${stepPageSize}")
       mode match
         case StepMode.OneFull =>
           ext.events.eval(velAndNote.activateEvent*)
         case _ =>
           ext.events.eval(velAndNote.deactivateEvent*)
-      state.stepMode = mode
+
+    inline def keyPageSize = state.stepMode.keyRows
+    
+    inline def stepPageSize = state.stepViewPort.size / keyPageSize
 
     def incStepSize(inc: Int): Unit =
       state.stepSizeIdx = (state.stepSizeIdx + inc).min(stepSizes.size - 1).max(0)
@@ -169,13 +172,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.scrollToKey(state.keyScrollOffset)
 
     def setStepPage(page: Int) =
-      state.stepScrollOffset = state.stepPageSize * page
+      state.stepScrollOffset = stepPageSize * page
       clip.scrollToStep(state.stepScrollOffset)
-
-    case class Point(x: Int, y: Int)
-    enum StepState:
-      case Init
-      case Focus(p: Point, handled: Boolean, ts: Instant)
 
     def stepPress(x: Int, y: Int): Unit =
       val newState = state.stepState match
@@ -246,7 +244,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val stepPages = new SimpleModeLayer("stepPages") {
       override val modeBindings =
         j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-          def hasContent = clip.getLoopLength().get() > i * stepSize * state.stepPageSize
+          def hasContent = clip.getLoopLength().get() > i * stepSize * stepPageSize
           Vector(
             EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
             SupColorStateB(
@@ -254,8 +252,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
               () =>
                 if (hasContent)
                   // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                  if (i == state.stepScrollOffset / state.stepPageSize) JamColorState(JamColorBase.WHITE, 3)
-                  else if (clip.playingStep().get() / state.stepPageSize == i)
+                  if (i == state.stepScrollOffset / stepPageSize) JamColorState(JamColorBase.WHITE, 3)
+                  else if (clip.playingStep().get() / stepPageSize == i)
                     JamColorState(JamColorBase.WHITE, 0)
                   else JamColorState(clip.color().get(), 1)
                 else JamColorState.empty
@@ -328,6 +326,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     lazy val velAndNote = new SimpleModeLayer("velAndNote") {
+      override def onActivate(): Unit = 
+        super.onActivate()
+        state.stepViewPort = ViewPort(0,0,4,8)
+
+      override def onDeactivate(): Unit = 
+        super.onDeactivate()
+        state.stepViewPort = ViewPort(0,0,8,8)
+
       inline def velNote(vel: Int) = s"Step: velocity $vel"
 
       def setVelocity(vel: Int) =
@@ -350,8 +356,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     }
 
     lazy val dpad = SimpleModeLayer("dpadStep", Vector(        
-      EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(state.keyPageSize)),
-      EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * state.keyPageSize)),
+      EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
+      EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
       // FIXME EB(j.dpad.left.st.press, "", Noop),
       // EB(j.dpad.right.st.press, "", Noop),
       SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
@@ -371,11 +377,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     override def subModesToActivate = (Vector(stepMatrix, stepPages, dpad) ++ subModes.filter(_.isOn)).distinct
-
-    // experimental
-    // override def onActivate(): Unit = 
-    //   super.onActivate()
-    //   setGrid(state.stepMode)
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
