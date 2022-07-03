@@ -243,15 +243,15 @@ object Graph {
           (if (cur > max) "XXX" else node.nodesToRestore.map(printBumpers(max, cur+1, _)).mkString("[",", ","]"))
          else "")
 
-      //Util.println(printBumpers(7, 0, node))
 
       Util.println("-- restore map:")
-      for (a <- node.nodesToRestore; b <- a.nodesToRestore)
-        yield Util.println("  " + Seq(node, a, b).map(_.layer.id).mkString(" < "))
+      Util.println(printBumpers(3, 0, node))
+      // for (a <- node.nodesToRestore; b <- a.nodesToRestore)
+      //   yield Util.println("  " + Seq(node, a, b).map(_.layer.id).mkString(" < "))
 
       // restore base
       // node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.id} <:< $reason"))
-      ext.events.eval(s"from bump by ${node.layer.id} <:< $reason", node.nodesToRestore.flatMap(_.layer.activateEvent).toSeq*)
+      ext.events.eval(s"from bump by ${node.layer.id} <:< $reason", node.nodesToRestore.toSeq.flatMap(_.layer.activateEvent)*)
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()

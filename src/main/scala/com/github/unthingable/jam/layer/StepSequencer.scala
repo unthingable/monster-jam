@@ -37,10 +37,15 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   enum StepMode:
     case One, OneFull, Four, Eight
   val stepModeMap = Map(
-  0 -> StepMode.One, 
-  1 -> StepMode.OneFull,
-  3 -> StepMode.Four, 
-  7 -> StepMode.Eight)
+    0 -> StepMode.One, 
+    1 -> StepMode.OneFull,
+    3 -> StepMode.Four, 
+    7 -> StepMode.Eight
+  )
+
+  case class ViewPort(row1: Int, col1: Int, row2: Int, col2: Int):
+    lazy val height = row2 - row1
+    lazy val width = col2 - col1
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
     val gridHeight               = 8
@@ -113,7 +118,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       var stepPageSize               = 64
       // var newPatLength               = 4
       var stepState = StepState.Init
-      var stepViewPort = (0,0,8,8) // row/col
+      var stepViewPort = ViewPort(0,0,8,8) // row/col
 
     clip.setStepSize(stepSize)
     clip.scrollToKey(12 * 3)
@@ -344,6 +349,17 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
 
+    lazy val dpad = SimpleModeLayer("dpadStep", Vector(        
+      EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(state.keyPageSize)),
+      EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * state.keyPageSize)),
+      // FIXME EB(j.dpad.left.st.press, "", Noop),
+      // EB(j.dpad.right.st.press, "", Noop),
+      SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
+      SupBooleanB(j.dpad.down.light.isOn(), clip.canScrollKeysDown()),
+      SupBooleanB(j.dpad.left.light.isOn(), () => false),
+      SupBooleanB(j.dpad.right.light.isOn(), () => false),
+    ))
+
     override val subModes: Vector[ModeLayer] = Vector(
       stepMatrix,
       stepPages,
@@ -351,23 +367,21 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       gridSelect,
       chanSelect,
       velAndNote,
+      dpad,
     )
 
-    override val subModesToActivate = (Vector(stepMatrix, stepPages) ++ subModes.filter(_.isOn)).distinct
+    override def subModesToActivate = (Vector(stepMatrix, stepPages, dpad) ++ subModes.filter(_.isOn)).distinct
+
+    // experimental
+    // override def onActivate(): Unit = 
+    //   super.onActivate()
+    //   setGrid(state.stepMode)
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
         EB(j.ShiftSolo.press, "shift-solo pressed", () => patLength.activateEvent),
         EB(j.ShiftSolo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
-        EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(state.keyPageSize)),
-        EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * state.keyPageSize)),
-        // FIXME EB(j.dpad.left.st.press, "", Noop),
-        // EB(j.dpad.right.st.press, "", Noop),
-        SupBooleanB(j.dpad.up.light.isOn(), clip.canScrollKeysUp()),
-        SupBooleanB(j.dpad.down.light.isOn(), clip.canScrollKeysDown()),
-        SupBooleanB(j.dpad.left.light.isOn(), () => false),
-        SupBooleanB(j.dpad.right.light.isOn(), () => false),
-      ) ++ gridSelect.loadBindings
+      )
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
       EB(j.step.st.press, "step toggle", () => toggleEvent),

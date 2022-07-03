@@ -35,6 +35,7 @@ class EventBus[E] {
     semaphore = false
 
   def eval(context: String, e: E*): Unit =
+    Util.println(s"evt: enqueueing $e with $context")
     queue.enqueueAll(e.map(EvtContext(_, context)))
     trigger()
 
