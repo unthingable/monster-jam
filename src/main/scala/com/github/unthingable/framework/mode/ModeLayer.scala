@@ -220,12 +220,21 @@ abstract class ModeCycleLayer(
     .map(x => (x + 1) % indices.size)
     .foreach(select(_))
 
-  def select(idx: Int*): Unit =
-    if (isOn && idx.nonEmpty)
-      val toDeactivate = subModes.indices.filter(!idx.contains(_))
-      ext.events.eval(toDeactivate.map(subModes(_)).filter(_.isOn).flatMap(_.deactivateEvent)*)
-      ext.events.eval(idx.flatMap(subModes(_).activateEvent)*)
-      selected = idx.lastOption
+  // def select(idx: Int*): Unit =
+  //   if (isOn && idx.nonEmpty)
+  //     val toDeactivate = subModes.indices.filter(!idx.contains(_))
+  //     ext.events.eval(toDeactivate.map(subModes(_)).filter(_.isOn).flatMap(_.deactivateEvent)*)
+  //     ext.events.eval(idx.flatMap(subModes(_).activateEvent)*)
+  //     selected = idx.lastOption
+
+  // FIXME
+  def select(idx: Int): Unit = {
+    if (isOn) ext.events.eval(selected.toSeq.flatMap(subModes(_).deactivateEvent)*)
+    val mode = subModes(idx)
+    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
+    selected = Some(idx)
+    if (isOn) ext.events.eval(mode.activateEvent*)
+  }
 }
 
 abstract class ModeButtonCycleLayer(
