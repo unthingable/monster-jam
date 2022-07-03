@@ -110,6 +110,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     JamRgbButton(id, button, led)
   }
 
+  // matrix is indexed as row x col instead of col x row - weird but useful
   val matrix: Seq[Seq[JamRgbButton]] = (1 to 8).map { row =>
     ('A' to 'H').map { col =>
       val id = s"Btn$col$row"

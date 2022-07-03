@@ -172,9 +172,15 @@ To select a device and a page: whichever device was selected last on a track wil
 Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
 
 # Step Sequencer
+
 * **STEP**: Toggle sequencer mode
 
-## Layout
+## Default layout
+
+* Scene buttons (top): sequencer pages. Currently selected page is bright white, currently playing page is dim white.
+* Pad matrix: select and edit steps. When transport is playing, the currently playing step is white.
+* Arrows: navigate 
+
 ### Scene buttons 
 ### Pad matrix
 
