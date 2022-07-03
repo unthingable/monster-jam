@@ -99,45 +99,6 @@ object Graph {
       node.parent match
         case Some(p) => p.addBinding(activateb*)
         case None => activateb.foreach(_.bind()) // they're unmanaged for orphan nodes
-
-      // activateb.foreach(_.bind())
-      // node.addBinding(activateb*)
-
-      // val bindings: Seq[Binding[_, _, _]] = node.layer.modeBindings ++ node.children.flatMap { child =>
-      //   child.layer match {
-      //     case l: ActivatedLayer[ModeCommand[_]] with ListeningLayer =>
-      //       Util.println(s"${node.layer.id}: synthesizing load bindings for ${l.id}")
-      //       l.loadBindings ++ Vector(
-      //         EB(l.activateEvent, s"${l.id} syn act", () => activate(s"by ${l.activateEvent}")(child)),
-      //         EB(l.deactivateEvent, s"${l.id} syn deact", () => deactivate(s"by ${l.deactivateEvent}")(child)),
-      //       )
-      //     case l: ActivatedLayer[ModeCommand[_]] =>
-      //       Util.println(s"${node.layer.id}: synthesizing load bindings for ${l.id}")
-      //       Vector(
-      //         EB(l.activateEvent, s"${l.id} syn act", () => activate(s"by ${l.activateEvent}")(child)),
-      //         EB(l.deactivateEvent, s"${l.id} syn deact", () => deactivate(s"by ${l.deactivateEvent}")(child)),
-      //       )
-      //     // case _                     => Vector.empty
-      //   }
-      // } ++ (node.layer match {
-      //   // MultiModeLayer is its submodes' parent
-      //   case layer: MultiModeLayer => layer.subModes.flatMap { sm =>
-      //     val smn = layerMap(sm)
-      //     Util.println(s"${node.layer.id}: synthesizing load bindings for sub ${sm.id}")
-      //     Vector(
-      //       EB(sm.activateEvent, s"${node.layer.id}->${sm.id} syn sub act", () => activate(s"by ${sm.activateEvent}")(smn), BB(tracked = false)),
-      //       EB(sm.deactivateEvent, s"${node.layer.id}->${sm.id} syn sub deact", () => deactivate(s"by ${sm.deactivateEvent}")(smn), BB(tracked = false)),
-      //     )
-      //   }
-      //   case _                           => Vector.empty
-      // })      
-      // val (managed, unmanaged) = bindings.partition(_.behavior.managed)
-
-      // // bind unmanaged now
-      // unmanaged.foreach(_.bind())
-
-      // // bind managed later
-      // node.nodeBindings.addAll(managed)
     }
 
     // Establish ownership by propagating owner nodes to bindings
@@ -160,14 +121,6 @@ object Graph {
       assert(!layerMap.get(l).exists(_.layer.id != l.id), s"Layer name collision: ${l.id}")
       layerMap.getOrElseUpdate(l, ModeNode(l))
     }
-
-    // def activateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} activate", () => {
-    //   activate("by action")(node)
-    // })
-
-    // def deactivateAction(node: ModeNode): HardwareActionBindable = action(s"${node.layer.id} deactivate", () => {
-    //   deactivate("by action")(node)
-    // })
 
     protected def activate(reason: String)(node: ModeNode): Unit = {
       Util.println(s"activating node ${node.layer.id}: $reason")
@@ -206,13 +159,9 @@ object Graph {
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB[_] => b.name}
         Util.println(s">> BUMP ${node.layer.id} bumps ${bumpNodes.map(_.layer.id).mkString(",")}: ")
-        //bumpBindings.collect {case Bumped(b: HB, bb)=>(b.name, names(bb))} foreach { case (b, bb) =>
-        //  ext.host.println(s" > $b <- ${bb.mkString(",")}")
-        //}
       }
 
       // remember for deactivation
-      // node.nodesToRestore.clear()
       node.nodesToRestore.addAll(bumpNodes)
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
@@ -222,12 +171,6 @@ object Graph {
 
       node.layer.onActivate()
 
-      // one layer overrides element bindings of another, so total replacement is ok
-      // FIXME why is this here? forgot to remove? seems redundant
-      // ext.binder.sourceMap.addAll(node.nodeBindings
-      //   .groupBy(_.source)
-      //   .view.mapValues(mutable.HashSet.from(_))
-      // )
       node.isActive = true
       Util.println(s"-- activated ${node.layer.id} ---")
     }
@@ -245,14 +188,10 @@ object Graph {
           (if (cur > max) "XXX" else node.nodesToRestore.map(printBumpers(max, cur+1, _)).mkString("[",", ","]"))
          else "")
 
-
       Util.println("-- restore map:")
       Util.println(printBumpers(3, 0, node))
-      // for (a <- node.nodesToRestore; b <- a.nodesToRestore)
-      //   yield Util.println("  " + Seq(node, a, b).map(_.layer.id).mkString(" < "))
 
       // restore base
-      // node.nodesToRestore.foreach(activate(s"from bump by ${node.layer.id} <:< $reason"))
       ext.events.eval(s"from bump by ${node.layer.id} <:< $reason", node.nodesToRestore.toSeq.flatMap(_.layer.activateEvent)*)
 
       //entryNodes.foreach(activate)

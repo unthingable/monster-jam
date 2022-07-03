@@ -38,8 +38,6 @@ trait ModeLayer extends IntActivatedLayer, HasId {
   var isOn: Boolean = false
   var activeAt: Instant = Instant.now()
 
-  // def ifOn(f: => Unit): () => Unit = () => if (isOn) f
-
   // called when layer is activated/deactivated by the container
   def onActivate(): Unit = {
     activeAt = Instant.now()
@@ -80,10 +78,6 @@ trait IntActivatedLayer extends ActivatedLayer[Seq[ModeCommand[_]]] {
   def activateEvent: Vector[ModeCommand[_]] = selfActivateEvent.value +: maybeActivate
   def deactivateEvent: Vector[ModeCommand[_]] = maybeDeactivate :+ selfDeactivateEvent.value
 
-  // /* Additional commands to fire after activation and before deactivation - override */
-  // def subActivate: Vector[ModeCommand[_]]
-  // def subDeactivate: Vector[ModeCommand[_]]
-
   private inline def maybeActivate: Vector[ModeCommand[?]] = this match
     case l: HasSubModes => l.subModesToActivate.flatMap(_.activateEvent)
     case _ => Vector.empty
@@ -113,18 +107,6 @@ object SimpleModeLayer {
   }
 }
 
-// case class ModeButton(press: ButtonEvt, release: ButtonEvt, light: Option[OnOffHardwareLight])
-
-// object ModeButton {
-//   def apply(b: HasButtonState): ModeButton = ModeButton(
-//     b.st.pressedE,
-//     b.st.releasedE,
-//     b match
-//       case x: HasOnOffLight => Some(x.light)
-//       case _                => None
-//   )
-// }
-
 sealed trait GateMode
 object GateMode {
   case object Gate extends GateMode
@@ -149,12 +131,10 @@ abstract class ModeButtonLayer(
         // this press is only captured when the mode is still active
         if (gateMode != GateMode.OneWay)
           deactivateEvent
-          // Vector(deactivateEvent.value)
         else
           Vector.empty
       } else
         activateEvent
-        // Vector(activateEvent.value)
     }),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
@@ -209,15 +189,6 @@ trait HasSubModes:
 abstract class MultiModeLayer(
   val id: String,
 )(using ext: MonsterJamExt) extends ModeLayer, HasSubModes {
-
-  // override def onActivate(): Unit = {
-  //   super.onActivate()
-  // }
-
-  // override def onDeactivate(): Unit = {
-  //   subModes.filter(_.isOn).map(_.deactivateEvent).foreach(ext.events.eval(_))
-  //   super.onDeactivate()
-  // }
   override def subModesToActivate: Vector[ModeLayer] = subModes.filter(_.isOn)
   override def subModesToDeactivate: Vector[ModeLayer] = subModes.filter(_.isOn)
 }
@@ -235,16 +206,6 @@ abstract class ModeCycleLayer(
     ).distinct
     Util.println(s"debug: for $id submode activators are $ret")
     ret
-
-  // override def onActivate(): Unit = {
-  //   super.onActivate()
-  //   selected.map(subModes(_).activateEvent).foreach(ext.events.eval(_))
-  // }
-
-  // override def onDeactivate(): Unit = {
-  //   selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval(_))
-  //   super.onDeactivate()
-  // }
 
   /** Cycle among all submodes, from currently selected one 
    */
@@ -265,16 +226,6 @@ abstract class ModeCycleLayer(
       ext.events.eval(toDeactivate.map(subModes(_)).filter(_.isOn).flatMap(_.deactivateEvent)*)
       ext.events.eval(idx.flatMap(subModes(_).activateEvent)*)
       selected = idx.lastOption
-
-      // idx.map(subModes(_)).foreach { m =>
-      //   ext.events.eva
-      // for (i <- idx) yield
-      //    && !selected.contains(idx))
-      //   selected.map(subModes(_).deactivateEvent).foreach(ext.events.eval(_*))
-      //   val mode = subModes(idx)
-      //   Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
-      //   selected = Some(idx)
-      //   ext.events.eval(mode.activateEvent*)
 }
 
 abstract class ModeButtonCycleLayer(
@@ -290,7 +241,7 @@ abstract class ModeButtonCycleLayer(
 
   def stickyPress: Vector[ModeCommand[_]] = {
     (isOn, cycleMode: CycleMode) match {
-      case (false, _) => activateEvent // Vector(activateEvent.value)
+      case (false, _) => activateEvent
       case _ => Vector.empty
     }
   }
@@ -300,7 +251,7 @@ abstract class ModeButtonCycleLayer(
 
   def stickyRelease: Vector[ModeCommand[_]] = {
     (isOn, cycleMode: CycleMode) match {
-      case (true, CycleMode.Gate) => deactivateEvent // Vector(deactivateEvent.value)
+      case (true, CycleMode.Gate) => deactivateEvent
       case (true, CycleMode.Sticky) =>
         lazy val operated =
           operatedBindings.operatedAfter(activeAt)
@@ -308,7 +259,6 @@ abstract class ModeButtonCycleLayer(
         if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
           isStuck = false
           deactivateEvent
-          // Vector(deactivateEvent.value)
         } else
           isStuck = true
           Vector.empty
@@ -321,7 +271,7 @@ abstract class ModeButtonCycleLayer(
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
     EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Seq.empty, BB(tracked = false))
-  ) ++ maybeLightB(modeButton) //(if (!silent) Vector(SupBooleanB(modeButton.light.isOn, lightOn)) else Vector.empty)
+  ) ++ maybeLightB(modeButton)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {

@@ -181,7 +181,6 @@ object JCB extends BindingDSL {
 }
 
 // event binding
-// import Event.*
 case class EB[S](
   source: S,
   ev: Event, 
@@ -211,10 +210,6 @@ case class EB[S](
     ext.events.rmSub(ev, receiver)
     operatedAt = None
     isActive = false
-
-  //def eval(): Unit = action match
-  //  case f: SideEffect => f(ev)
-  //  case _ => ???
 }
 
 object EB:
@@ -225,8 +220,6 @@ object EB:
     case (S, S => Event) => S
   
   type OutcomeSpec =  Command | (() => Unit) | (() => Seq[Command])
-  // type OutcomeSpec =  Command | (() => Command) | (() => Unit)
-  // type OutcomeSpec =  Command | (() => (Unit|Command))
 
   inline def asOutcome(o: OutcomeSpec): Outcome =
     inline o match
@@ -234,22 +227,8 @@ object EB:
       case f: (() => Seq[Command]) => CmdEffect(_ => f())
       case f: (() => Unit)    => SideEffect(_ => f())
 
-  // all this insanity because we can't mix overloaded param types and defaults, but still want nice things at use site
-
   inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
     EB(ev.source, ev.value, asOutcome(f), behavior = BindingBehavior(), context = ctx)
   inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
     EB(ev.source, ev.value, asOutcome(f), behavior = bb, context = ctx)
-
-  // inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
-  //   EB(source, ev(source), asOutcome(f), behavior = BindingBehavior(), context = ctx)
-  // inline def apply[S](source: S, ev: S => Event, ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
-  //   EB(source, ev(source), asOutcome(f), bb, context = ctx)
-
-  // inline def apply(ev: Event, ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior()) = ???
-  // inline def apply[S](es: EventSpec[S], ctx: String, f: => Unit, bb: BindingBehavior = BindingBehavior())(using ext: MonsterJamExt): EB[_] =
-  //   inline es match
-  //     case e: Event => EB[Event](e, e, SideEffect(_ => f), bb, context = ctx)
-  //     case (s: S, e: (S => Event)) => EB[S](s, e(s), SideEffect(_ => f), bb, context = ctx)
-  //   // EB(source, ev, SideEffect(_ => f), bb, context = ctx)
 
