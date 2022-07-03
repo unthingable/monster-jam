@@ -142,7 +142,8 @@ abstract class ModeButtonLayer(
   private var pressedAt: Instant = null
 
   override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    EB(modeButton.st.press, s"$id: mode button pressed, isOn: " + isOn, () => {
+    EB(modeButton.st.press, s"$id: mode button pressed", () => {
+      Util.println(" isOn: " + isOn)
       pressedAt = Instant.now()
       if (isOn) {
         // this press is only captured when the mode is still active

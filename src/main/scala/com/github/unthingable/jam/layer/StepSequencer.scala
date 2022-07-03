@@ -36,13 +36,13 @@ import java.time.Instant
 trait StepSequencer extends BindingDSL { this: Jam =>
   enum StepMode(val keyRows: Int):
     case One extends StepMode(1)
-    case OneFull extends StepMode(1)
+    // case OneFull extends StepMode(1)
     case Four extends StepMode(4)
     case Eight extends StepMode(8)
 
   val stepModeMap = Map(
     0 -> StepMode.One, 
-    1 -> StepMode.OneFull,
+    // 1 -> StepMode.OneFull,
     3 -> StepMode.Four, 
     7 -> StepMode.Eight
   )
@@ -148,13 +148,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def setGrid(mode: StepMode): Unit =
       state.stepMode = mode
       ext.host.showPopupNotification(s"Step grid: ${keyPageSize} x ${stepPageSize}")
-      mode match
-        case StepMode.OneFull =>
-          ext.events.eval(velAndNote.activateEvent*)
-        case _ =>
-          ext.events.eval(velAndNote.deactivateEvent*)
 
-    inline def keyPageSize = state.stepMode.keyRows
+    inline def keyPageSize = (state.stepMode.keyRows / (8 / state.stepViewPort.height)).max(1)
     
     inline def stepPageSize = state.stepViewPort.size / keyPageSize
 
@@ -298,9 +293,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           case Some(sm) =>
             Vector(
               EB(btn.st.press, "", () => setGrid(sm)),
-              SupColorB(
+              SupColorStateB(
                 btn.light,
-                () => if (state.stepMode == sm) Color.whiteColor() else clip.color().get
+                () => if (state.stepMode == sm) JamColorState(Color.whiteColor(), 3) else JamColorState(clip.color().get, 2)
               )
             )
       } ++ Vector(
@@ -327,7 +322,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       GateMode.Gate
     )
 
-    lazy val velAndNote = new SimpleModeLayer("velAndNote") {
+    lazy val velAndNote = new ModeButtonLayer("velAndNote", j.notes) {
       override def onActivate(): Unit = 
         super.onActivate()
         state.stepViewPort = ViewPort(0,0,4,8)
@@ -353,7 +348,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         )
       val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
-        Vector()
+        Vector(
+          SupColorB(btn.light, clip.color()),
+          EB(btn.st.press, "set note", () => ???)
+        )
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
 

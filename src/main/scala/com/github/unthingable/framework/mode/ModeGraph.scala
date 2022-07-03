@@ -199,7 +199,9 @@ object Graph {
       val bumpNodes: Iterable[ModeNode] = bumpBindings
       .flatMap(_.bumped.flatMap(_.node))
       // FIXME hack: can't bump own submodes
-      .filter(!_.parent.contains(node)) ++ bumpedExc
+      .filter(!_.parent.contains(node))
+      // can't bump self
+      .filter(_ != node) ++ bumpedExc
 
       if (bumpNodes.nonEmpty) {
         def names(bb: Iterable[Binding[_,_,_]]) = bb.collect{case b: HB[_] => b.name}
