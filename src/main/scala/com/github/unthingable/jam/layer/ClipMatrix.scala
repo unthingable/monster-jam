@@ -16,10 +16,11 @@ trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)
     val clip: Clip = ext.host.createLauncherCursorClip(0, 0)
+    trackBank.sceneBank().setIndication(true)
+    trackBank.setShouldShowClipLauncherFeedback(true)
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
-      track.clipLauncherSlotBank().setIndication(true)
       track.isQueuedForStop.markInterested()
 
       val clips = track.clipLauncherSlotBank()
