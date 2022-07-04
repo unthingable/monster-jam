@@ -336,6 +336,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       def setVelocity(vel: Int) =
         ext.host.showPopupNotification(velNote(vel))
         state.velocity = vel
+        selectedClipTrack.playNote(state.keyScrollOffset, vel)
+
+      def notePress(note: Int): Unit =
+        scrollY(note)
+        selectedClipTrack.playNote(note, state.velocity)
 
       val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col)
@@ -353,7 +358,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         val noteIdx = tmpPageOffset + (3 - row) * 4 + col
         Vector(
           SupColorB(btn.light, () => if (noteIdx == state.keyScrollOffset) Color.whiteColor else clip.color().get),
-          EB(btn.st.press, "set note", () => scrollY(noteIdx))
+          EB(btn.st.press, "set note", () => notePress(noteIdx))
         )
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
