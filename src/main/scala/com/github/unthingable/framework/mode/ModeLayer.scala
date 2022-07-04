@@ -229,10 +229,10 @@ abstract class ModeCycleLayer(
   //     selected = idx.lastOption
 
   def select(idx: Int): Unit = {
-    if (isOn) 
+    if (isOn && !selected.contains(idx)) 
       ext.events.eval(s"$id select deact")(
         selected
-        .filter(_ != idx)
+        // .filter(_ != idx)
         .map(subModes(_))
         .filter(_.isOn)
         .toSeq
@@ -240,7 +240,7 @@ abstract class ModeCycleLayer(
     val mode = subModes(idx)
     Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
     selected = Some(idx)
-    if (isOn) ext.events.eval(s"$id select act")(mode.activateEvent*)
+    // if (isOn) ext.events.eval(s"$id select act")(mode.activateEvent*)
   }
 }
 
