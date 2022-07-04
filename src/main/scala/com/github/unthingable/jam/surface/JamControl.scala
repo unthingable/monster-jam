@@ -75,7 +75,7 @@ object JamControl {
 
   import ActionDSL.action
   inline def handle(id: String, e: RawButtonEvent)(using ext: MonsterJamExt): HardwareActionBindable = 
-    action("", () => KeyMaster.eval(id, e).foreach(ext.events.eval(_)))
+    action("", () => KeyMaster.eval(id, e).foreach(ext.events.eval(s"JamControl handle $id $e")(_)))
       
   def button(info: MidiInfo)(implicit ext: MonsterJamExt): HardwareButton = {
     val button: HardwareButton = ext.hw.createHardwareButton(info.id)

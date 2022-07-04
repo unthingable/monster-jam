@@ -111,10 +111,10 @@ object Graph {
     ext.host.scheduleTask(() =>
     {
       // activate entry nodes - must come before init layers so that activation events are bound
-      ext.events.eval("init entry", entryNodes.filter(!_.isActive).flatMap(_.layer.activateEvent)*)
+      ext.events.eval("init entry")(entryNodes.filter(!_.isActive).flatMap(_.layer.activateEvent)*)
 
       // activate init layers
-      ext.events.eval("init", init.flatMap(layerMap.get).flatMap(_.layer.activateEvent)*)
+      ext.events.eval("init")(init.flatMap(layerMap.get).flatMap(_.layer.activateEvent)*)
     }, 100)
 
     def indexLayer(l: ModeLayer): ModeNode = {
@@ -201,7 +201,7 @@ object Graph {
       Util.println(printBumpers(3, 0, node))
 
       // restore base
-      ext.events.eval(s"from bump by ${node.layer.id} <:< $reason", node.nodesToRestore.toSeq.flatMap(_.layer.activateEvent)*)
+      ext.events.eval(s"from bump by ${node.layer.id} <:< $reason")(node.nodesToRestore.toSeq.flatMap(_.layer.activateEvent)*)
 
       //entryNodes.foreach(activate)
       node.nodesToRestore.clear()

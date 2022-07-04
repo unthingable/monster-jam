@@ -212,7 +212,7 @@ trait Control { this: Jam with MacroL =>
     }
 
     override def onDeactivate(): Unit = {
-      ext.events.eval(deviceSelector.deactivateEvent*) // if it was active we don't want it
+      ext.events.eval("control onDeactivate")(deviceSelector.deactivateEvent*) // if it was active we don't want it
       super.onDeactivate()
     }
   }

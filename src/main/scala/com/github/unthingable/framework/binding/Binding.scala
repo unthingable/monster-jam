@@ -192,11 +192,12 @@ case class EB[S](
 
   val receiver = (_: Event) => 
     if context.nonEmpty then Util.println(s"EB: $context $action")
+    val msg = s"$context->$action"
     operatedAt = Some(Instant.now())
     action match
-      case x: Command     => ext.events.eval(x)
+      case x: Command     => ext.events.eval(msg)(x)
       case SideEffect(f)  => f(ev)
-      case CmdEffect(f)   => ext.events.eval(f(ev)*)
+      case CmdEffect(f)   => ext.events.eval(msg)(f(ev)*)
 
   override def bind(): Unit = 
     if (!isActive) ext.events.addSub(ev, receiver)

@@ -28,24 +28,24 @@ class EventBus[E] {
     while (semaphore && queue.nonEmpty)
       val e = queue.dequeue()
       val ev = e.e
-      Util.println(s"evt: $e")
+      // Util.println(s"evt: $e")
       val receivers = subs.get(ev).toSeq.flatten
       if (receivers.nonEmpty) Util.println(s"evt: $ev => ${receivers.size} ${e.ctx}")
       receivers.foreach(_(ev))
     semaphore = false
 
-  def eval(context: String, e: E*): Unit =
+  def eval(context: String)(e: E*): Unit =
     Util.println(s"evt: enqueueing $e with $context")
     queue.enqueueAll(e.map(EvtContext(_, context)))
     trigger()
 
-  def eval(e: E*): Unit = eval("", e*)
+  private def eval(e: E*): Unit = eval("")(e*)
 
   @targetName("evalS")
-  def eval(e: WithSource[E, _]*): Unit = eval(e.map(_.value)*)
+  private def eval(e: WithSource[E, _]*): Unit = eval(e.map(_.value)*)
 
   @targetName("evalS")
-  def eval(context: String, e: WithSource[E, _]*): Unit = eval(context, e.map(_.value)*)
+  def eval(context: String)(e: WithSource[E, _]*): Unit = eval(context)(e.map(_.value)*)
 
   def addSub(e: E, r: Reactor): Unit =
     getSub(e).addOne(r)
