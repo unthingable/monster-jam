@@ -72,6 +72,7 @@ object Graph {
       indexLayer(l)
     }
 
+    // goes only one layer deep, rethink when needed
     layerMap.keys.collect { case x: MultiModeLayer => x }.foreach { cl =>
       val parent = layerMap.get(cl)
       cl.subModes.foreach { l =>
@@ -133,7 +134,15 @@ object Graph {
           .filter(_ != node) // this really shouldn't happen unless the node didn't properly deactivate
           .flatMap { n =>
             Util.println(s"exc: ${node.layer.id} deactivates ${n.layer.id}")
-            deactivate(s"bumped by ${node.layer.id}")(n)
+            val bumpMsg = s"exc bump by ${node.layer.id}"
+            // Exclusive groups are still managed by hand, so
+            n.layer match
+              case l: HasSubModes => 
+                l.subModesToDeactivate
+                  .flatMap(layerMap.get)
+                  .foreach(deactivate(bumpMsg + s" (sub ${l.id})"))
+              case _ => ()
+            deactivate(bumpMsg)(n)
             None
           })
   
@@ -152,7 +161,7 @@ object Graph {
       val bumpNodes: Iterable[ModeNode] = bumpBindings
       .flatMap(_.bumped.flatMap(_.node))
       // FIXME hack: can't bump own submodes
-      .filter(!_.parent.contains(node))
+      // .filter(!_.parent.contains(node))
       // can't bump self
       .filter(_ != node) ++ bumpedExc
 
