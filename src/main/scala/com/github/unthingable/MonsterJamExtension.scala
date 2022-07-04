@@ -17,6 +17,7 @@ case class MonsterPref(
   shiftDpad: EnumSetting[JamSettings.DpadScroll],
   limitLevel: EnumSetting[JamSettings.LimitLevels],
   smartTracker: SettableBooleanValue,
+  debugOutput: SettableBooleanValue,
 )
 
 case class MonsterDocPrefs(
@@ -60,9 +61,6 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
   var ext: MonsterJamExt = null
   private var jam: Jam = null
 
-  val printer = new util.Printer(host.println)
-  Util.println = printer.println
-
   val preferences: Preferences = host.getPreferences
 
   override def init(): Unit = {
@@ -84,12 +82,19 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
         EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.`page/single`),
         EnumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
+        preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(
         EnumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
       ),
       loadMap(host)
     )
+
+    if (ext.preferences.debugOutput.get())
+      val printer = util.Printer(host.println)
+      Util.println = printer.println
+    else
+      Util.println = _ => ()
 
     jam = new Jam()(ext)
 

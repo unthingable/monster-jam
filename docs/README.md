@@ -336,6 +336,9 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
     * This modifies the project even if you didn't do anything, so it will ask you to save
     * Track color selectors will not display the color as selected
 
+* **Verbose console output**: if yoo're me or just really curious about internal workings of MonsterJam,
+you can turn it on, otherwise leave it off.
+
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
 
 ## Project
