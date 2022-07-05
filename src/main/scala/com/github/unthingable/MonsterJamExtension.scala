@@ -91,7 +91,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     if (ext.preferences.debugOutput.get())
-      val printer = util.Printer(host.println)
+      val printer = util.Printer(s => {host.println(s); java.lang.System.out.println(s)})
       Util.println = printer.println
     else
       Util.println = _ => ()
