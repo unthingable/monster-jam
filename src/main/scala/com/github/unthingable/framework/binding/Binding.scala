@@ -42,9 +42,6 @@ sealed trait Binding[S, B, T] extends Clearable {
 
   def bindingSource: B // actual thing we're binding to, provided by S
 
-  var node: Option[Graph.ModeNode] = None // backreference to the node that owns this
-  def layerName: String = node.map(_.layer.id).getOrElse("")
-
   val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
 }
 
@@ -103,8 +100,8 @@ class HB[S](
   }
 
   private val operatedActions = Vector(
-    action(() => s"$layerName: HB $name: unit operated", () => {operatedAt = Some(Instant.now())}),
-    action(() => s"$layerName: HB $name: double operated", _ => {operatedAt = Some(Instant.now())}),
+    action(() => s"HB $name: unit operated", () => {operatedAt = Some(Instant.now())}),
+    action(() => s"HB $name: double operated", _ => {operatedAt = Some(Instant.now())}),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => {operatedAt = Some(Instant.now())})
   )
 }
