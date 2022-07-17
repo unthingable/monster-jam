@@ -55,7 +55,7 @@ object Graph {
   }
 
   // Graph manages all the bindings
-  class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(implicit ext: MonsterJamExt) extends ModeActivator, GraphHelper {
+  class ModeDGraph(init: Seq[ModeLayer], edges: (ModeLayer, LayerGroup)*)(using ext: MonsterJamExt) extends ModeActivator, GraphHelper {
 
     private val layerMap: mutable.Map[ModeLayer, ModeNode] = mutable.LinkedHashMap.empty
 

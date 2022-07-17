@@ -38,7 +38,7 @@ object KeyMaster {
     val allb: Seq[NamedButton] = b +: mods
     val allbIds                = allb.map(_.id)
 
-    /** Tell the world what we this key is to us
+    /** Tell the world what this key is to us
       */
     inline def lookup(buttonId: String): Option[KeyType] =
       if buttonId == b.id then Some(KeyType.Normal)
@@ -98,7 +98,7 @@ object KeyMaster {
           case RawButtonEvent.Press   => jc.onPress(buttonId)
           case RawButtonEvent.Release => jc.onRelease(buttonId)
       )
-    /* Compromise: let modifier keys though */
+    /* Compromise: let modifier keys through */
     comboEvents ++ (if comboEvents.isEmpty || lookup.toSeq.contains(KeyType.Modifier)
                     then
                       Seq(ev match
