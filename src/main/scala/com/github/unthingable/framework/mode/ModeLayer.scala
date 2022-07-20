@@ -107,13 +107,8 @@ object SimpleModeLayer {
   }
 }
 
-sealed trait GateMode
-object GateMode {
-  case object Gate extends GateMode
-  case object Toggle extends GateMode
-  case object Auto extends GateMode
-  case object OneWay extends GateMode
-}
+enum GateMode:
+  case Gate, Toggle, Auto, OneWay
 
 abstract class ModeButtonLayer(
   val id: String,

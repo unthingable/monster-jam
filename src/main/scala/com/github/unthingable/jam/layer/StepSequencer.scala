@@ -165,6 +165,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       state.keyScrollOffset = guardY(offset)
       clip.scrollToKey(state.keyScrollOffset)
 
+    def scrollY(dir: UpDown): Unit =
+      scrollYinc(keyPageSize * (dir match
+        case UpDown.Up   => 1
+        case UpDown.Down => -1
+      ))
+
     def scrollYinc(inc: Int) =
       state.keyScrollOffset = guardY(state.keyScrollOffset + inc)
       clip.scrollToKey(state.keyScrollOffset)
@@ -391,8 +397,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val dpad = SimpleModeLayer(
       "dpadStep",
       Vector(
-        EB(j.dpad.up.st.press, "scroll page up", () => scrollYinc(keyPageSize)),
-        EB(j.dpad.down.st.press, "scroll page down", () => scrollYinc(-1 * keyPageSize)),
+        EB(j.dpad.up.st.press, "scroll page up", () => scrollY(UpDown.Up)),
+        EB(j.dpad.down.st.press, "scroll page down", () => scrollY(UpDown.Down)),
         EB(j.dpad.left.st.press, "", Noop),
         EB(j.dpad.right.st.press, "", Noop),
         SupBooleanB(j.dpad.up.light.isOn(), () => canScroll(UpDown.Up)),
