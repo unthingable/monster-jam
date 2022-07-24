@@ -31,6 +31,7 @@ import com.github.unthingable.framework.mode.ModeButtonLayer
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.Watched
 import java.time.Instant
 
 trait StepSequencer extends BindingDSL { this: Jam =>
@@ -54,9 +55,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
   case class Point(x: Int, y: Int)
 
-  enum StepState:
-    case Init
-    case Focus(p: Point, handled: Boolean, ts: Instant)
+  // enum StepState:
+  //   // case Init
+  //   // case Focus(p: Point, handled: Boolean, ts: Instant)
+  //   // case MultiSelect(steps: Seq[NoteStep])
+  //   case Focus(
+  //     steps: Seq[NoteStep],
+  //     noRelease: Boolean
+  //   )
 
   inline def Noop = () => Vector.empty
 
@@ -120,6 +126,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       case (a, b) => s"$a/$b"
       case x: Int => s"$x"
 
+    case class StepState(steps: List[(Point, NoteStep)], noRelease: Boolean)
+
     object state:
       var channel                    = 0
       var velocity: Int              = 100
@@ -131,7 +139,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       // var keyPageSize                = 1
       // var stepPageSize               = 64
       // var newPatLength               = 4
-      var stepState    = StepState.Init
+      var stepState: Watched[StepState]    = Watched(StepState(List.empty, false), onStepState)
       var stepViewPort = ViewPort(0, 0, 8, 8) // row/col
 
     clip.setStepSize(stepSize)
@@ -188,38 +196,45 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       state.stepScrollOffset = stepPageSize * page
       clip.scrollToStep(state.stepScrollOffset)
 
+    inline def stepAt(x: Int, y: Int): NoteStep = 
+      clip.getStep(state.channel, x, y)
+
     def stepPress(x: Int, y: Int): Unit =
-      val newState = state.stepState match
-        case StepState.Init =>
-          val step = clip.getStep(state.channel, x, y)
+      inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
+
+      val newState: StepState = state.stepState.get match
+        case StepState(Nil, _) =>
+          val step = stepAt(x, y)
           if (step.state == NSState.Empty)
-            clip.setStep(state.channel, x, y, 100, stepSize)
-            StepState.Focus(Point(x, y), true, Instant.now())
-          else StepState.Focus(Point(x, y), false, Instant.now())
-        case st @ StepState.Focus(p @ Point(x0, y0), _, _) if y == y0 && x > x0 =>
-          val step: NoteStep = clip.getStep(state.channel, x0, y0)
+            clip.setStep(state.channel, x, y, state.velocity, stepSize)
+            StepState(List((Point(x, y), step)), true)
+          else StepState(List((Point(x, y), step)), false)
+        case st @ StepState(p @ (Point(x0, y0), _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
+          val step: NoteStep = stepAt(x0, y0)
           val newDuration    = stepSize * (x - x0 + 1)
           if (step.duration() == newDuration)
             step.setDuration(stepSize)
           else
             step.setDuration(newDuration)
-          st.copy(handled = true)
+          st.copy(noRelease = true)
+        case st @ StepState(steps, noRelease) if hasStep =>
+          StepState(steps :+ (Point(x, y), stepAt(x, y)), noRelease)
         case st => st
-      state.stepState = newState
+      state.stepState.set(newState)
       // Util.println(stepState.toString())
 
     def stepRelease(X: Int, Y: Int): Unit =
-      val newState = state.stepState match
-        case StepState.Focus(Point(X, Y), handled, ts) =>
-          if (!handled)
-            val step = clip.getStep(state.channel, X, Y)
+      val newState = state.stepState.get match
+        case StepState((Point(X, Y), _) :: Nil, noRelease) =>
+          if (!noRelease)
+            val step = stepAt(X, Y)
             step.state match
               case NSState.NoteOn => clip.clearStep(state.channel, X, Y)
               case NSState.Empty | NSState.NoteSustain =>
-                clip.setStep(state.channel, X, Y, 100, stepSize)
-          StepState.Init
-        case st => st
-      state.stepState = newState
+                clip.setStep(state.channel, X, Y, state.velocity, stepSize)
+          StepState(List.empty, false)
+        case st => st.copy(steps = st.steps.filter(_._1 != Point(X, Y)))
+      state.stepState.set(newState)
       // Util.println(stepState.toString())
 
     def clipColor: Color =
@@ -229,7 +244,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
       override def onActivate(): Unit =
         super.onActivate()
-        state.stepState = StepState.Init
+        state.stepState.set(StepState(List.empty, false))
 
       override val modeBindings: Seq[Binding[_, _, _]] =
         (for (col <- EIGHT; row <- EIGHT) yield {
@@ -417,6 +432,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       velAndNote,
       dpad,
     )
+
+    def onStepState(st: StepState): Unit = ()
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, dpad) ++ subModes.filter(_.isOn)).distinct
