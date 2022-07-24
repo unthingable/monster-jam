@@ -206,7 +206,7 @@ object Graph {
       val baseRestore = node.nodesToRestore.toSeq
       val toRestore = (baseRestore ++ baseRestore.flatMap(_.bumpingMe)).distinct.filter(_.isActive)
       // maybe it's enough to simply rebind, without full on activation?
-      ext.events.eval(s"from bump by ${node.layer.id} <:< $reason")(toRestore.flatMap(_.layer.activateEvent)*)
+      ext.events.evalNow(s"from bump by ${node.layer.id} <:< $reason")(toRestore.flatMap(_.layer.activateEvent)*)
 
       //entryNodes.foreach(activate)
       baseRestore.foreach(n => n.bumpingMe.filterInPlace(_ == n))

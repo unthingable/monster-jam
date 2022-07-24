@@ -16,17 +16,17 @@ class EventBus[E] {
   /* Janky actor with a queue, no mind paid to concurrency.
      Assuming the extention is single-threaded this should be fine.
    */
-  private val queue = mutable.Queue.empty[EvtContext[E]]
+  private val queue              = mutable.Queue.empty[EvtContext[E]]
   private var semaphore: Boolean = false
 
   private def trigger(): Unit =
     if !semaphore then
       semaphore = true
-      evalQueue()
+      evalQueue(queue)
 
-  private def evalQueue(): Unit = 
+  private def evalQueue(queue: mutable.Queue[EvtContext[E]]): Unit =
     while (semaphore && queue.nonEmpty)
-      val e = queue.dequeue()
+      val e  = queue.dequeue()
       val ev = e.e
       // Util.println(s"evt: $e")
       val receivers = subs.get(ev).toSeq.flatten
@@ -39,6 +39,15 @@ class EventBus[E] {
     queue.enqueueAll(e.map(EvtContext(_, context)))
     trigger()
 
+  // jump the line
+  def evalNow(context: String)(e: E*): Unit =
+    Util.println(s"evt: prequeueing $e with $context")
+    e.foreach(ev =>
+      val receivers = subs.get(ev).toSeq.flatten
+      if (receivers.nonEmpty) Util.println(s"evt: $ev => ${receivers.size} ${context}")
+      receivers.foreach(_(ev))
+    )
+
   private def eval(e: E*): Unit = eval("")(e*)
 
   @targetName("evalS")
@@ -50,14 +59,15 @@ class EventBus[E] {
   def addSub(e: E, r: Reactor): Unit =
     getSub(e).addOne(r)
 
-  def rmSub(e: E, r: Reactor): Unit = 
+  def rmSub(e: E, r: Reactor): Unit =
     getSub(e).filterInPlace(_ != r)
 
   def setSub(e: E, r: Reactor): Unit =
     subs.update(e, mutable.HashSet(r))
-    
+
   def clearSub(e: E): Unit =
     subs.remove(e)
 
-  private def getSub(e: E): mutable.HashSet[Reactor] = subs.getOrElseUpdate(e, mutable.HashSet.empty[Reactor])
+  private def getSub(e: E): mutable.HashSet[Reactor] =
+    subs.getOrElseUpdate(e, mutable.HashSet.empty[Reactor])
 }
