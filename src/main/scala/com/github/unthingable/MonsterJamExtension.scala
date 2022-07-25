@@ -60,6 +60,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
   var ext: MonsterJamExt = null
   private var jam: Jam = null
+  private var printer: util.Printer = null
 
   val preferences: Preferences = host.getPreferences
 
@@ -91,7 +92,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     if (ext.preferences.debugOutput.get())
-      val printer = util.Printer(s => {host.println(s); java.lang.System.out.println(s)})
+      printer = util.Printer(s => {host.println(s); java.lang.System.out.println(s)})
       Util.println = printer.println
     else
       Util.println = _ => ()
@@ -102,7 +103,9 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
   }
 
   override def exit(): Unit = {
-    // For now just show a popup notification for verification that it is no longer running.
+    printer match
+      case p: util.Printer => p.timer.stop()
+
     getHost.showPopupNotification("MonsterJam Exited")
   }
 
