@@ -33,6 +33,7 @@ import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.framework.Watched
 import java.time.Instant
+import com.github.unthingable.JamSettings.DpadScroll
 
 trait StepSequencer extends BindingDSL { this: Jam =>
   enum StepMode(val keyRows: Int):
@@ -135,12 +136,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       var drumDevice: Option[Device] = None
       var stepMode: StepMode         = StepMode.One
       var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
-      var keyScrollOffset            = 12 * 3 // C1
+      var keyScrollOffset            = 12 * 3 // C1, top of viewport
       // var keyPageSize                = 1
       // var stepPageSize               = 64
       // var newPatLength               = 4
-      var stepState: Watched[StepState]    = Watched(StepState(List.empty, false), onStepState)
-      var stepViewPort = ViewPort(0, 0, 8, 8) // row/col
+      var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
+      var stepViewPort                  = ViewPort(0, 0, 8, 8) // row/col
 
     clip.setStepSize(stepSize)
     clip.scrollToKey(12 * 3)
@@ -148,7 +149,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
-    /* Translate between matrix grid (row, col) and clip grid (x, y) */
+    /* Translate from matrix grid (row, col) to clip grid (x, y) */
     def m2clip(row: Int, col: Int): (Int, Int) =
       // no need to account for view port as long as starts at 0,0
       val offset = row * 8 + col // matrix grid scanned
@@ -167,20 +168,26 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.setStepSize(stepSize)
       ext.host.showPopupNotification(s"Step size: $stepString")
 
-    inline def guardY(y: Int) = y.max(0).min(128 - state.stepViewPort.height)
+    // inline def guardY(y: Int) = y.max(0).min(128 - state.stepViewPort.height)
+    inline def guardY(y: Int) = y.max(0).min(128 - keyPageSize)
 
     def scrollY(offset: Int) =
       state.keyScrollOffset = guardY(offset)
       clip.scrollToKey(state.keyScrollOffset)
 
     def scrollY(dir: UpDown): Unit =
-      scrollYinc(keyPageSize * (dir match
+      scrollYinc(dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
-      ))
+      )
 
     def scrollYinc(inc: Int) =
-      state.keyScrollOffset = guardY(state.keyScrollOffset + inc)
+      val pageMul = keyPageSize
+        // if (
+        //   j.Mod.Shift.st.isPressed ^ (ext.preferences.shiftDpad.get() == DpadScroll.`single/page`)
+        // ) keyPageSize
+        // else 1
+      state.keyScrollOffset = guardY(state.keyScrollOffset + (pageMul * inc))
       clip.scrollToKey(state.keyScrollOffset)
 
     enum UpDown:
@@ -196,7 +203,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       state.stepScrollOffset = stepPageSize * page
       clip.scrollToStep(state.stepScrollOffset)
 
-    inline def stepAt(x: Int, y: Int): NoteStep = 
+    inline def stepAt(x: Int, y: Int): NoteStep =
       clip.getStep(state.channel, x, y)
 
     def stepPress(x: Int, y: Int): Unit =
@@ -409,7 +416,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
 
-    lazy val dpad = SimpleModeLayer(
+    lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
       Vector(
         EB(j.dpad.up.st.press, "scroll page up", () => scrollY(UpDown.Up)),
@@ -430,13 +437,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       gridSelect,
       chanSelect,
       velAndNote,
-      dpad,
+      dpadStep
     )
 
     def onStepState(st: StepState): Unit = ()
 
     override def subModesToActivate =
-      (Vector(stepMatrix, stepPages, dpad) ++ subModes.filter(_.isOn)).distinct
+      (Vector(stepMatrix, stepPages, dpadStep) ++ subModes.filter(_.isOn)).distinct
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
@@ -450,3 +457,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
   }
 }
+
+/* todos
+[ ] store grid settings per track
+[ ] autoscroll to content when there isn't any
+[ ] knob scrolls notes
+*/
