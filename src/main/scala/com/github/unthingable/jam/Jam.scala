@@ -8,6 +8,7 @@ import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, ModeCom
 import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
+import com.bitwig.`extension`.callback.IndexedBooleanValueChangedCallback
 
 class Jam(implicit val ext: MonsterJamExt)
   extends BindingDSL, Aux, TransportL, Level, Dpad, TrackL, ClipMatrix, Shift, Control, MacroL, SceneL, StepSequencer {
@@ -31,12 +32,13 @@ class Jam(implicit val ext: MonsterJamExt)
   superBank.scrollPosition().markInterested()
 
   lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
+  val selectedObserver: IndexedBooleanValueChangedCallback = (idx: Int, selected: Boolean) =>
+    if (selected)
+      selectedClipTrack.selectChannel(superBank.getItemAt(idx))
 
   (0 until 256).foreach { i =>
     val t = superBank.getItemAt(i)
-    t.clipLauncherSlotBank().addIsSelectedObserver((idx, selected) =>
-      if (selected)
-        selectedClipTrack.selectChannel(t))
+    t.clipLauncherSlotBank().addIsSelectedObserver(selectedObserver)
   }
 
   ext.preferences.smartTracker.markInterested()

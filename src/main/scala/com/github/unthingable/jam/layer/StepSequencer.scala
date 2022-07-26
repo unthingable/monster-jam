@@ -68,7 +68,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   inline def Noop = () => Vector.empty
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
-    val gridHeight               = 8
+    val gridHeight               = 128
     val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
     val devices: DeviceBank      = selectedClipTrack.createDeviceBank(1)
@@ -136,15 +136,15 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       var drumDevice: Option[Device] = None
       var stepMode: StepMode         = StepMode.One
       var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
-      var keyScrollOffset            = 12 * 3 // C1, top of viewport
+      var keyScrollOffset            = 12 * 3 // C1, bottom of viewport
       // var keyPageSize                = 1
       // var stepPageSize               = 64
       // var newPatLength               = 4
       var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
-      var stepViewPort                  = ViewPort(0, 0, 8, 8) // row/col
+      var stepViewPort                  = Watched(ViewPort(0, 0, 8, 8), onViewPort) // row/col
 
     clip.setStepSize(stepSize)
-    clip.scrollToKey(12 * 3)
+    // clip.scrollToKey(12 * 3)
     setGrid(StepMode.One)
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
@@ -153,15 +153,23 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def m2clip(row: Int, col: Int): (Int, Int) =
       // no need to account for view port as long as starts at 0,0
       val offset = row * 8 + col // matrix grid scanned
-      (offset % stepPageSize, 7 - (offset / stepPageSize))
+      (
+        offset % stepPageSize,
+        state.keyScrollOffset + (state.stepViewPort.get.height - 1) - (offset / stepPageSize)
+      )
 
     def setGrid(mode: StepMode): Unit =
       state.stepMode = mode
       ext.host.showPopupNotification(s"Step grid: ${keyPageSize} x ${stepPageSize}")
 
-    inline def keyPageSize = (state.stepMode.keyRows / (8 / state.stepViewPort.height)).max(1)
+    def onViewPort(from: ViewPort, to: ViewPort): Unit =
+      state.keyScrollOffset = guardY(
+        state.keyScrollOffset + (from.row2 - to.row2).min(state.stepViewPort.get.height)
+      )
 
-    inline def stepPageSize = state.stepViewPort.size / keyPageSize
+    inline def keyPageSize = (state.stepMode.keyRows / (8 / state.stepViewPort.get.height)).max(1)
+
+    inline def stepPageSize = state.stepViewPort.get.size / keyPageSize
 
     def incStepSize(inc: Int): Unit =
       state.stepSizeIdx = (state.stepSizeIdx + inc).min(stepSizes.size - 1).max(0)
@@ -173,7 +181,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def scrollY(offset: Int) =
       state.keyScrollOffset = guardY(offset)
-      clip.scrollToKey(state.keyScrollOffset)
+      // clip.scrollToKey(state.keyScrollOffset)
 
     def scrollY(dir: UpDown): Unit =
       scrollYinc(dir match
@@ -183,20 +191,20 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def scrollYinc(inc: Int) =
       val pageMul = keyPageSize
-        // if (
-        //   j.Mod.Shift.st.isPressed ^ (ext.preferences.shiftDpad.get() == DpadScroll.`single/page`)
-        // ) keyPageSize
-        // else 1
+      // if (
+      //   j.Mod.Shift.st.isPressed ^ (ext.preferences.shiftDpad.get() == DpadScroll.`single/page`)
+      // ) keyPageSize
+      // else 1
       state.keyScrollOffset = guardY(state.keyScrollOffset + (pageMul * inc))
-      clip.scrollToKey(state.keyScrollOffset)
+      // clip.scrollToKey(state.keyScrollOffset)
 
     enum UpDown:
       case Up, Down
 
     def canScroll(dir: UpDown): Boolean =
       clip.exists.get() && (dir match
-        case UpDown.Up   => state.keyScrollOffset + state.stepViewPort.height < 127
-        case UpDown.Down => state.keyScrollOffset > 0
+        case UpDown.Up   => state.keyScrollOffset + state.stepViewPort.get.height < 127
+        case UpDown.Down => state.keyScrollOffset + (8 - state.stepViewPort.get.height) > 0
       )
 
     def setStepPage(page: Int) =
@@ -372,11 +380,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val velAndNote = new ModeButtonLayer("velAndNote", j.notes) {
       override def onActivate(): Unit =
         super.onActivate()
-        state.stepViewPort = ViewPort(0, 0, 4, 8)
+        state.stepViewPort.set(ViewPort(0, 0, 4, 8))
 
       override def onDeactivate(): Unit =
         super.onDeactivate()
-        state.stepViewPort = ViewPort(0, 0, 8, 8)
+        state.stepViewPort.set(ViewPort(0, 0, 8, 8))
 
       inline def velNote(vel: Int) = s"Step: velocity $vel"
 
@@ -440,7 +448,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       dpadStep
     )
 
-    def onStepState(st: StepState): Unit = ()
+    def onStepState(from: StepState, to: StepState): Unit = ()
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, dpadStep) ++ subModes.filter(_.isOn)).distinct
@@ -462,4 +470,5 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 [ ] store grid settings per track
 [ ] autoscroll to content when there isn't any
 [ ] knob scrolls notes
-*/
+[ ] note pages
+ */
