@@ -56,15 +56,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
   case class Point(x: Int, y: Int)
 
-  // enum StepState:
-  //   // case Init
-  //   // case Focus(p: Point, handled: Boolean, ts: Instant)
-  //   // case MultiSelect(steps: Seq[NoteStep])
-  //   case Focus(
-  //     steps: Seq[NoteStep],
-  //     noRelease: Boolean
-  //   )
-
   inline def Noop = () => Vector.empty
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
@@ -284,32 +275,39 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         }).flatten
     }
 
-    lazy val stepPages = SimpleModeLayer("stepPages",
-        j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-          def hasContent = clip.getLoopLength().get() > i * stepSize * stepPageSize
-          Vector(
-            EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
-            SupColorStateB(
-              btn.light,
-              () =>
-                if (hasContent)
-                  // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                  if (i == state.stepScrollOffset / stepPageSize)
-                    JamColorState(JamColorBase.WHITE, 3)
-                  else if (clip.playingStep().get() / stepPageSize == i)
-                    JamColorState(JamColorBase.WHITE, 0)
-                  else JamColorState(clipColor, 1)
-                else JamColorState.empty
-            ),
-          )
-        }
+    lazy val stepPages = SimpleModeLayer(
+      "stepPages",
+      j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
+        def hasContent = clip.getLoopLength().get() > i * stepSize * stepPageSize
+        Vector(
+          EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
+          SupColorStateB(
+            btn.light,
+            () =>
+              if (hasContent)
+                // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
+                if (i == state.stepScrollOffset / stepPageSize)
+                  JamColorState(JamColorBase.WHITE, 3)
+                else if (clip.playingStep().get() / stepPageSize == i)
+                  JamColorState(JamColorBase.WHITE, 0)
+                else JamColorState(clipColor, 1)
+              else JamColorState.empty
+          ),
+        )
+      }
     )
 
-    lazy val stepEnc = SimpleModeLayer("stepEnc", Vector(
-        HB(j.encoder.turn, "note scroll", stepTarget(
-          () => scrollY(UpDown.Up, 1),
-          () => scrollY(UpDown.Down, 1)
-        ))
+    lazy val stepEnc = SimpleModeLayer(
+      "stepEnc",
+      Vector(
+        HB(
+          j.encoder.turn,
+          "note scroll",
+          stepTarget(
+            () => scrollY(UpDown.Up, 1),
+            () => scrollY(UpDown.Down, 1)
+          )
+        )
       )
     )
 
@@ -369,10 +367,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       j.perform,
       (for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
-        val idx = row * 4 + col
+        val chan = (3 - row) * 4 + col
         Vector(
-          SupColorB(btn.light, () => if (idx == state.channel) Color.whiteColor else clipColor),
-          EB(btn.st.press, s"select channel $idx", () => setChannel(idx))
+          SupColorB(btn.light, () => if (chan == state.channel) Color.whiteColor else clipColor),
+          EB(btn.st.press, s"select channel $chan", () => setChannel(chan))
         )
       ).flatten,
       GateMode.Gate
