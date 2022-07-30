@@ -24,6 +24,7 @@ import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.stepSequencer.*
 
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
@@ -34,29 +35,19 @@ import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.framework.Watched
 import java.time.Instant
 import com.github.unthingable.JamSettings.DpadScroll
+import com.bitwig.`extension`.controller.api.Track
+import com.github.unthingable.jam.TrackId.apply
+import com.github.unthingable.jam.TrackId
 
 trait StepSequencer extends BindingDSL { this: Jam =>
-  enum StepMode(val keyRows: Int):
-    case One extends StepMode(1)
-    // case OneFull extends StepMode(1)
-    case Four  extends StepMode(4)
-    case Eight extends StepMode(8)
 
   val stepModeMap = Map(
     0 -> StepMode.One,
+    1 -> StepMode.Two,
     // 1 -> StepMode.OneFull,
     3 -> StepMode.Four,
     7 -> StepMode.Eight
   )
-
-  case class ViewPort(row1: Int, col1: Int, row2: Int, col2: Int):
-    lazy val height = row2 - row1
-    lazy val width  = col2 - col1
-    lazy val size   = height * width
-
-  case class Point(x: Int, y: Int)
-
-  inline def Noop = () => Vector.empty
 
   lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
     val gridHeight               = 128
@@ -77,7 +68,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     // follow track selection
     ext.cursorTrack
       .position()
-      .addValueObserver(v => selectedClipTrack.selectChannel(ext.cursorTrack))
+      .addValueObserver(v =>
+        selectedClipTrack.selectChannel(ext.cursorTrack)
+        ext.host.scheduleTask(() => updateState(selectedClipTrack), 10)
+      )
 
     Vector(
       clip.exists,
@@ -96,145 +90,122 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
 
-    type StepFrac = (Int, Int) | Int
-    val stepSizes = Vector[StepFrac](
-      1 -> 64,
-      1 -> 32,
-      1 -> 16,
-      1 -> 8,
-      1 -> 4,
-      1 -> 2,
-      1,
-      2,
-      4,
-      8
-    )
+    var ts         = SeqState.empty                           // track state
+    val stateCache = mutable.HashMap.empty[TrackId, SeqState] // in mem for now
 
-    inline def stepSize: Double = stepSizes(state.stepSizeIdx) match
-      case (a, b) => a.toDouble / b.toDouble
-      case x: Int => x
-
-    inline def stepString: String = stepSizes(state.stepSizeIdx) match
-      case (a, b) => s"$a/$b"
-      case x: Int => s"$x"
-
-    case class StepState(steps: List[(Point, NoteStep)], noRelease: Boolean)
-
-    object state:
-      var channel                    = 0
-      var velocity: Int              = 100
-      var stepSizeIdx                = 5
-      var drumDevice: Option[Device] = None
-      var stepMode: StepMode         = StepMode.One
-      var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
-      var keyScrollOffset            = 12 * 3 // C1, TOP of viewport
-      // var keyPageSize                = 1
-      // var stepPageSize               = 64
-      // var newPatLength               = 4
+    object localState:
+      // var channel                    = 0
+      // var velocity: Int              = 100
+      // var stepSizeIdx                = 5
+      // var drumDevice: Option[Device] = None
+      // var stepMode: StepMode         = StepMode.One
+      // var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
+      // var keyScrollOffset            = 12 * 3 // C1, TOP of viewport
       var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
-      var stepViewPort                  = Watched(ViewPort(0, 0, 8, 8), onViewPort) // row/col
+      // var stepViewPort                  = Watched(ViewPort(0, 0, 8, 8), onViewPort) // row/col
 
-    clip.setStepSize(stepSize)
+    clip.setStepSize(ts.stepSize)
     // clip.scrollToKey(12 * 3)
     setGrid(StepMode.One)
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
+
+    def setState(st: SeqState) =
+      val old = ts
+      ts = st
+      tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
+
+    def updateState(cursorTrack: Track): Unit =
+      val st = tracker
+        .trackId(selectedClipTrack)
+        .map(stateCache.getOrElseUpdate(_, SeqState.empty))
+        .getOrElse(SeqState.empty)
+      ts = st
 
     /* Translate from matrix grid (row, col) to clip grid (x, y) */
     inline def m2clip(row: Int, col: Int): (Int, Int) =
       // no need to account for viewport as long as starts at 0,0
       val offset = row * 8 + col // matrix grid scanned
       (
-        offset % stepPageSize,
-        state.keyScrollOffset - (offset / stepPageSize)
+        offset % ts.stepPageSize,
+        ts.keyScrollOffsetGuarded - (offset / ts.stepPageSize)
       )
 
     def setGrid(mode: StepMode): Unit =
-      state.stepMode = mode
-      ext.host.showPopupNotification(s"Step grid: ${keyPageSize} x ${stepPageSize}")
+      setState(ts.copy(stepMode = mode))
+      ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
 
-    def onViewPort(from: ViewPort, to: ViewPort): Unit =
-      // resizing viewport can make offsets invalid
-      state.keyScrollOffset = guardY(state.keyScrollOffset)
-
-    // how many notes are visible in the viewport
-    inline def keyPageSize = (state.stepMode.keyRows / (8 / state.stepViewPort.get.height)).max(1)
-
-    // how many steps are visible in the viewport (per note)
-    inline def stepPageSize = state.stepViewPort.get.size / keyPageSize
-
-    def incStepSize(inc: Int): Unit =
-      state.stepSizeIdx = (state.stepSizeIdx + inc).min(stepSizes.size - 1).max(0)
-      clip.setStepSize(stepSize)
-      ext.host.showPopupNotification(s"Step size: $stepString")
-
-    // inline def guardY(y: Int) = y.max(0).min(128 - state.stepViewPort.height)
-    inline def guardY(y: Int) = y.max(keyPageSize - 1).min(127)
+    def incStepSize(inc: Short): Unit =
+      setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(ts.stepSizes.size - 1).max(0)))
+      clip.setStepSize(ts.stepSize)
+      ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
     inline def scrollY(offset: Int) =
-      state.keyScrollOffset = guardY(offset)
+      setState(ts.copy(keyScrollOffset = ts.guardY(offset)))
 
-    inline def scrollY(dir: UpDown, size: => Int = keyPageSize): Unit =
+    inline def scrollY(dir: UpDown, size: => Int): Unit =
       scrollYinc(dir match
         case UpDown.Up   => 1 * size
         case UpDown.Down => -1 * size
       )
 
+    inline def scrollY(dir: UpDown): Unit = scrollY(dir, ts.keyPageSize)
+
     inline def scrollYinc(inc: Int) =
-      state.keyScrollOffset = guardY(state.keyScrollOffset + inc)
+      scrollY(ts.keyScrollOffsetGuarded + inc)
 
     enum UpDown:
       case Up, Down
 
     inline def canScroll(dir: UpDown): Boolean =
       clip.exists.get() && (dir match
-        case UpDown.Up   => state.keyScrollOffset + state.stepViewPort.get.height < 127
-        case UpDown.Down => state.keyScrollOffset + (8 - state.stepViewPort.get.height) > 0
+        case UpDown.Up   => ts.keyScrollOffsetGuarded + ts.stepViewPort.height < 127
+        case UpDown.Down => ts.keyScrollOffsetGuarded + (8 - ts.stepViewPort.height) > 0
       )
 
     inline def setStepPage(page: Int) =
-      state.stepScrollOffset = stepPageSize * page
-      clip.scrollToStep(state.stepScrollOffset)
+      setState(ts.copy(stepScrollOffset = ts.stepPageSize * page))
+      clip.scrollToStep(ts.stepScrollOffset)
 
     inline def stepAt(x: Int, y: Int): NoteStep =
-      clip.getStep(state.channel, x, y)
+      clip.getStep(ts.channel, x, y)
 
     def stepPress(x: Int, y: Int): Unit =
       inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
 
-      val newState: StepState = state.stepState.get match
+      val newState: StepState = localState.stepState.get match
         case StepState(Nil, _) =>
           val step = stepAt(x, y)
           if (step.state == NSState.Empty)
-            clip.setStep(state.channel, x, y, state.velocity, stepSize)
+            clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
             StepState(List((Point(x, y), step)), true)
           else StepState(List((Point(x, y), step)), false)
         case st @ StepState(p @ (Point(x0, y0), _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
           val step: NoteStep = stepAt(x0, y0)
-          val newDuration    = stepSize * (x - x0 + 1)
+          val newDuration    = ts.stepSize * (x - x0 + 1)
           if (step.duration() == newDuration)
-            step.setDuration(stepSize)
+            step.setDuration(ts.stepSize)
           else
             step.setDuration(newDuration)
           st.copy(noRelease = true)
         case st @ StepState(steps, noRelease) if hasStep =>
           StepState(steps :+ (Point(x, y), stepAt(x, y)), noRelease)
         case st => st
-      state.stepState.set(newState)
+      localState.stepState.set(newState)
       // Util.println(stepState.toString())
 
     def stepRelease(X: Int, Y: Int): Unit =
-      val newState = state.stepState.get match
+      val newState = localState.stepState.get match
         case StepState((Point(X, Y), _) :: Nil, noRelease) =>
           if (!noRelease)
             val step = stepAt(X, Y)
             step.state match
-              case NSState.NoteOn => clip.clearStep(state.channel, X, Y)
+              case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
               case NSState.Empty | NSState.NoteSustain =>
-                clip.setStep(state.channel, X, Y, state.velocity, stepSize)
+                clip.setStep(ts.channel, X, Y, ts.velocity, ts.stepSize)
           StepState(List.empty, false)
         case st => st.copy(steps = st.steps.filter(_._1 != Point(X, Y)))
-      state.stepState.set(newState)
+      localState.stepState.set(newState)
       // Util.println(stepState.toString())
 
     def clipColor: Color =
@@ -244,7 +215,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
       override def onActivate(): Unit =
         super.onActivate()
-        state.stepState.set(StepState(List.empty, false))
+        // state.stepState.set(StepState(List.empty, false))
 
       override val modeBindings: Seq[Binding[_, _, _]] =
         (for (col <- EIGHT; row <- EIGHT) yield {
@@ -258,7 +229,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                 // chasing light
                 if (
                   ext.transport.isPlaying
-                    .get() && clip.playingStep().get() - state.stepScrollOffset == xy._1
+                    .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
                 ) // not right yet
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
@@ -278,7 +249,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
       j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-        def hasContent = clip.getLoopLength().get() > i * stepSize * stepPageSize
+        def hasContent = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize
         Vector(
           EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
           SupColorStateB(
@@ -286,9 +257,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             () =>
               if (hasContent)
                 // if (i == stepOffset / 32) Color.whiteColor() else clip.color().get()
-                if (i == state.stepScrollOffset / stepPageSize)
+                if (i == ts.stepScrollOffset / ts.stepPageSize)
                   JamColorState(JamColorBase.WHITE, 3)
-                else if (clip.playingStep().get() / stepPageSize == i)
+                else if (clip.playingStep().get() / ts.stepPageSize == i)
                   JamColorState(JamColorBase.WHITE, 0)
                 else JamColorState(clipColor, 1)
               else JamColorState.empty
@@ -348,7 +319,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
               SupColorStateB(
                 btn.light,
                 () =>
-                  if (state.stepMode == sm) JamColorState(Color.whiteColor(), 3)
+                  if (ts.stepMode == sm) JamColorState(Color.whiteColor(), 3)
                   else JamColorState(clipColor, 2)
               )
             )
@@ -360,16 +331,16 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def setChannel(ch: Int) =
       ext.host.showPopupNotification(s"Step sequencer: MIDI channel ${ch + 1}")
-      state.channel = ch
+      setState(ts.copy(channel = ch))
 
     lazy val chanSelect = ModeButtonLayer(
       "chanSelect",
       j.perform,
       (for (row <- 0 until 4; col <- 0 until 4) yield
-        val btn = j.matrix(row + 4)(col + 4)
+        val btn  = j.matrix(row + 4)(col + 4)
         val chan = (3 - row) * 4 + col
         Vector(
-          SupColorB(btn.light, () => if (chan == state.channel) Color.whiteColor else clipColor),
+          SupColorB(btn.light, () => if (chan == ts.channel) Color.whiteColor else clipColor),
           EB(btn.st.press, s"select channel $chan", () => setChannel(chan))
         )
       ).flatten,
@@ -379,22 +350,24 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val velAndNote = new ModeButtonLayer("velAndNote", j.notes) {
       override def onActivate(): Unit =
         super.onActivate()
-        state.stepViewPort.set(ViewPort(0, 0, 4, 8))
+        setState(ts.copy(noteVelVisible = true))
+        // state.stepViewPort.set(ViewPort(0, 0, 4, 8))
 
       override def onDeactivate(): Unit =
         super.onDeactivate()
-        state.stepViewPort.set(ViewPort(0, 0, 8, 8))
+        setState(ts.copy(noteVelVisible = false))
+        // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
 
       inline def velNote(vel: Int) = s"Step: velocity $vel"
 
       def setVelocity(vel: Int) =
         ext.host.showPopupNotification(velNote(vel))
-        state.velocity = vel
-        selectedClipTrack.playNote(state.keyScrollOffset, vel)
+        setState(ts.copy(velocity = vel))
+        selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
 
       def notePress(note: Int): Unit =
         scrollY(note)
-        selectedClipTrack.playNote(note, state.velocity)
+        selectedClipTrack.playNote(note, ts.velocity)
 
       val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn             = j.matrix(row + 4)(col)
@@ -404,7 +377,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         Vector(
           SupColorB(
             btn.light,
-            () => if (state.velocity / velScale == idx) Color.whiteColor() else clipColor
+            () => if (ts.velocity / velScale == idx) Color.whiteColor() else clipColor
           ),
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
@@ -416,7 +389,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         Vector(
           SupColorB(
             btn.light,
-            () => if (noteIdx == state.keyScrollOffset) Color.whiteColor else clipColor
+            () => if (noteIdx == ts.keyScrollOffsetGuarded) Color.whiteColor else clipColor
           ),
           EB(btn.st.press, "set note", () => notePress(noteIdx))
         )
