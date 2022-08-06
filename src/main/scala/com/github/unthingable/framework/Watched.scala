@@ -20,3 +20,5 @@ class Watched[A](init: A, onChange: (A, A) => Unit):
     if (old != a) onChange(old, a)
 
   def update(f: A => A): Unit = set(f(_value))
+
+class Ref[A](init: A) extends Watched(init, (_, _) => ())
