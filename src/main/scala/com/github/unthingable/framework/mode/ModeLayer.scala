@@ -235,7 +235,7 @@ abstract class ModeCycleLayer(
     val mode = subModes(idx)
     Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
     selected = Some(idx)
-    // if (isOn) ext.events.eval(s"$id select act")(mode.activateEvent*)
+    if (isOn && !mode.isOn) ext.events.eval(s"$id select act")(mode.activateEvent*)
   }
 }
 

@@ -8,8 +8,9 @@ import java.nio.ByteBuffer
 import scala.collection.mutable
 import java.lang.reflect.Method
 import com.github.unthingable.framework.Ref
+import java.util.UUID
 
-case class TrackId(value: Int)
+case class TrackId(value: Int) extends AnyVal
 
 trait TrackTracker {
   protected def bank: TrackBank
@@ -35,137 +36,137 @@ trait TrackTracker {
   * @deprecated
   *   broken as of 4.3
   */
-class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends TrackTracker {
-  import TrackTracker._
+// class SmartTracker(val bank: TrackBank)(implicit val ext: MonsterJamExt) extends TrackTracker {
+//   import TrackTracker._
 
-  var sequence: Int = 0
+//   var sequence: Int = 0
 
-  private val rescanCallbacks = mutable.ArrayDeque.empty[() => Unit]
+//   private val rescanCallbacks = mutable.ArrayDeque.empty[() => Unit]
 
-  bank.itemCount().markInterested()
+//   bank.itemCount().markInterested()
 
-  private val idPos = mutable.ArrayBuffer.fill(256)(-1)
-  private val posId = mutable.ArrayBuffer.fill(256)(-1)
+//   private val idPos = mutable.ArrayBuffer.fill(256)(-1)
+//   private val posId = mutable.ArrayBuffer.fill(256)(-1)
 
-  (0 until bank.getCapacityOfBank).foreach { i =>
-    val track = bank.getItemAt(i)
-    track.exists().markInterested()
-    track.trackType().markInterested()
-    track.position().markInterested()
-    track.color().markInterested()
-    track.name().markInterested() // TODO rm
-    track.color().addValueObserver((r, g, b) => trackColorChange(track))
-  }
+//   (0 until bank.getCapacityOfBank).foreach { i =>
+//     val track = bank.getItemAt(i)
+//     track.exists().markInterested()
+//     track.trackType().markInterested()
+//     track.position().markInterested()
+//     track.color().markInterested()
+//     track.name().markInterested() // TODO rm
+//     track.color().addValueObserver((r, g, b) => trackColorChange(track))
+//   }
 
-  bank.itemCount().addValueObserver(_ => rescan())
+//   bank.itemCount().addValueObserver(_ => rescan())
 
-  override def trackId(track: Track): Option[TrackId] = {
-    val sig = signature(track)
-    if (isOurs(sig))
-      Some(TrackId(sig & 0xff))
-    else
-      None
-  }
+//   override def trackId(track: Track): Option[TrackId] = {
+//     val sig = signature(track)
+//     if (isOurs(sig))
+//       Some(TrackId(sig & 0xff))
+//     else
+//       None
+//   }
 
-  protected def trackColorChange(track: Track): Unit =
-    ext.host.scheduleTask(
-      () => // let rescan run first if it's a new track
-        if (track.exists().get) {
-          val pos = track.position().get()
-          val id  = posId(pos)
-          if (id != -1 && !isOurs(signature(track.color().get))) {
-            // otherwise we're in the middle of rescanning
-            Util.println(s"genuine color change to track $pos with id $id")
-            // printColor(track.color().get())
-            sign(track, id.toByte)
-          }
-        },
-      100
-    )
+//   protected def trackColorChange(track: Track): Unit =
+//     ext.host.scheduleTask(
+//       () => // let rescan run first if it's a new track
+//         if (track.exists().get) {
+//           val pos = track.position().get()
+//           val id  = posId(pos)
+//           if (id != -1 && !isOurs(signature(track.color().get))) {
+//             // otherwise we're in the middle of rescanning
+//             Util.println(s"genuine color change to track $pos with id $id")
+//             // printColor(track.color().get())
+//             sign(track, id.toByte)
+//           }
+//         },
+//       100
+//     )
 
-  protected def rescan(): Unit = {
-    Util.println("rescanning superbank")
-    idPos.mapInPlace(_ => -1)
-    posId.mapInPlace(_ => -1)
-    val newTracks = mutable.ArrayDeque.empty[Track]
+//   protected def rescan(): Unit = {
+//     Util.println("rescanning superbank")
+//     idPos.mapInPlace(_ => -1)
+//     posId.mapInPlace(_ => -1)
+//     val newTracks = mutable.ArrayDeque.empty[Track]
 
-    // pass 1: rescan known tracks
-    (0 until bank.itemCount().get())
-      .map(pos => (pos, bank.getItemAt(pos)))
-      .filter(_._2.exists().get())
-      .foreach {
-        case (pos, track) =>
-          val sig = signature(track)
-          if (isOurs(sig)) {
-            val id = sig & 0xff
-            // val pos = track.position().get()
-            if (idPos(id) != -1) // collision
-              newTracks.addOne(track)
-            else {
-              Util.println(s"track ${track.name().get()} with $id -> $pos")
-              idPos.update(id, pos)
-              posId.update(pos, id)
-            }
-          } else {
-            newTracks.addOne(track)
-          }
-      }
+//     // pass 1: rescan known tracks
+//     (0 until bank.itemCount().get())
+//       .map(pos => (pos, bank.getItemAt(pos)))
+//       .filter(_._2.exists().get())
+//       .foreach {
+//         case (pos, track) =>
+//           val sig = signature(track)
+//           if (isOurs(sig)) {
+//             val id = sig & 0xff
+//             // val pos = track.position().get()
+//             if (idPos(id) != -1) // collision
+//               newTracks.addOne(track)
+//             else {
+//               Util.println(s"track ${track.name().get()} with $id -> $pos")
+//               idPos.update(id, pos)
+//               posId.update(pos, id)
+//             }
+//           } else {
+//             newTracks.addOne(track)
+//           }
+//       }
 
-    // pass 2: index new tracks
-    newTracks.zip(idPos.zipWithIndex.filter(_._1 == -1)).foreach {
-      case (track, (_, id)) =>
-        val pos = track.position().get()
-        sign(track, id.toByte)
-        idPos.update(id, pos)
-        posId.update(pos, id)
-    }
+//     // pass 2: index new tracks
+//     newTracks.zip(idPos.zipWithIndex.filter(_._1 == -1)).foreach {
+//       case (track, (_, id)) =>
+//         val pos = track.position().get()
+//         sign(track, id.toByte)
+//         idPos.update(id, pos)
+//         posId.update(pos, id)
+//     }
 
-    while (rescanCallbacks.nonEmpty)
-      rescanCallbacks.removeHead()()
-  }
+//     while (rescanCallbacks.nonEmpty)
+//       rescanCallbacks.removeHead()()
+//   }
 
-  def positionForId(id: TrackId): Option[Int] = {
-    val pos = idPos(id.value)
-    if (pos == -1)
-      None
-    else
-      Some(pos)
-  }
+//   def positionForId(id: TrackId): Option[Int] = {
+//     val pos = idPos(id.value)
+//     if (pos == -1)
+//       None
+//     else
+//       Some(pos)
+//   }
 
-  def addRescanCallback(f: () => Unit): Unit = {
-    rescanCallbacks.addOne(f)
+//   def addRescanCallback(f: () => Unit): Unit = {
+//     rescanCallbacks.addOne(f)
 
-    // in case rescan didn't fire
-    ext.host.scheduleTask(() => rescanCallbacks.removeAll(_ == f), 500)
-  }
+//     // in case rescan didn't fire
+//     ext.host.scheduleTask(() => rescanCallbacks.removeAll(_ == f), 500)
+//   }
 
-  override def idForPosition(pos: Signature): Option[TrackId] = {
-    val id = posId(pos)
-    if (id == -1) None else Some(TrackId(id))
-  }
+//   override def idForPosition(pos: Signature): Option[TrackId] = {
+//     val id = posId(pos)
+//     if (id == -1) None else Some(TrackId(id))
+//   }
 
-  def getItemAt(id: TrackId): Option[Track] = positionForId(id).map(bank.getItemAt)
+//   def getItemAt(id: TrackId): Option[Track] = positionForId(id).map(bank.getItemAt)
 
-  def idList: Seq[Option[TrackId]] = ???
+//   def idList: Seq[Option[TrackId]] = ???
   
-  def idMap: Seq[(TrackId, Int)] = ???
+//   def idMap: Seq[(TrackId, Int)] = ???
 
-}
+// }
 
 // positions and IDs are the same
-class DumbTracker(val bank: TrackBank) extends TrackTracker {
-  (0 until bank.getCapacityOfBank).foreach(bank.getItemAt(_).position().markInterested())
+// class DumbTracker(val bank: TrackBank) extends TrackTracker {
+//   (0 until bank.getCapacityOfBank).foreach(bank.getItemAt(_).position().markInterested())
 
-  override def trackId(track: Track): Option[TrackId] = Some(TrackId(track.position().get()))
+//   override def trackId(track: Track): Option[TrackId] = Some(TrackId(track.position().get()))
 
-  override def idForPosition(pos: Int): Option[TrackId] = Some(TrackId(pos))
+//   override def idForPosition(pos: Int): Option[TrackId] = Some(TrackId(pos))
 
-  override def getItemAt(id: TrackId): Option[Track] = Some(bank.getItemAt(id.value))
+//   override def getItemAt(id: TrackId): Option[Track] = Some(bank.getItemAt(id.value))
 
-  def idList: Seq[Option[TrackId]] = idMap.map(x => Some(x._1))
+//   def idList: Seq[Option[TrackId]] = idMap.map(x => Some(x._1))
   
-  def idMap: Seq[(TrackId, Int)] = (0 until bank.getCapacityOfBank()).map(i => (TrackId(i), i))
-}
+//   def idMap: Seq[(TrackId, Int)] = (0 until bank.getCapacityOfBank()).map(i => (TrackId(i), i))
+// }
 
 /** Track ephemeral IDs as hashcodes of Track objects under proxies.
  * Unlike SmartTracker which was stable, UnsafeTracker does not preserve IDs between host restarts.
@@ -183,9 +184,14 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
     .foreach { case (t, idx) =>
       t.position().markInterested()
       t.name().markInterested()
-      // testing - assume track name signals track has changed
-      // t.name().addValueObserver(s => Util.println(s"track $idx name $s"))
     }
+  
+  bank.itemCount().addValueObserver(_ =>
+    // check for collisions
+    val hashes = bankRange.map(bank.getItemAt).flatMap(idForBankTrack)
+    if (hashes.distinct.size != hashes.size && ext.preferences.smartTracker.get())
+      ext.host.showPopupNotification("Track ID hash collision detected, superscenes might not work")
+  )
 
   val ids = mutable.ArraySeq.from(0 until bank.getCapacityOfBank())
 
@@ -214,27 +220,18 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
         None
 
   private def idForBankTrack(st: Track): Option[TrackId] =
-    import java.util.UUID
     val uid = for {
-      tObj <- getOr(targetM, Option(st.getClass.getMethod("getTarget"))).map(_.invoke(st))
+      tMethod <- getOr(targetM, Option(st.getClass.getMethod("getTarget")))
+      tObj <- Option(tMethod.invoke(st))
       idMethod <- getOr(idM, 
         tObj.getClass().getMethods()
         .filter(_.getReturnType().equals(classOf[UUID]))
         .headOption) // let's hope there is just one
     } yield idMethod.invoke(tObj).asInstanceOf[UUID]
 
-    val id: Option[Int] = Option(st.getClass()
-      .getMethod("getTarget")
-      .invoke(st))
-      .map(_.hashCode())
+    val id = uid.map(_.hashCode())
 
-    // if (idMethod.isEmpty)
-    //   val tobj = Option(st.getClass.getMethod("getTarget").invoke(st))
-    //   val mm = tobj.map(_.getClass.getMethods().filter(_.getReturnType().equals(classOf[UUID])))
-    //   idMethod = mm.flatMap(_.headOption)
-
-    // if (idMethod != null)
-    Util.println(s"id for ${st.name().get}: $uid $id")
+    // Util.println(s"id for ${st.name().get}: $uid $id")
     id.map(TrackId.apply)
 
   inline def idList: Seq[Option[TrackId]] = 

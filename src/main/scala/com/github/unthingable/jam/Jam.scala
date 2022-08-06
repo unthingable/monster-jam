@@ -27,8 +27,10 @@ class Jam(implicit val ext: MonsterJamExt)
   lazy val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
-  lazy val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
+  // val superBank: TrackBank = ext.host.createMasterTrack(256).createMainTrackBank(256, 8, 256, true)
+  val superBank: TrackBank = ext.host.createTrackBank(256, 8, 256, true)
   superBank.itemCount().markInterested()
+  // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
 
   lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
@@ -42,12 +44,13 @@ class Jam(implicit val ext: MonsterJamExt)
   }
 
   ext.preferences.smartTracker.markInterested()
-  implicit val tracker: TrackTracker = {
-    if (ext.preferences.smartTracker.get())
-      new SmartTracker(superBank)
-    else
-      new DumbTracker(superBank)
-  }
+  given tracker: TrackTracker = UnsafeTracker(superBank)
+  // {
+  //   if (ext.preferences.smartTracker.get())
+  //     UnsafeTracker(superBank)
+  //   else
+  //     DumbTracker(superBank)
+  // }
 
   lazy val sceneBank  : SceneBank   = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)

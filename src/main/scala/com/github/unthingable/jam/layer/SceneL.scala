@@ -13,6 +13,7 @@ import com.github.unthingable.jam.{Jam, TrackId}
 import java.time.Instant
 import scala.collection.mutable
 import scala.util.Try
+import com.bitwig.`extension`.controller.api.Track
 
 trait SceneL { this: Jam =>
 
@@ -55,11 +56,10 @@ trait SceneL { this: Jam =>
     val sceneStore: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
     sceneStore.asInstanceOf[Setting].hide()
 
-    lazy val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(sceneStore.get()))
+    val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(sceneStore.get()))
 
     private def fromSettings(s: String): Iterable[Map[TrackId, Int]] =
-      Try(deserialize(maxTracks, maxScenes)(s))
-        .toEither
+      Util.deserialize[superScenes.type](s)
         .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
         .left.map { e => Util.println(s"Failed to deserialize superscenes: ${e}"); e }
         .getOrElse(Vector.fill(maxTracks)(Map.empty))
@@ -79,25 +79,28 @@ trait SceneL { this: Jam =>
 
     def scan(): Seq[ClipTarget] = (0 until maxTracks.min(superBank.itemCount().get)).flatMap { tIdx =>
       val scenes = superBank.getItemAt(tIdx).clipLauncherSlotBank()
+      val posMap: Map[Int, TrackId] = tracker.idMap.map(_.swap).toMap
       (0 until maxScenes.min(scenes.itemCount().get())).flatMap { sIdx =>
         val clip = scenes.getItemAt(sIdx)
 
         if (clip.isPlaying.get())
-          tracker.idForPosition(tIdx).map(ClipTarget(_, sIdx))
+          posMap.get(tIdx).map(ClipTarget(_, sIdx))
         else
           None
       }
     }
 
     def recall(sceneIdx: Int): Unit = {
-      (0 until maxTracks).map(TrackId.apply).foreach { trackId =>
-        superScenes(sceneIdx).get(trackId) match {
+      val posMap: Map[Int, TrackId] = tracker.idMap.map(_.swap).toMap
+      (0 until maxTracks).foreach { idx =>
+        val track = superBank.getItemAt(idx)
+        posMap.get(idx).flatMap(superScenes(sceneIdx).get) match {
           case Some(clip) =>
             // If a scene has a clip for a track id, attempt to launch it
-            tracker.getItemAt(trackId).foreach(_.clipLauncherSlotBank().launch(clip))
+            track.clipLauncherSlotBank().launch(clip)
           case None       =>
             // Otherwise attempt to stop
-            tracker.getItemAt(trackId).foreach(_.stop())
+            track.stop()
         }
       }
       lastScene = Some(sceneIdx)
@@ -107,30 +110,9 @@ trait SceneL { this: Jam =>
       if (GlobalMode.Clear.isOn) superScenes.update(sceneIdx, Map.empty)
       else if (superScenes(sceneIdx).isEmpty) {
         superScenes.update(sceneIdx, scan().map(ct => ct.trackId -> ct.clip).toMap)
-
-        val ser = serialize(maxTracks, maxScenes)(superScenes)
-        //ext.host.println(ser)
-        sceneStore.set(ser)
+        sceneStore.set(Util.serialize(superScenes))
       } else
           recall(sceneIdx)
-    }
-
-    def serialize(rows: Int, cols: Int)(o: Iterable[Map[TrackId, Int]]): String =
-      o.take(rows).map { row =>
-        (0 until cols).map { idx => // danger zone: we depend on TrackId implementation being an int-based byte
-          f"${idx}%02x${row.get(TrackId(idx)).map(_ + 1).getOrElse(0)}%02x"
-        }.mkString
-      }.mkString
-
-    def deserialize(rows: Int, cols: Int)(s: String): Iterable[Map[TrackId, Int]] = {
-      assert(s.length == bufferSize, s"length mismatch: expected $bufferSize, got ${s.length}")
-      assert(rows * cols * 4 == bufferSize, s"rows * cols (${rows * cols * 4}) does not match expected bufferSize $bufferSize")
-      val ret = s.grouped(2).map(Integer.parseInt(_, 16))
-        .grouped(2).map(s => s(0) -> (s(1) - 1))
-        .grouped(cols).map(_.filter(_._2 != -1).map(t => (TrackId(t._1), t._2)).toMap)
-        .toVector
-      //assert(ret.forall(_.forall(x => x._1 < maxTracks && x._2 < maxScenes)), "index out of bounds")
-      ret
     }
 
     def page(idx: Int): mutable.Seq[Map[TrackId, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
@@ -195,7 +177,7 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval("sceneL press")(pageMatrix.activateEvent*), 50)
+      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval("sceneL press")(pageMatrix.activateEvent*), 80)
     }
 
     def release(): Unit = {
