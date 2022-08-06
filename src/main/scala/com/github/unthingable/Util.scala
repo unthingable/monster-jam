@@ -8,6 +8,13 @@ import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
 import java.time.Instant
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import scala.util.Try
+import java.nio.charset.StandardCharsets
+
 transparent trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
     def forindex(f: (A, Int) => Unit): S[A] = {
@@ -32,4 +39,20 @@ object Util extends Util {
     }
   }
   val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+
+  def serialize[A](o: A): String =
+    val bos = new ByteArrayOutputStream
+    val oos = new ObjectOutputStream(bos)
+    oos.writeObject(o)
+    oos.close()
+    java.util.Base64.getEncoder().encodeToString(bos.toByteArray())
+
+  def deserialize[A](s: String): Either[Throwable, A] =
+    Try {
+      val bis = new ByteArrayInputStream(java.util.Base64.getDecoder().decode(s))
+      val ois = new ObjectInputStream(bis)
+      val obj = ois.readObject()
+      ois.close()
+      obj.asInstanceOf[A]
+    }.toEither
 }
