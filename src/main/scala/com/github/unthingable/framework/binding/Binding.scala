@@ -13,6 +13,7 @@ import scala.collection.mutable
 import reflect.Selectable.reflectiveSelectable
 import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.HasButtonState
+import com.github.unthingable.framework.HasId
 
 trait Clearable {
   // stop the binding from doing its thing
@@ -174,6 +175,13 @@ object JCB extends BindingDSL {
       SupBooleanB(b.light.isOn, isOn),
       EB(b.st.press, s"$name press", press),
       EB(b.st.release, s"$name release", release),
+    )
+
+  inline def empty(b: HasButtonState & HasOnOffLight & HasId, isOn: BooleanSupplier = () => false)(using MonsterJamExt) =
+    Vector(
+      SupBooleanB(b.light.isOn, isOn),
+      EB(b.st.press, s"${b.id} press noop", () => Vector.empty),
+      EB(b.st.release, s"${b.id} release noop", () => Vector.empty),
     )
 }
 

@@ -81,11 +81,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.getShuffle,
       clip.getLoopStart,
       clip.getLoopLength,
-      clip.playingStep(),
-      clip.color(),
-      clip.canScrollKeysDown(),
-      clip.canScrollKeysUp(),
+      clip.playingStep,
+      clip.color,
+      clip.canScrollKeysDown,
+      clip.canScrollKeysUp,
       selectedClipTrack.color,
+      selectedClipTrack.position,
+      selectedClipTrack.name,
       ext.transport.isPlaying,
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
@@ -439,7 +441,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
       EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
-    )
+    ) ++ JCB.empty(j.song)
   }
 }
 
@@ -448,4 +450,5 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 [ ] autoscroll to content when there isn't any
 [x] knob scrolls notes
 [ ] note pages
+- step-hold to select or create clips before entering sequencer
  */
