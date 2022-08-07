@@ -41,68 +41,31 @@ import com.github.unthingable.jam.TrackId
 import com.bitwig.`extension`.controller.api.Setting
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.TrackTracker
+import com.bitwig.`extension`.controller.api.CursorTrack
 
-// trait TrackedState { this: Jam =>
-//     // given ext: MonsterJamExt
-//     // given tracker: TrackTracker
-
-//   var ts         = SeqState.empty                           // track state
-//   private val stateCache = mutable.HashMap.empty[TrackId, SeqState] // in mem for now
-
-//   private val bufferSize = 1024*1024
-//   private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
-//   stateStore.asInstanceOf[Setting].hide()
-
-//   def storeState(): Unit = 
-//     val data = Util.serialize(stateCache.toSeq)
-//     Util.println(s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer")
-//     stateStore.set(data)
-    
-//   def restoreState(): Unit =
-//     Util.deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
-//       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-//       .left.map { e => Util.println(s"Failed to deserialize step states: ${e}"); e }
-//       .foreach(data =>
-//         stateCache.clear()
-//         stateCache.addAll(data)
-//       )
-
-//   def setState(st: SeqState) =
-//     val old = ts
-//     ts = st
-//     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
-//     storeState()
-
-//   def updateState(cursorTrack: Track): Unit =
-//     val st = tracker
-//       .trackId(selectedClipTrack)
-//       .map(stateCache.getOrElseUpdate(_, SeqState.empty))
-//       .getOrElse(SeqState.empty)
-//     ts = st
-//     storeState()
-// }
-
-trait StepSequencer extends BindingDSL { this: Jam =>
+trait TrackedState(selectedClipTrack: CursorTrack)(using ext: MonsterJamExt, tracker: TrackTracker) {
   var ts         = SeqState.empty                           // track state
   private val stateCache = mutable.HashMap.empty[TrackId, SeqState] // in mem for now
 
-  private object store: // object to defer init
-    val bufferSize = 1024*1024
-    val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
-    stateStore.asInstanceOf[Setting].hide()
+  private val bufferSize = 1024*1024
+  private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
+  stateStore.asInstanceOf[Setting].hide()
 
+  ext.application.projectName().addValueObserver(_ => restoreState())
+  
   def storeState(): Unit = 
     val data = Util.serialize(stateCache.toSeq)
-    Util.println(s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / store.bufferSize} of buffer")
-    store.stateStore.set(data)
+    Util.println(s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer")
+    stateStore.set(data)
     
   def restoreState(): Unit =
-    Util.deserialize[Seq[(TrackId, SeqState)]](store.stateStore.get())
+    Util.deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
       .left.map { e => Util.println(s"Failed to deserialize step states: ${e}"); e }
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
+        ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
       )
 
   def setState(st: SeqState) =
@@ -118,7 +81,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       .getOrElse(SeqState.empty)
     ts = st
     storeState()
-    
+}
+
+trait StepSequencer extends BindingDSL { this: Jam =>
   val stepModeMap = Map(
     0 -> StepMode.One,
     1 -> StepMode.Two,
@@ -127,7 +92,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     7 -> StepMode.Eight
   )
 
-  lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer {
+  lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer with TrackedState(selectedClipTrack) {
     val gridHeight               = 128
     val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
@@ -148,8 +113,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       .position()
       .addValueObserver(v =>
         selectedClipTrack.selectChannel(ext.cursorTrack)
-        updateState(selectedClipTrack)
-        // ext.host.scheduleTask(() => updateState(selectedClipTrack), 10)
+        // updateState(ext.cursorTrack)
+        ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
       )
 
     Vector(
@@ -501,15 +466,15 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       Vector(
         EB(j.ShiftSolo.press, "shift-solo pressed", () => patLength.activateEvent),
         EB(j.ShiftSolo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
-      )
+      ) ++ JCB.empty(j.song)
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(
       EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
-    ) ++ JCB.empty(j.song)
+    )
   
     override def onActivate(): Unit =
-      // restoreState()
+      restoreState()
       super.onActivate()
   }
 }

@@ -180,8 +180,8 @@ object JCB extends BindingDSL {
   inline def empty(b: HasButtonState & HasOnOffLight & HasId, isOn: BooleanSupplier = () => false)(using MonsterJamExt) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
-      EB(b.st.press, s"${b.id} press noop", () => Seq.empty[Command]),
-      EB(b.st.release, s"${b.id} release noop", () => Seq.empty[Command]),
+      EB(b.st.press, s"${b.id} press noop", () => Seq.empty),
+      EB(b.st.release, s"${b.id} release noop", () => Seq.empty),
     )
 }
 
@@ -226,8 +226,6 @@ object EB:
     case (S, S => Event) => S
   
   type OutcomeSpec =  Command | (() => Unit) | (() => Seq[Command])
-  // type OutcomeSpec =  Command | (() => Unit | Seq[Command])
-  // type OutcomeSpec =  Command | Function0[Unit] | Function0[Seq[Command]]
 
   inline def asOutcome(o: OutcomeSpec): Outcome =
     inline o match
