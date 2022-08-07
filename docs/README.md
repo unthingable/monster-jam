@@ -179,7 +179,10 @@ Same goes for remote control pages within a device. You can use Device Selector 
 
 * Scene buttons (top): sequencer pages. Currently selected page is bright white, currently playing page is dim white.
 * Pad matrix: select and edit steps. When transport is playing, the currently playing step is white.
-* Arrows: navigate 
+* Arrows up/down: scroll notes by pages
+* Knob: scroll notes by one
+* **GRID**: activate grid selector
+* **SHIFT+SOLO**: activate pattern length selector
 
 ### Scene buttons 
 ### Pad matrix
@@ -229,7 +232,7 @@ It's a bit of a hack until a better way is found.
 
 SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperScenes are available per project.
 
-* **SONG** toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
+* **SONG** (short press) toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
 * Empty **SCENE(1-8)** creates new SuperScene from playing clips
 * Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Currently selected scene is **white**.
 * **CLEAR+SCENE(1-8)** deletes the SuperScene (clips and their playing states are unaffected)

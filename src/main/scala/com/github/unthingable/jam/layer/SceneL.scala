@@ -49,7 +49,7 @@ trait SceneL { this: Jam =>
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
     val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes              = superBank.sceneBank().getSizeOfBank
-    val bufferSize             = maxTracks * maxScenes * 4
+    val bufferSize             = ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
     var pageIndex              = 0
     var lastScene: Option[Int] = None
 
@@ -110,7 +110,9 @@ trait SceneL { this: Jam =>
       if (GlobalMode.Clear.isOn) superScenes.update(sceneIdx, Map.empty)
       else if (superScenes(sceneIdx).isEmpty) {
         superScenes.update(sceneIdx, scan().map(ct => ct.trackId -> ct.clip).toMap)
-        sceneStore.set(Util.serialize(superScenes))
+        val data = Util.serialize(superScenes)
+        Util.println(s"saving superScenes: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer")
+        sceneStore.set(data)
       } else
           recall(sceneIdx)
     }
