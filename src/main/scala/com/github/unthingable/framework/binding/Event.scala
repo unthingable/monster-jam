@@ -29,3 +29,6 @@ The difference between raw button press events and higher order events (combos a
 
 Main point of events is to decouple from callback "actions" and pass events through our own event processor.
 */
+
+object GlobalEvent:
+  case class ClipSelected(globalTrack: Int, globalClip: Int) extends ExtEvent

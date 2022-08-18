@@ -42,26 +42,37 @@ import com.bitwig.`extension`.controller.api.Setting
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.TrackTracker
 import com.bitwig.`extension`.controller.api.CursorTrack
+import com.github.unthingable.framework.binding.GlobalEvent
+import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
 
-trait TrackedState(selectedClipTrack: CursorTrack)(using ext: MonsterJamExt, tracker: TrackTracker) {
-  var ts         = SeqState.empty                           // track state
-  private val stateCache = mutable.HashMap.empty[TrackId, SeqState] // in mem for now
+trait TrackedState(selectedClipTrack: CursorTrack)(using
+  ext: MonsterJamExt,
+  tracker: TrackTracker
+) {
+  var ts                 = SeqState.empty // track state
+  private val stateCache = mutable.HashMap.empty[TrackId, SeqState]
 
-  private val bufferSize = 1024*1024
+  private val bufferSize = 1024 * 1024
   private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
   stateStore.asInstanceOf[Setting].hide()
 
   ext.application.projectName().addValueObserver(_ => restoreState())
-  
-  def storeState(): Unit = 
+
+  def storeState(): Unit =
     val data = Util.serialize(stateCache.toSeq)
-    Util.println(s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer")
+    Util.println(
+      s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
+    )
     stateStore.set(data)
-    
+
   def restoreState(): Unit =
-    Util.deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
+    Util
+      .deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-      .left.map { e => Util.println(s"Failed to deserialize step states: ${e}"); e }
+      .left
+      .map { e =>
+        Util.println(s"Failed to deserialize step states: ${e}"); e
+      }
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
@@ -92,7 +103,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     7 -> StepMode.Eight
   )
 
-  lazy val stepSequencer = new ModeCycleLayer("STEP") with ListeningLayer with TrackedState(selectedClipTrack) {
+  lazy val stepSequencer = new ModeCycleLayer("STEP")
+    with ListeningLayer
+    with TrackedState(selectedClipTrack) {
     val gridHeight               = 128
     val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
@@ -116,6 +129,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         // updateState(ext.cursorTrack)
         ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
       )
+    
+    // follow clip selection
+    ext.events.addSub((e: ClipSelected) =>
+      if (isOn) selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
+      )
 
     Vector(
       clip.exists,
@@ -137,15 +155,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     ).foreach(_.markInterested())
 
     object localState:
-      // var channel                    = 0
-      // var velocity: Int              = 100
-      // var stepSizeIdx                = 5
-      // var drumDevice: Option[Device] = None
-      // var stepMode: StepMode         = StepMode.One
-      // var stepScrollOffset           = 0      // can't get it from Clip (for page buttons only)
-      // var keyScrollOffset            = 12 * 3 // C1, TOP of viewport
       var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
-      // var stepViewPort                  = Watched(ViewPort(0, 0, 8, 8), onViewPort) // row/col
 
     clip.setStepSize(ts.stepSize)
     // clip.scrollToKey(12 * 3)
@@ -380,6 +390,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     lazy val velAndNote = new ModeButtonLayer("velAndNote", j.notes) {
+      selectedClipTrack.playingNotes().markInterested()
       override def onActivate(): Unit =
         super.onActivate()
         setState(ts.copy(noteVelVisible = true))
@@ -422,9 +433,16 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         val btn     = j.matrix(row + 4)(col + 4)
         val noteIdx = tmpPageOffset + (3 - row) * 4 + col
         Vector(
-          SupColorB(
+          SupColorStateB(
             btn.light,
-            () => if (noteIdx == ts.keyScrollOffsetGuarded) Color.whiteColor else clipColor
+            () =>
+              if (noteIdx == ts.keyScrollOffsetGuarded)
+                JamColorState(Color.whiteColor(), 3)
+              else
+                JamColorState(
+                  clipColor,
+                  if (selectedClipTrack.playingNotes().isNotePlaying(noteIdx)) 3 else 0
+                )
           ),
           EB(btn.st.press, "set note", () => notePress(noteIdx)),
           EB(btn.st.release, "release note", () => noteRelease(noteIdx)),
@@ -472,7 +490,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
-  
+
     override def onActivate(): Unit =
       restoreState()
       super.onActivate()
@@ -480,7 +498,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 }
 
 /* todos
-[ ] store grid settings per track
+[x] store grid settings per track
 [ ] autoscroll to content when there isn't any
 [x] knob scrolls notes
 [ ] note pages

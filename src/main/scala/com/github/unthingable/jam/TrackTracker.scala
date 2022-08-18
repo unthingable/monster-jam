@@ -221,9 +221,9 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
 
   private def idForBankTrack(st: Track): Option[TrackId] =
     val uid = for {
-      tMethod <- getOr(targetM, Option(st.getClass.getMethod("getTarget")))
-      tObj <- Option(tMethod.invoke(st))
-      idMethod <- getOr(idM, 
+      tMethod: Method <- getOr(targetM, Option(st.getClass.getMethod("getTarget")))
+      tObj: Object <- Option(tMethod.invoke(st))
+      idMethod: Method <- getOr(idM, 
         tObj.getClass().getMethods()
         .filter(_.getReturnType().equals(classOf[UUID]))
         .headOption) // let's hope there is just one
