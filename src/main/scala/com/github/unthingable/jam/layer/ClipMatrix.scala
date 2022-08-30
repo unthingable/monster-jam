@@ -2,7 +2,7 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB, BindingBehavior => BB}
+import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, EB, SupColorStateB}
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -22,6 +22,7 @@ trait ClipMatrix { this: Jam =>
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
       track.isQueuedForStop.markInterested()
+      ext.transport.getPosition().markInterested()
 
       val clips = track.clipLauncherSlotBank()
 
@@ -40,64 +41,79 @@ trait ClipMatrix { this: Jam =>
 
         Vector(
           SupColorStateB(btn.light, () => clipColor(track, clip), JamColorState.empty),
-          EB(btn.st.press, s"clipPress $row:$col", () => handleClipPress(clip, clips, pressedAt(col))),
-          EB(btn.st.release, s"clipRelease $row:$col", () => handleClipRelease(clip, clips, pressedAt(col))),
+          EB(
+            btn.st.press,
+            s"clipPress $row:$col",
+            () => handleClipPress(clip, clips, pressedAt(col))
+          ),
+          EB(
+            btn.st.release,
+            s"clipRelease $row:$col",
+            () => handleClipRelease(clip, clips, pressedAt(col))
+          ),
         )
       }
     } ++ Vector(
       // FIXME: last released combo button needs to be handled as combo, not single - fixed?
-      EB(j.duplicate.st.release, "dup clips: clear source", () => {
-        source = None
-      }, BB(tracked = false, managed = false)),
+      EB(
+        j.duplicate.st.release,
+        "dup clips: clear source",
+        () => source = None,
+        BB(tracked = false, managed = false)
+      ),
       EB(j.ShiftDup.press, "dup clips: duplicate content", () => clip.duplicateContent)
     )
-
 
     // for duplication
     private var source: Option[ClipLauncherSlot] = None
 
-    private def handleClipPress(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
+    private def handleClipPress(
+      clip: ClipLauncherSlot,
+      clips: ClipLauncherSlotBank,
+      pressedAt: PressedAt
+    ): Unit =
       if (GlobalMode.Select.isOn) clip.select()
       else if (GlobalMode.Clear.isOn) clip.deleteObject()
-           else if (GlobalMode.Duplicate.isOn) {
-             if (source.isEmpty) source = Some(clip)
-             else {
-               source.foreach(s => if (s != clip) clip.replaceInsertionPoint().copySlotsOrScenes(s))
-               source = None
-             }
-           }
-                else {
-                  pressedAt.value = Instant.now()
-                }
-    }
+      else if (GlobalMode.Duplicate.isOn) {
+        if (source.isEmpty) source = Some(clip)
+        else {
+          source.foreach(s => if (s != clip) clip.replaceInsertionPoint().copySlotsOrScenes(s))
+          source = None
+        }
+      } else {
+        pressedAt.value = Instant.now()
+      }
 
-    private def handleClipRelease(clip: ClipLauncherSlot, clips: ClipLauncherSlotBank, pressedAt: PressedAt): Unit = {
+    private def handleClipRelease(
+      clip: ClipLauncherSlot,
+      clips: ClipLauncherSlotBank,
+      pressedAt: PressedAt
+    ): Unit =
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         clip.select()
       else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
-           else clip.launch()
-    }
+      else if (ext.transport.getPosition().get() > 0) clip.launch()
 
-    private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState = {
+    private def shouldLaunchImmediately = ??? // TODO
+      
+
+    private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState =
       if (GlobalMode.Select.isOn && clip.isSelected.get())
         JamColorState(JamColorBase.WHITE, 3)
       else if (!GlobalMode.Select.isOn && source.contains(clip))
-             JamColorState(JamColorBase.WHITE, if (j.Mod.blink) 3 else 1)
-           else
-             JamColorState(
-               if (clip.hasContent.get())
-                 JamColorState.toColorIndex(clip.color().get())
-               else
-                 JamColorBase.OFF,
-               brightness = {
-                 if (clip.isPlaying.get())
-                   if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
-                   else 3
-                 else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
-                      else 0
-               }
-             )
-    }
+        JamColorState(JamColorBase.WHITE, if (j.Mod.blink) 3 else 1)
+      else
+        JamColorState(
+          if (clip.hasContent.get())
+            JamColorState.toColorIndex(clip.color().get())
+          else
+            JamColorBase.OFF,
+          brightness = if (clip.isPlaying.get())
+            if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
+            else 3
+          else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
+          else 0
+        )
   }
 
 }
