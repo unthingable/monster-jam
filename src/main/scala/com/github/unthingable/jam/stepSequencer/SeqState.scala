@@ -1,5 +1,6 @@
 package com.github.unthingable.jam.stepSequencer
 
+import com.github.unthingable.framework.quant
 import com.bitwig.extension.controller.api.NoteStep
 
 enum StepMode(val keyRows: Int):
@@ -43,27 +44,9 @@ case class SeqState(
   // resizing viewport can make offsets invalid
   lazy val keyScrollOffsetGuarded = guardY(keyScrollOffset)
 
-  type StepFrac = (Int, Int) | Int
-  val stepSizes = Vector[StepFrac](
-    1 -> 64,
-    1 -> 32,
-    1 -> 16,
-    1 -> 8,
-    1 -> 4,
-    1 -> 2,
-    1,
-    2,
-    4,
-    8
-  )
+  lazy val stepSize: Double = quant.stepSize(stepSizeIdx)
 
-  lazy val stepSize: Double = stepSizes(stepSizeIdx) match
-    case (a, b) => a.toDouble / b.toDouble
-    case x: Int => x
-
-  lazy val stepString: String = stepSizes(stepSizeIdx) match
-    case (a, b) => s"$a/$b"
-    case x: Int => s"$x"
+  lazy val stepString: String = quant.stepString(stepSizeIdx)
 
 object SeqState:
   def empty: SeqState = SeqState(

@@ -20,6 +20,7 @@ import com.github.unthingable.framework.binding.{
   SupColorB,
   SupColorStateB
 }
+import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -178,7 +179,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
 
     def incStepSize(inc: Short): Unit =
-      setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(ts.stepSizes.size - 1).max(0)))
+      setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
       clip.setStepSize(ts.stepSize)
       ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
