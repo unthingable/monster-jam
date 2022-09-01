@@ -11,18 +11,19 @@ import com.github.unthingable.jam.surface.JamColorState
 import java.time.{Duration, Instant}
 import scala.collection.mutable
 import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.Util
 
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)
     val clip: Clip = ext.host.createLauncherCursorClip(0, 0)
     trackBank.sceneBank().setIndication(true)
-    trackBank.setShouldShowClipLauncherFeedback(true)
+    // trackBank.setShouldShowClipLauncherFeedback(true)
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
       track.isQueuedForStop.markInterested()
-      ext.transport.getPosition().markInterested()
+      ext.transport.playPosition().markInterested()
 
       val clips = track.clipLauncherSlotBank()
 
@@ -92,10 +93,19 @@ trait ClipMatrix { this: Jam =>
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         clip.select()
       else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
-      else if (ext.transport.getPosition().get() > 0) clip.launch()
+      else if (ext.transport.playPosition().get() > 0)
+        if (shouldLaunchImmediately)
+          Util.println("lenient launch") 
+          clip.launchWithOptions("default", "continue_immediately")
+        else clip.launch()
 
-    private def shouldLaunchImmediately = ??? // TODO
-      
+    /* If we're a little late starting the clip, that's ok */
+    private val launchTolerance = 0.5
+    private def shouldLaunchImmediately = 
+      val beat = ext.transport.playPosition().get()
+      val beatFrac = beat % 1
+      Util.println(s"launch beat $beat")
+      beatFrac < launchTolerance
 
     private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState =
       if (GlobalMode.Select.isOn && clip.isSelected.get())
@@ -108,11 +118,12 @@ trait ClipMatrix { this: Jam =>
             JamColorState.toColorIndex(clip.color().get())
           else
             JamColorBase.OFF,
-          brightness = if (clip.isPlaying.get())
-            if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
-            else 3
-          else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
-          else 0
+          brightness =
+            if (clip.isPlaying.get())
+              if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
+              else 3
+            else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
+            else 0
         )
   }
 
