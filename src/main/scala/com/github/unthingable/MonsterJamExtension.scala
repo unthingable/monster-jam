@@ -17,6 +17,7 @@ case class MonsterPref(
   shiftDpad: EnumSetting[JamSettings.DpadScroll],
   limitLevel: EnumSetting[JamSettings.LimitLevels],
   smartTracker: SettableBooleanValue,
+  launchTolerance: SettableRangedValue,
   debugOutput: SettableBooleanValue,
 )
 
@@ -83,6 +84,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
         EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.`page/single`),
         EnumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
         preferences.getBooleanSetting("Enable track tracker", "Options", true),
+        preferences.getNumberSetting("Launch tolerance", "Launch Q", 0, 1, 0.1, "beats", 0),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(

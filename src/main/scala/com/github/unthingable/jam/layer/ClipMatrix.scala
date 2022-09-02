@@ -3,6 +3,7 @@ package com.github.unthingable.jam.layer
 import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, EB, SupColorStateB}
+import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
@@ -16,14 +17,17 @@ import com.github.unthingable.Util
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)
-    val clip: Clip = ext.host.createLauncherCursorClip(0, 0)
+    val cursorClip: Clip = ext.host.createLauncherCursorClip(0, 0)
+    cursorClip.launchQuantization().markInterested()
     trackBank.sceneBank().setIndication(true)
-    // trackBank.setShouldShowClipLauncherFeedback(true)
+    trackBank.setShouldShowClipLauncherFeedback(true)
+    ext.transport.playPosition().markInterested()
+    ext.transport.defaultLaunchQuantization().markInterested()
+    ext.preferences.launchTolerance.markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
       track.isQueuedForStop.markInterested()
-      ext.transport.playPosition().markInterested()
 
       val clips = track.clipLauncherSlotBank()
 
@@ -38,6 +42,7 @@ trait ClipMatrix { this: Jam =>
         clip.isSelected.markInterested()
         clip.isPlaybackQueued.markInterested()
         clip.isStopQueued.markInterested()
+        clip.name.markInterested()
         clips.exists().markInterested()
 
         Vector(
@@ -62,7 +67,7 @@ trait ClipMatrix { this: Jam =>
         () => source = None,
         BB(tracked = false, managed = false)
       ),
-      EB(j.ShiftDup.press, "dup clips: duplicate content", () => clip.duplicateContent)
+      EB(j.ShiftDup.press, "dup clips: duplicate content", () => cursorClip.duplicateContent)
     )
 
     // for duplication
@@ -73,7 +78,9 @@ trait ClipMatrix { this: Jam =>
       clips: ClipLauncherSlotBank,
       pressedAt: PressedAt
     ): Unit =
-      if (GlobalMode.Select.isOn) clip.select()
+      /* Until we're able to directly access clips, must rely on cursor, so select always */
+      clip.select()
+      if (GlobalMode.Select.isOn) () // clip.select()
       else if (GlobalMode.Clear.isOn) clip.deleteObject()
       else if (GlobalMode.Duplicate.isOn) {
         if (source.isEmpty) source = Some(clip)
@@ -91,21 +98,36 @@ trait ClipMatrix { this: Jam =>
       pressedAt: PressedAt
     ): Unit =
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
-        clip.select()
+        () // clip.select() -- see above
       else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
       else if (ext.transport.playPosition().get() > 0)
-        if (shouldLaunchImmediately)
-          Util.println("lenient launch") 
-          clip.launchWithOptions("default", "continue_immediately")
-        else clip.launch()
+        launchOptions(clip) match
+          case None => clip.launch()
+          case Some((quant, mode)) =>
+            Util.println("lenient launch")
+            clip.launchWithOptions(quant, mode)
 
     /* If we're a little late starting the clip, that's ok */
-    private val launchTolerance = 0.5
-    private def shouldLaunchImmediately = 
-      val beat = ext.transport.playPosition().get()
-      val beatFrac = beat % 1
-      Util.println(s"launch beat $beat")
-      beatFrac < launchTolerance
+    private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
+      val launchTolerance: Double = ext.preferences.launchTolerance.get()
+      val clipQString: String     = cursorClip.launchQuantization().get()
+      val qString: String =
+        if (clipQString == "default") ext.transport.defaultLaunchQuantization().get()
+        else clipQString
+      val stepSize: Option[Double] = quant.stepMap.get(qString)
+      if (launchTolerance == 0 || qString == "none" || stepSize.exists(_ < 1))
+        None
+      else
+        stepSize match
+          case None =>
+            Util.println(s"Unparseable quant: $qString")
+            None
+          case Some(qSize) =>
+            val beat = ext.transport.playPosition().get()
+            if (beat % (qSize * 4) < launchTolerance) // * 4 because this is bars
+              Some(clipQString, "continue_immediately")
+            else
+              None
 
     private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState =
       if (GlobalMode.Select.isOn && clip.isSelected.get())

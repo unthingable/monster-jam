@@ -16,7 +16,9 @@ package object quant {
     8
   )
 
-  val stepMap: Vector[(String, Double)] = stepSizes.map(frac => (stepString(frac), stepSize(frac)))
+  /* Step sizes for clip */
+  val stepMap: Map[String, Double] = 
+    stepSizes.map(frac => (stepString(frac), stepSize(frac))).toMap
 
   inline def stepSize(frac: StepFrac): Double = frac match
     case (a, b) => a.toDouble / b.toDouble
