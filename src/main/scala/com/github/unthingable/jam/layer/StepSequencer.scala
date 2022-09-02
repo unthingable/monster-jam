@@ -85,14 +85,23 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
     ts = st
     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
     storeState()
-
+    echoStateDiff(old, st)
+  
   def updateState(cursorTrack: Track): Unit =
     val st = tracker
       .trackId(selectedClipTrack)
       .map(stateCache.getOrElseUpdate(_, SeqState.empty))
       .getOrElse(SeqState.empty)
+    echoStateDiff(ts, st)
     ts = st
     storeState()
+
+  def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
+    // can't show multiple notifications at once, oh well
+    if (oldSt.stepString != newSt.stepString) 
+      ext.host.showPopupNotification(s"Step size: ${newSt.stepString}")
+    if ((oldSt.keyPageSize, oldSt.stepPageSize) != (newSt.keyPageSize, newSt.stepPageSize))
+      ext.host.showPopupNotification(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
 trait StepSequencer extends BindingDSL { this: Jam =>
@@ -176,12 +185,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def setGrid(mode: StepMode): Unit =
       setState(ts.copy(stepMode = mode))
-      ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
+      // ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
 
     def incStepSize(inc: Short): Unit =
       setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
       clip.setStepSize(ts.stepSize)
-      ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
+      // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
     inline def scrollY(offset: Int) =
       setState(ts.copy(keyScrollOffset = ts.guardY(offset)))
@@ -498,10 +507,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   }
 }
 
-/* todos
+/* todos and ideas
 [x] store grid settings per track
 [ ] autoscroll to content when there isn't any
 [x] knob scrolls notes
 [ ] note pages
 - step-hold to select or create clips before entering sequencer
+- adjust mode (by holding aux? tune?)
  */
