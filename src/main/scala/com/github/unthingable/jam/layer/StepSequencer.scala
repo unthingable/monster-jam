@@ -95,7 +95,7 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
       .getOrElse(SeqState.empty)
     echoStateDiff(ts, st)
     ts = st
-    storeState()
+    // storeState()
 
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     // can't show multiple notifications at once, oh well
@@ -517,6 +517,22 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 - step-hold to select or create clips before entering sequencer
 - adjust mode (by holding aux? tune?)
 vel
-length
-nudge
+release vel
+vel spread
+(start)
+duration
+pan
+timbre
+pressure
+
+chance
+occurrence
+recurrence length
+recurrence mask
+repeat count
+repeat rate
+repeat curve
+repeat vel end
+
+mute
  */
