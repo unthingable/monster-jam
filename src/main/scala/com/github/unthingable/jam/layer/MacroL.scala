@@ -55,6 +55,7 @@ trait MacroL { this: Jam =>
         val isSelected = ext.cursorTrack.createEqualsValue(track)
         isSelected.markInterested()
         track.isGroup.markInterested()
+        track.color().markInterested()
 
         var lastPress: Option[Timed[Track]] = None
 
