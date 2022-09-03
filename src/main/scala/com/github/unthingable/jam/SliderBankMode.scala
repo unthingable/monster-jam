@@ -18,7 +18,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
   val param: P => Parameter,
   val stripColor: Option[Int => Int] = None
 )
-  (implicit ext: MonsterJamExt, j: JamSurface)
+  (using ext: MonsterJamExt, j: JamSurface)
   extends SimpleModeLayer(id) with Util {
 
   import SliderBankMode._
@@ -27,7 +27,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
   val sliderParams: Vector[Parameter]        = proxies.map(param)
   val paramState  : mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
-  val barMode: BarMode
+  val barMode: Seq[BarMode]
   val paramKnowsValue: Boolean             = true // UserControls don't and that's sad
   val paramValueCache: ArrayBuffer[Double] = mutable.ArrayBuffer.fill(8)(0.0) // unscaled
 
@@ -192,7 +192,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
     j.stripBank.flushColors()
 
     sliderParams.indices.foreach(sync(_, false))
-    if (barMode == BarMode.DUAL)
+    if (barMode.contains(BarMode.DUAL))
       j.stripBank.flushValues()
 
     j.stripBank.strips.indices.foreach(bindWithRange(_))

@@ -15,7 +15,7 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
   }.toVector
     .forindex(_.slider.setIndexInGroup(_))
 
-  var barMode: BarMode = BarMode.DUAL
+  var barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
   private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
@@ -26,7 +26,7 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
     if (flush) flushColors()
   }
   def setValue(idx: Int, value: Int, flush: Boolean = true): Unit = {
-    if (barMode == BarMode.DUAL) {
+    if (barMode(idx) == BarMode.DUAL) {
       values.update(idx, value)
       if (flush) flushValues()
     } else strips(idx).update(value)
@@ -38,7 +38,8 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
 
   def flushColors(): Unit =
     ext.midiOut.sendSysex(createCommand("05",
-      colors.zip(active).map { case (n, a) => f"${if (a) barMode.v else "00"}${n}%02x"}.mkString))
+      colors.zip(active).zipWithIndex.map { case ((n, a), idx) => f"${if (a) barMode(idx).v else "00"}${n}%02x"}.mkString))
+
   def flushValues(): Unit = {
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
   }

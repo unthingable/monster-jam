@@ -22,7 +22,7 @@ trait Level { this: Jam =>
 
         val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
 
-        override val barMode: BarMode = BarMode.DUAL
+        override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
 
         proxies.forindex { case (track, idx) =>
           val strip: JamTouchStrip = j.stripBank.strips(idx)
@@ -66,7 +66,7 @@ trait Level { this: Jam =>
         }
       },
       new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
-        override val barMode: BarMode = BarMode.PAN
+        override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.PAN)
       },
     )
   }

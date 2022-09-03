@@ -63,7 +63,7 @@ trait Control { this: Jam with MacroL =>
 
     override val subModes: Vector[ModeLayer] = (
       new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity) {
-        override val barMode: BarMode = BarMode.DUAL
+        override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
 
         j.stripBank.strips.forindex { case (strip, idx) =>
           strip.slider.isBeingTouched.markInterested()
@@ -97,7 +97,7 @@ trait Control { this: Jam with MacroL =>
           param = _.createCursorRemoteControlsPage(8).getParameter(idx),
           stripColor = Some(_ => Util.rainbow(idx))
         ) {
-          override val barMode: BarMode = BarMode.DUAL
+          override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
 
           j.stripBank.strips.forindex { case (strip, stripIdx) =>
             strip.slider.isBeingTouched.markInterested()
@@ -160,7 +160,7 @@ trait Control { this: Jam with MacroL =>
         })
       ) ++ EIGHT.map { idx =>
         new SliderBankMode[Parameter](s"strips user bank $idx", i => userBank.getControl(i + idx), identity) {
-          override val barMode        : BarMode = BarMode.SINGLE
+          override val barMode        : Seq[BarMode] = Seq.fill(8)(BarMode.SINGLE)
           override val paramKnowsValue: Boolean = false
           var previousUserPage: Int = 0
 
