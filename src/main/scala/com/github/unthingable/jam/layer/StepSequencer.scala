@@ -45,11 +45,12 @@ import com.github.unthingable.jam.TrackTracker
 import com.bitwig.`extension`.controller.api.CursorTrack
 import com.github.unthingable.framework.binding.GlobalEvent
 import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
+import com.github.unthingable.framework.mode.ModeLayer
 
 trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
-) {
+) { this: ModeLayer =>
   var ts                 = SeqState.empty // track state
   private val stateCache = mutable.HashMap.empty[TrackId, SeqState]
 
@@ -86,7 +87,7 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
     storeState()
     echoStateDiff(old, st)
-  
+
   def updateState(cursorTrack: Track): Unit =
     val st = tracker
       .trackId(selectedClipTrack)
@@ -98,10 +99,11 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
 
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     // can't show multiple notifications at once, oh well
-    if (oldSt.stepString != newSt.stepString) 
-      ext.host.showPopupNotification(s"Step size: ${newSt.stepString}")
-    if ((oldSt.keyPageSize, oldSt.stepPageSize) != (newSt.keyPageSize, newSt.stepPageSize))
-      ext.host.showPopupNotification(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
+    if (isOn)
+      if (oldSt.stepString != newSt.stepString)
+        ext.host.showPopupNotification(s"Step size: ${newSt.stepString}")
+      if ((oldSt.keyPageSize, oldSt.stepPageSize) != (newSt.keyPageSize, newSt.stepPageSize))
+        ext.host.showPopupNotification(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
 trait StepSequencer extends BindingDSL { this: Jam =>
@@ -139,11 +141,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         // updateState(ext.cursorTrack)
         ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
       )
-    
+
     // follow clip selection
     ext.events.addSub((e: ClipSelected) =>
       if (isOn) selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
-      )
+    )
 
     Vector(
       clip.exists,
@@ -514,4 +516,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 [ ] note pages
 - step-hold to select or create clips before entering sequencer
 - adjust mode (by holding aux? tune?)
+vel
+length
+nudge
  */
