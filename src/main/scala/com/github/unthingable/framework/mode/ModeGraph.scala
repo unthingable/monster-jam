@@ -77,15 +77,19 @@ object Graph {
       indexLayer(l)
     }
 
-    // goes only one layer deep, rethink when needed
-    layerMap.keys.collect { case x: MultiModeLayer => x }.foreach { cl =>
-      val parent = layerMap.get(cl)
-      cl.subModes.foreach { l =>
-        Util.println(s"adding submode ${l.id}")
-        val sub = indexLayer(l)
-        sub.parent = parent
-      }
-    }
+    layerMap.foreach(indexSubs.tupled)
+
+    def indexSubs(layer: ModeLayer, node: ModeNode): Unit =
+      layer match
+        case mml: MultiModeLayer =>
+          mml.subModes.foreach { l =>
+            Util.println(s"adding submode ${l.id}")
+            val sub: ModeNode = indexLayer(l)
+            sub.parent = Some(node)
+            indexSubs(l, sub)
+          }
+        case _ => ()
+      
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] =
