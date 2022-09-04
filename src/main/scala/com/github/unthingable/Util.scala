@@ -14,6 +14,7 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import scala.util.Try
 import java.nio.charset.StandardCharsets
+import scala.annotation.targetName
 
 transparent trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
@@ -30,6 +31,21 @@ transparent trait Util {
 }
 object Util extends Util {
   var println: String => Unit = null
+  
+  extension [A](obj: A)
+    inline def trace(): A =
+      Util.println(obj.toString)
+      obj
+
+    @targetName("tracem")
+    inline def trace(msg: String): A =
+      Util.println(s"$msg $obj")
+      obj
+    
+    @targetName("tracefm")
+    inline def trace(msg: A => String): A =
+      Util.println(msg(obj))
+      obj
 
   def printColor(c: Color): Unit = {
     Util.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
