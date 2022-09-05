@@ -12,9 +12,8 @@ import com.github.unthingable.jam.{Jam, SliderBankMode}
 trait Aux { this: Jam =>
   lazy val auxLayer = new ModeButtonCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
     override val subModes = EIGHT.map(idx =>
-      new SliderBankMode[Send]("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity) {
-        override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.SINGLE)
-      })
+      new SliderBankMode[Send]("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity, Seq.fill(8)(BarMode.SINGLE))
+      )
   }
 
   lazy val auxGate = new ModeButtonLayer("strip AUX gate", j.aux,

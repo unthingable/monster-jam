@@ -15,7 +15,7 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
   }.toVector
     .forindex(_.slider.setIndexInGroup(_))
 
-  var barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
+  var barMode: Int => BarMode = _ => BarMode.DUAL
   private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)

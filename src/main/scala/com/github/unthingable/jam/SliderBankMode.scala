@@ -19,11 +19,13 @@ import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchSt
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-abstract class SliderBankMode[P <: ObjectProxy](
+class SliderBankMode[P <: ObjectProxy](
   override val id: String,
   val obj: Int => P,
   val param: P => Parameter,
-  val stripColor: Option[Int => Int] = None
+  val barMode: Seq[BarMode],
+  val stripColor: Option[Int => Int] = None,
+  val existsOverride: Int => Boolean = _ => false,
 )(using ext: MonsterJamExt, j: JamSurface)
     extends SimpleModeLayer(id)
     with Util {
@@ -40,7 +42,6 @@ abstract class SliderBankMode[P <: ObjectProxy](
     proxy.exists().markInterested()    
   )
 
-  val barMode: Seq[BarMode]
   val paramKnowsValue: Boolean = true // UserControls don't and that's sad
   val paramValueCache: ArrayBuffer[Double] = mutable.ArrayBuffer.fill(8)(0.0) // unscaled
 
@@ -121,7 +122,8 @@ abstract class SliderBankMode[P <: ObjectProxy](
       paramState.update(idx, state)
     }
 
-    proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
+    if (!existsOverride(idx))
+      proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
 
     // move slider dot
     if (paramKnowsValue) {
@@ -242,7 +244,7 @@ abstract class SliderBankMode[P <: ObjectProxy](
           })
           .foreach(c => j.stripBank.setColor(idx, c))
 
-        j.stripBank.setActive(idx, value = proxy.exists().get, flush = false)
+        j.stripBank.setActive(idx, value = proxy.exists().get || existsOverride(idx), flush = false)
     }
 
     j.stripBank.flushColors()
