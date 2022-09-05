@@ -34,6 +34,12 @@ abstract class SliderBankMode[P <: ObjectProxy](
   val sliderParams: Vector[Parameter]        = proxies.map(param)
   val paramState: mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
+  proxies.zip(sliderParams).foreach((proxy, param) =>
+    param.markInterested()
+    param.name().markInterested()
+    proxy.exists().markInterested()    
+  )
+
   val barMode: Seq[BarMode]
   val paramKnowsValue: Boolean = true // UserControls don't and that's sad
   val paramValueCache: ArrayBuffer[Double] = mutable.ArrayBuffer.fill(8)(0.0) // unscaled
@@ -62,10 +68,6 @@ abstract class SliderBankMode[P <: ObjectProxy](
     val strip: JamTouchStrip = j.stripBank.strips(idx)
     val proxy: ObjectProxy   = proxies(idx)
     val param: Parameter     = sliderParams(idx)
-
-    param.markInterested()
-    param.name().markInterested()
-    proxy.exists().markInterested()
 
     var offsetObserver: Double => Unit = _ => ()
     strip.slider.value().addValueObserver(offsetObserver(_))
@@ -194,7 +196,20 @@ abstract class SliderBankMode[P <: ObjectProxy](
           BB(tracked = true, exclusive = false)
         ),
       )
-    else Vector.empty
+    else Vector( // for dirty tracking
+      HB(
+        strip.slider.beginTouchAction,
+        s"strip $idx pressed",
+        () => (),
+        BB(tracked = true, exclusive = false)
+      ),
+      HB(
+        strip.slider.endTouchAction,
+        s"strip $idx released",
+        () => (),
+        BB(tracked = true, exclusive = false)
+      ),
+    )
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit =

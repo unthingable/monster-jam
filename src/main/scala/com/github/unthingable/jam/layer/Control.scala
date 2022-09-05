@@ -20,6 +20,7 @@ import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam._
 import com.github.unthingable.framework.binding.HB.BindingOps
 import com.github.unthingable.Util
+import com.github.unthingable.Util.trace
 import com.github.unthingable.util.FilteredPage
 
 import java.time.{Duration, Instant}
@@ -38,10 +39,11 @@ trait Control { this: Jam with MacroL =>
       val touchFX                      = "MonsterFX"
       val device: PinnableCursorDevice = ext.cursorTrack.createCursorDevice()
       val page: FilteredPage = FilteredPage(device.createCursorRemoteControlsPage(8), _ != touchFX)
-      var currentUserPage: Int = 0
-      val userOffset: Int      = 9 // 1 normal slider bank + 8 slices
-      var currentSlice: Int    = 0
-      var previousSlice: Int   = 0
+      var currentUserPage: Int  = 0
+      var previousUserPage: Int = 0
+      val userOffset: Int       = 9 // 1 normal slider bank + 8 slices
+      var currentSlice: Int     = 0
+      var previousSlice: Int    = 0
 
       device.hasNext.markInterested()
       device.hasPrevious.markInterested()
@@ -172,7 +174,9 @@ trait Control { this: Jam with MacroL =>
                 super.onActivate()
               }
 
-              override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+              val superBindings = super.modeBindings // cache for dirty check
+
+              override val modeBindings: Seq[Binding[_, _, _]] = superBindings ++ Vector(
                 SupBooleanB(j.left.light.isOn, () => true),
                 SupBooleanB(j.right.light.isOn, () => true),
                 // must press both and then release to deactivate, so that releases don't end up in remote layer
@@ -197,12 +201,8 @@ trait Control { this: Jam with MacroL =>
                     s"control slice $idx release",
                     () =>
                       if (
-                        Instant
-                          .now()
-                          .isAfter(
-                            activeAt.plus(Duration.ofMillis(500))
-                          ) || modeBindings.outBindings
-                          .exists(_.operatedAt.exists(_.isAfter(activeAt)))
+                        isOlderThan(Duration.ofMillis(500))
+                        || dirtyBindings(superBindings*).nonEmpty
                       )
                         selectSlice(previousSlice)
                   ),
@@ -226,9 +226,11 @@ trait Control { this: Jam with MacroL =>
         ) {
           override val barMode: Seq[BarMode]    = Seq.fill(8)(BarMode.SINGLE)
           override val paramKnowsValue: Boolean = false
-          var previousUserPage: Int             = 0
 
-          override val modeBindings: Seq[Binding[_, _, _]] = super.modeBindings ++ Vector(
+          val superBindings = super.modeBindings // cache for dirty check
+          // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")
+
+          override val modeBindings: Seq[Binding[_, _, _]] = superBindings ++ Vector(
             SupBooleanB(j.macroButton.light.isOn, () => true)
           ) ++ EIGHT.flatMap(idx =>
             Vector(
@@ -246,10 +248,10 @@ trait Control { this: Jam with MacroL =>
                 s"user bank $idx release",
                 () =>
                   if (
-                    Instant
-                      .now()
-                      .isAfter(activeAt.plus(Duration.ofMillis(500))) || modeBindings.outBindings
-                      .exists(_.operatedAt.exists(_.isAfter(activeAt)))
+                    isOlderThan(Duration.ofMillis(500))
+                    || dirtyBindings(superBindings*)
+                      // .trace(x => s"group release: dirty: ${x.map(_.name).mkString(",")}")
+                      .nonEmpty
                   ) {
                     currentUserPage = previousUserPage
                     selectUser()
@@ -337,7 +339,7 @@ trait Control { this: Jam with MacroL =>
             case exists if GlobalMode.Duplicate.isOn =>
               sourceDevice match {
                 case Some(Util.Timed(source, instant))
-                    if instant.isAfter(GlobalMode.Duplicate.activeAt) =>
+                    if GlobalMode.Duplicate.isOlderThan(instant) =>
                   if (exists) device.beforeDeviceInsertionPoint().copyDevices(source)
                   else
                     trackBank
