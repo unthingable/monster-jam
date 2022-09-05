@@ -52,7 +52,7 @@ sealed trait InBinding[H, T] extends Binding[H, T, T] {
 }
 
 // Controller -> Bitwig host
-sealed trait OutBinding[S, B, H] extends Binding[S, B, H], BindingDSL {
+sealed trait OutBinding[S, B, H] extends Binding[S, B, H], BindingDSL, Named {
   given ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
@@ -191,13 +191,13 @@ case class EB[S](
   ev: Event, 
   action: Outcome,
   override val behavior: BindingBehavior,
-  val context: String
+  val name: String
 )(using val ext: MonsterJamExt) extends OutBinding[S, Event, Outcome] {
   var isActive = false
 
   val receiver = (_: Event) => 
-    if context.nonEmpty then Util.println(s"EB: $context $action")
-    val msg = s"$context->$action"
+    if name.nonEmpty then Util.println(s"EB: $name $action")
+    val msg = s"$name->$action"
     operatedAt = Some(Instant.now())
     action match
       case x: Command     => ext.events.eval(msg)(x)
@@ -234,7 +234,7 @@ object EB:
       case f: (() => Unit)    => SideEffect(_ => f())
 
   inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec)(using MonsterJamExt): EB[S] = 
-    EB(ev.source, ev.value, asOutcome(f), behavior = BindingBehavior(), context = ctx)
+    EB(ev.source, ev.value, asOutcome(f), behavior = BindingBehavior(), name = ctx)
   inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using MonsterJamExt): EB[S] = 
-    EB(ev.source, ev.value, asOutcome(f), behavior = bb, context = ctx)
+    EB(ev.source, ev.value, asOutcome(f), behavior = bb, name = ctx)
 

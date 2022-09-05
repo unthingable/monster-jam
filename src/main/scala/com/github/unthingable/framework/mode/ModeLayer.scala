@@ -35,16 +35,26 @@ trait ModeLayer extends IntActivatedLayer, HasId {
 
   def silent: Boolean = false
 
-  var isOn: Boolean = false
-  var activeAt: Instant = Instant.now()
+  private var activeAt: Option[Instant] = None
+
+  inline final def isOn: Boolean = activeAt.isDefined
+
+  inline final def dirtyBindings(withBindings: Binding[_,_,_]*): Seq[OutBinding[_,_,_]] = 
+    activeAt.toSeq.flatMap(withBindings.operatedAfter)
+  
+  inline final def dirtyBindingsWithMode(withBindings: Binding[_,_,_]*): Seq[OutBinding[_,_,_]] =
+    dirtyBindings((modeBindings.outBindings ++ withBindings).toSeq*)
+
+  inline final def isOlderThan(duration: Duration): Boolean =
+    activeAt.exists(act => Instant.now().isAfter(act.plus(duration)))
+
+  inline final def isOlderThan(instant: Instant): Boolean =
+    activeAt.exists(act => instant.isAfter(act))
 
   // called when layer is activated/deactivated by the container
-  def onActivate(): Unit = {
-    activeAt = Instant.now()
-    isOn = true
-  }
+  def onActivate(): Unit = activeAt = Some(Instant.now())
 
-  def onDeactivate(): Unit = isOn = false
+  def onDeactivate(): Unit = activeAt = None
 
   override def toggleEvent = if (isOn) deactivateEvent else activateEvent
 
@@ -264,10 +274,9 @@ abstract class ModeButtonCycleLayer(
     (isOn, cycleMode: CycleMode) match {
       case (true, CycleMode.Gate) => deactivateEvent
       case (true, CycleMode.Sticky) =>
-        lazy val operated =
-          operatedBindings.operatedAfter(activeAt)
+        lazy val operated = dirtyBindings(operatedBindings.toSeq*).nonEmpty
           
-        if (isStuck || !Instant.now().isAfter(activeAt.plus(Duration.ofMillis(500))) || operated) {
+        if (isStuck || !isOlderThan(Duration.ofMillis(500)) || operated) {
           isStuck = false
           deactivateEvent
         } else

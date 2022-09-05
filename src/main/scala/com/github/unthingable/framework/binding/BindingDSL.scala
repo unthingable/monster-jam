@@ -50,8 +50,8 @@ transparent trait BindingDSL extends ActionDSL {
   implicit class BindingOps(bindings: Iterable[Binding[_,_,_]]) {
     def inBindings: Iterable[InBinding[_,_]]   = bindings.collect { case x: InBinding[_,_] => x}
     def outBindings: Iterable[OutBinding[_,_,_]] = bindings.collect { case x: OutBinding[_,_,_] => x}
-    def operatedAfter(instant: Instant): Boolean =
-      bindings.outBindings.exists(_.operatedAt.exists(_.isAfter(instant)))
+    def operatedAfter(instant: Instant): Iterable[OutBinding[_, _, _]] =
+      bindings.outBindings.filter(_.operatedAt.exists(_.isAfter(instant)))
   }
 
   inline def stepTarget(inc: () => Unit, dec: () => Unit)(using ext: MonsterJamExt): RelativeHardwarControlBindable =
