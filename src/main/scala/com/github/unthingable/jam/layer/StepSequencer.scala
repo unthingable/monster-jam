@@ -46,6 +46,11 @@ import com.bitwig.`extension`.controller.api.CursorTrack
 import com.github.unthingable.framework.binding.GlobalEvent
 import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
 import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.jam.SliderBankMode
+import com.bitwig.`extension`.controller.api.Parameter
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 
 trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
@@ -115,7 +120,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     7 -> StepMode.Eight
   )
 
-  lazy val stepSequencer = new ModeCycleLayer("STEP")
+  object stepSequencer extends ModeCycleLayer("STEP")
     with ListeningLayer
     with TrackedState(selectedClipTrack) {
     val gridHeight               = 128
@@ -198,7 +203,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       setState(ts.copy(keyScrollOffset = ts.guardY(offset)))
 
     inline def scrollY(dir: UpDown, size: => Int): Unit =
-      scrollYinc(dir match
+      scrollYinc(inline dir match
         case UpDown.Up   => 1 * size
         case UpDown.Down => -1 * size
       )
@@ -212,7 +217,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       case Up, Down
 
     inline def canScroll(dir: UpDown): Boolean =
-      clip.exists.get() && (dir match
+      clip.exists.get() && (inline dir match
         case UpDown.Up   => ts.keyScrollOffsetGuarded + ts.stepViewPort.height < 127
         case UpDown.Down => ts.keyScrollOffsetGuarded + (8 - ts.stepViewPort.height) > 0
       )
@@ -476,6 +481,26 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
     )
 
+    lazy val tune = new ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select) {
+      inline val uOffset = 8*8
+      // because first 8*8 are for regular mappable user controls
+      val uBank = ext.host.createUserControls(uOffset + 16) 
+
+      uBank.getControl(1).value().set(0.4)
+      uBank.getControl(1).value().addValueObserver(_ => ())
+
+      override val subModes: Vector[ModeLayer] = Vector(
+        new SliderBankMode("note exp", 
+        i => uBank.getControl(i + uOffset), 
+        identity, 
+        Seq.fill(8)(BarMode.SINGLE),
+        // existsOverride = _ => true
+        ) {
+          override val paramKnowsValue: Boolean = false
+        }
+      )
+    }
+
     override val subModes: Vector[ModeLayer] = Vector(
       stepMatrix,
       stepPages,
@@ -484,10 +509,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       gridSelect,
       chanSelect,
       velAndNote,
-      dpadStep
+      dpadStep,
+      tune,
     )
 
-    def onStepState(from: StepState, to: StepState): Unit = ()
+    def onStepState(from: StepState, to: StepState): Unit = 
+      // TODO update watched params for currently selected notestep
+      ()
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, stepEnc, dpadStep) ++ subModes.filter(_.isOn)).distinct

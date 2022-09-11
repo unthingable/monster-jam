@@ -9,7 +9,7 @@ import scala.collection.mutable
   * Allows subscribing to value changes, observer style. Somewhat duplicates EventBus functionality.
   */
 
-class Watched[A](init: A, onChange: (A, A) => Unit):
+class Watched[A](val init: A, val onChange: (A, A) => Unit):
   private var _value: A = init
 
   inline def get: A = _value
@@ -19,6 +19,18 @@ class Watched[A](init: A, onChange: (A, A) => Unit):
     _value = a
     if (old != a) onChange(old, a)
 
-  def update(f: A => A): Unit = set(f(_value))
+  inline def update(f: A => A): Unit = set(f(_value))
 
 class Ref[A](init: A) extends Watched(init, (_, _) => ())
+
+/**
+  * Subscribable Ref, Parameter-style.
+  */
+class RefSub[A](init: A) extends Ref[A](init):
+  private var listeners = mutable.ListBuffer.empty[A => Unit]
+
+  def addValueObserver(f: A => Unit): Unit =
+    listeners.addOne(f)
+
+  override val onChange: (A, A) => Unit = (_, v) =>
+    listeners.foreach(_(v))

@@ -12,7 +12,7 @@ import scala.collection.mutable
 trait Level { this: Jam =>
   lazy val levelCycle = new ModeButtonCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
     override val subModes = Vector(
-      new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume(), Seq.fill(8)(BarMode.DUAL)) {
+      new SliderBankMode("strips volume", trackBank.getItemAt, _.volume(), Seq.fill(8)(BarMode.DUAL)) {
         EIGHT.foreach { idx =>
           val track = trackBank.getItemAt(idx)
           track.trackType().markInterested()
@@ -63,7 +63,7 @@ trait Level { this: Jam =>
           }
         }
       },
-      new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan(), Seq.fill(8)(BarMode.PAN)) ,
+      new SliderBankMode("strips pan", trackBank.getItemAt, _.pan(), Seq.fill(8)(BarMode.PAN)) ,
     )
   }
 }

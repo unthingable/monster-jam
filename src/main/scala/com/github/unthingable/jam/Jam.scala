@@ -74,7 +74,7 @@ class Jam(implicit val ext: MonsterJamExt)
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
-  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer)
+  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer, stepSequencer.tune)
 
   // Final assembly of all mode layers
   val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))

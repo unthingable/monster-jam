@@ -1,8 +1,23 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{CursorRemoteControlsPage, Preferences, SettableBooleanValue, SettableEnumValue, Settings}
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.{CYAN, FUCHSIA, GREEN, LIME, MAGENTA, ORANGE, RED, YELLOW}
+import com.bitwig.extension.controller.api.{
+  CursorRemoteControlsPage,
+  Preferences,
+  SettableBooleanValue,
+  SettableEnumValue,
+  Settings
+}
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.{
+  CYAN,
+  FUCHSIA,
+  GREEN,
+  LIME,
+  MAGENTA,
+  ORANGE,
+  RED,
+  YELLOW
+}
 
 import java.awt.event.ActionEvent
 import java.nio.ByteBuffer
@@ -31,21 +46,31 @@ transparent trait Util {
 }
 object Util extends Util {
   var println: String => Unit = null
-  
+
   extension [A](obj: A)
-    inline def trace(): A =
+    transparent inline def trace(): A =
       Util.println(obj.toString)
       obj
 
     @targetName("tracem")
-    inline def trace(msg: String): A =
+    transparent inline def trace(msg: String): A =
       Util.println(s"$msg $obj")
       obj
-    
+
     @targetName("tracefm")
-    inline def trace(msg: A => String): A =
+    transparent inline def trace(msg: A => String): A =
       Util.println(msg(obj))
       obj
+
+    inline def safeCast[B]: Option[B] =
+      obj match // https://github.com/lampepfl/dotty/issues/16016
+        case b: B => Some(b)
+        case _    => None
+
+    inline def safeMap[B, C](f: B => C): Option[C] =
+      obj match
+        case b: B => Some(f(b))
+        case _    => None
 
   def printColor(c: Color): Unit = {
     Util.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())

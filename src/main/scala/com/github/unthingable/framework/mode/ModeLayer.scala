@@ -120,7 +120,7 @@ object SimpleModeLayer {
 enum GateMode:
   case Gate, Toggle, Auto, OneWay
 
-abstract class ModeButtonLayer(
+trait ModeButtonLayer(
   val id: String,
   val modeButton: HasButtonState, // & HasLight[_],
   val gateMode: GateMode = GateMode.Auto,
@@ -128,7 +128,7 @@ abstract class ModeButtonLayer(
 )(using ext: MonsterJamExt) extends ModeLayer, ListeningLayer {
   private var pressedAt: Instant = null
 
-  override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
+  override val loadBindings: Seq[Binding[_, _, _]] = Vector(
     EB(modeButton.st.press, s"$id: mode button pressed", () => {
       Util.println(" isOn: " + isOn)
       pressedAt = Instant.now()
@@ -250,15 +250,16 @@ abstract class ModeCycleLayer(
 }
 
 abstract class ModeButtonCycleLayer(
-  name: String,
+  override val id: String,
   // val modeButton: OnOffButton with HwButton, // Button[_ <: ButtonActions],
   // val modeButton: OnOffButton with Button[_ <: ButtonActions],
   // val modeButton: JamOnOffButton,
-  val modeButton: HasButtonState,
+  override val modeButton: HasButtonState,
   val cycleMode: CycleMode,
+  override val gateMode: GateMode = GateMode.OneWay,
   override val silent: Boolean = false,
   val siblingOperatedModes: Seq[ModeLayer] = Vector(),
-)(using ext: MonsterJamExt) extends ModeCycleLayer(name), ListeningLayer {
+)(using ext: MonsterJamExt) extends ModeCycleLayer(id), ModeButtonLayer(id, modeButton) {
 
   def stickyPress: Vector[ModeCommand[_]] = {
     (isOn, cycleMode: CycleMode) match {
@@ -289,20 +290,20 @@ abstract class ModeButtonCycleLayer(
   // overrideable
   def lightOn: BooleanSupplier = () => isOn
 
-  override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-    EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Seq.empty, BB(tracked = false))
-  ) ++ maybeLightB(modeButton)
+  // override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
+  //   EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Seq.empty, BB(tracked = false))
+  // ) ++ maybeLightB(modeButton)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
     case CycleMode.Cycle                   =>
       Vector(
-        EB(modeButton.st.press, s"$name cycle", () => cycle(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$id cycle", () => cycle(), BB(tracked = false, exclusive = false))
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
-        EB(modeButton.st.press, s"$name gate on", () => stickyPress, BB(tracked = false, exclusive = false)),
-        EB(modeButton.st.release, s"$name gate off", () => stickyRelease, BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$id gate on", () => stickyPress, BB(tracked = false, exclusive = false)),
+        EB(modeButton.st.release, s"$id gate off", () => stickyRelease, BB(tracked = false, exclusive = false))
       )
     case _                                 => Vector.empty
   }

@@ -79,7 +79,7 @@ trait Control { this: Jam with MacroL =>
       def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
       override val subModes: Vector[ModeLayer] = (
-        new SliderBankMode[RemoteControl]("strips remote", page.c.getParameter, identity, Seq.fill(8)(BarMode.DUAL)) {
+        new SliderBankMode("strips remote", page.c.getParameter, identity, Seq.fill(8)(BarMode.DUAL)) {
 
           j.stripBank.strips.forindex {
             case (strip, idx) =>
@@ -119,7 +119,7 @@ trait Control { this: Jam with MacroL =>
           )
         } +:
           EIGHT.map(idx =>
-            new SliderBankMode[CursorDevice](
+            new SliderBankMode(
               s"strips slice $idx",
               obj = i => trackBank.getItemAt(i).createCursorDevice(),
               param = _.createCursorRemoteControlsPage(8).getParameter(idx),
@@ -219,13 +219,13 @@ trait Control { this: Jam with MacroL =>
             }
           )
       ) ++ EIGHT.map { idx =>
-        new SliderBankMode[Parameter](
+        new SliderBankMode(
           s"strips user bank $idx",
           i => userBank.getControl(i + idx),
           identity,
           barMode = Seq.fill(8)(BarMode.SINGLE)
         ) {
-          override val paramKnowsValue: Boolean = false
+          // override val paramKnowsValue: Boolean = false
 
           val superBindings = super.modeBindings // cache for dirty check
           // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")

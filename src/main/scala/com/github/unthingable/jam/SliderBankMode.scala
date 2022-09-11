@@ -12,6 +12,7 @@ import com.bitwig.extension.controller.api.{
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, HB}
 import com.github.unthingable.{MonsterJamExt, Util}
+import com.github.unthingable.Util.{safeCast, safeMap}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
@@ -19,56 +20,71 @@ import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchSt
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class SliderBankMode[P <: ObjectProxy](
+import SliderBankMode.*
+import com.github.unthingable.framework.Watched
+import com.github.unthingable.framework.Ref
+
+class SliderBankMode[Proxy, Param](
   override val id: String,
-  val obj: Int => P,
-  val param: P => Parameter,
+  val obj: Int => Proxy,
+  val param: Proxy => Param,
   val barMode: Seq[BarMode],
   val stripColor: Option[Int => Int] = None,
-  val existsOverride: Int => Boolean = _ => false,
-)(using ext: MonsterJamExt, j: JamSurface)
+)(using ext: MonsterJamExt, j: JamSurface, pValue: ParamValue[Param], exists: Exists[Proxy])
     extends SimpleModeLayer(id)
     with Util {
 
-  import SliderBankMode._
-
-  val proxies: Vector[P]                     = j.stripBank.strips.indices.map(obj).toVector
-  val sliderParams: Vector[Parameter]        = proxies.map(param)
+  val proxies: Vector[Proxy]                 = j.stripBank.strips.indices.map(obj).toVector
+  val sliderParams: Vector[Param]            = proxies.map(param)
   val paramState: mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
-  proxies.zip(sliderParams).foreach((proxy, param) =>
-    param.markInterested()
-    param.name().markInterested()
-    proxy.exists().markInterested()    
-  )
+  proxies
+    .zip(sliderParams)
+    .foreach((proxy, param) =>
+      param.safeMap[Parameter, Unit] { p =>
+        // p.markInterested()
+        p.value.markInterested()
+      }
+      proxy.safeMap[ObjectProxy, Unit](_.exists().markInterested())
+    )
 
   val paramKnowsValue: Boolean = true // UserControls don't and that's sad
-  val paramValueCache: ArrayBuffer[Double] = mutable.ArrayBuffer.fill(8)(0.0) // unscaled
+  val paramValueCache: Seq[Watched[Double]] = Seq.fill(8)(Ref(0.0)) // unscaled
 
-  def paramValue(idx: Int): Double =
-    if (paramKnowsValue) sliderParams(idx).value().get() else paramValueCache(idx)
+  def paramValueOrCache(idx: Int): Double =
+    if (paramKnowsValue) pValue.get(sliderParams(idx)) else paramValueCache(idx).get
+
   def paramRange(idx: Int): (Double, Double) = (0.0, 1.0)
 
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
     if (force || paramState(idx) == State.Normal) { // check state when binding from outside
       val (min, max) = paramRange(idx)
       // ext.host.println(s"$name binding $idx with $max")
-      j.stripBank.strips(idx).slider.setBindingWithRange(sliderParams(idx), min, max)
+
+      sliderParams(idx).safeMap(j.stripBank.strips(idx).slider.setBindingWithRange(_, min, max))
+
       // force update to account for value lag when scrolling bank
-      stripObserver(idx).valueChanged(sliderParams(idx).value().get())
+      updateStrip(idx).valueChanged(pValue.get(sliderParams(idx)))
     }
 
-  def stripObserver(idx: Int): DoubleValueChangedCallback =
+  def unbind(idx: Int): Unit =
+    // bindings need clearing because they interfere with shift tracking
+    j.stripBank.strips(idx).slider.clearBindings()
+    // updateStrip(idx).valueChanged(paramValueOrCache(idx))
+    updateStrip(idx).valueChanged(0.5)
+    ()
+
+  def updateStrip(idx: Int): DoubleValueChangedCallback =
     (v: Double) =>
       if (isOn && !j.clear.btn.isPressed().get) {
         j.stripBank.setValue(idx, (1.0.min(v / paramRange(idx)._2) * 127).toInt)
-        paramValueCache.update(idx, v)
+        paramValueCache(idx).set(v)
       }
 
   override def modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
-    val proxy: ObjectProxy   = proxies(idx)
-    val param: Parameter     = sliderParams(idx)
+    val proxy: Proxy         = proxies(idx)
+    val param: Param         = sliderParams(idx)
 
     var offsetObserver: Double => Unit = _ => ()
     strip.slider.value().addValueObserver(offsetObserver(_))
@@ -84,37 +100,37 @@ class SliderBankMode[P <: ObjectProxy](
 
       val state = (shiftOn, stripOn, event, paramState(idx)) match {
         case (_, _, ClearP, _) =>
-          strip.slider.clearBindings()
+          unbind(idx)
           Normal
         case (_, _, ClearR, _) =>
           bindWithRange(idx, force = true)
           Normal
         case (_, _, StripP, _) if j.clear.btn.isPressed().get =>
-          param.reset()
+          param.safeMap[Parameter, Unit](_.reset())
           Normal
         case (_, _, ShiftP, _) =>
-          strip.slider.clearBindings()
+          unbind(idx)
           ShiftTracking
         case (true, true, _: PressEvent, state) =>
           if (state == Normal)
-            strip.slider.clearBindings()
-          val current = param.get()
+            unbind(idx)
+          val current = pValue.get(param)
           startValue = None
           offsetObserver = { v =>
             val offset  = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
-            param.set(floored)
+            pValue.set(param, floored)
             if (startValue.isEmpty) startValue = Some(v)
           }
           ShiftTracking
         case (true, _, StripR, ShiftTracking) =>
           offsetObserver = _ => ()
-          stripObserver(idx).valueChanged(param.value().get())
+          updateStrip(idx).valueChanged(pValue.get(param))
           ShiftTracking
         case (_, _, _: ReleaseEvent, ShiftTracking) =>
           offsetObserver = _ => ()
           bindWithRange(idx, force = true)
-          stripObserver(idx).valueChanged(param.value().get())
+          updateStrip(idx).valueChanged(pValue.get(param))
           Normal
         case _ =>
           Normal
@@ -122,20 +138,22 @@ class SliderBankMode[P <: ObjectProxy](
       paramState.update(idx, state)
     }
 
-    if (!existsOverride(idx))
-      proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
+    proxy.safeMap[ObjectProxy, Unit](
+      _.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
+    )
+    // proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
 
     // move slider dot
     if (paramKnowsValue) {
-      param.value().markInterested()
-      param.value().addValueObserver(stripObserver(idx))
+      // param.value().markInterested()
+      pValue.addValueObserver(param, updateStrip(idx))
     } else {
       val tv = strip.slider.targetValue()
       val hv = strip.slider.hasTargetValue
       tv.markInterested()
       hv.markInterested()
-      tv.addValueObserver(v => if (hv.get()) stripObserver(idx).valueChanged(v))
-      hv.addValueObserver(v => stripObserver(idx).valueChanged(if (v) tv.get() else 0))
+      tv.addValueObserver(v => if (hv.get()) updateStrip(idx).valueChanged(v))
+      hv.addValueObserver(v => updateStrip(idx).valueChanged(if (v) tv.get() else 0))
     }
 
     proxy match {
@@ -156,10 +174,11 @@ class SliderBankMode[P <: ObjectProxy](
       case _: RemoteControl =>
       case _: Parameter     => ()
       case _: Device        => ()
+      case _                => ()
     }
 
     import Event._
-    if (paramKnowsValue)
+    if (paramKnowsValue || true)
       Vector(
         HB(
           j.clear.btn.pressedAction,
@@ -198,24 +217,25 @@ class SliderBankMode[P <: ObjectProxy](
           BB(tracked = true, exclusive = false)
         ),
       )
-    else Vector( // for dirty tracking
-      HB(
-        strip.slider.beginTouchAction,
-        s"strip $idx pressed",
-        () => (),
-        BB(tracked = true, exclusive = false)
-      ),
-      HB(
-        strip.slider.endTouchAction,
-        s"strip $idx released",
-        () => (),
-        BB(tracked = true, exclusive = false)
-      ),
-    )
+    else
+      Vector( // for dirty tracking
+        HB(
+          strip.slider.beginTouchAction,
+          s"strip $idx pressed",
+          () => (),
+          BB(tracked = true, exclusive = false)
+        ),
+        HB(
+          strip.slider.endTouchAction,
+          s"strip $idx released",
+          () => (),
+          BB(tracked = true, exclusive = false)
+        ),
+      )
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit =
-    j.stripBank.setValue(idx, (paramValue(idx) * 127 / paramRange(idx)._2).toInt, flush)
+    j.stripBank.setValue(idx, (paramValueOrCache(idx) * 127 / paramRange(idx)._2).toInt, flush)
 
   override def onActivate(): Unit = {
 
@@ -244,7 +264,8 @@ class SliderBankMode[P <: ObjectProxy](
           })
           .foreach(c => j.stripBank.setColor(idx, c))
 
-        j.stripBank.setActive(idx, value = proxy.exists().get || existsOverride(idx), flush = false)
+        // FIXME
+        j.stripBank.setActive(idx, value = exists(proxy), flush = false)
     }
 
     j.stripBank.flushColors()
@@ -278,15 +299,23 @@ object SliderBankMode {
     case object ClearR extends StripEvent with ReleaseEvent
   }
 
-  sealed trait State
-  object State {
-    case object ShiftTracking extends State
-    case object Normal        extends State
-  }
+  enum State:
+    case ShiftTracking, Normal
 
-  sealed trait Value[A] { val value: A }
-  object Value {
-    case class Scaled[A](value: A)   extends Value[A]
-    case class Unscaled[A](value: A) extends Value[A]
-  }
+  trait ParamValue[-A]:
+    def get(a: A): Double
+    def set(a: A, v: Double): Unit
+    def addValueObserver(a: A, f: DoubleValueChangedCallback): Unit
+
+  trait Exists[-A]:
+    def apply(a: A): Boolean
+
+  given ParamValue[Parameter] with
+    def get(p: Parameter): Double    = p.value().get()
+    def set(p: Parameter, v: Double) = p.value().set(v)
+    def addValueObserver(p: Parameter, f: DoubleValueChangedCallback) =
+      p.value().addValueObserver(f)
+
+  given Exists[ObjectProxy] with
+    def apply(p: ObjectProxy) = p.exists().get()
 }
