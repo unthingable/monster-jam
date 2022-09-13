@@ -56,7 +56,7 @@ class FakeAction
 object FakeAction {
   inline def apply() = new FakeAction
   // when two dynamically created actions are same
-  inline def apply(hashString: String): FakeAction = new FakeAction {
+  inline def apply(inline hashString: String): FakeAction = new FakeAction {
     override def hashCode(): Int = hashString.hashCode
   }
 }

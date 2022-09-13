@@ -205,7 +205,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
       idForBankTrack(st)
     else None
 
-  override def getItemAt(id: TrackId): Option[Track] =
+  override inline def getItemAt(id: TrackId): Option[Track] =
     LazyList.from(bankRange).map(bank.getItemAt).find(t => trackId(t).contains(id))
 
   // cache method references

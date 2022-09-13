@@ -23,6 +23,44 @@ import scala.collection.mutable.ArrayBuffer
 import SliderBankMode.*
 import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.Ref
+import com.bitwig.`extension`.controller.api.HardwareSlider
+import com.github.unthingable.framework.RefSubSelective
+
+case class PRange(lower: Double, upper: Double):
+  val size = upper - lower
+
+// value is unscaled parameter value
+class SliderOp(
+  slider: HardwareSlider, 
+  updateLed: Int => Unit, 
+  val param: Option[Parameter], 
+  range: => PRange, // lower/upper value limit correspoding to 0/127
+  isOn: => Boolean
+) extends RefSubSelective[Double](0) {
+
+  var isActive: Boolean = true // slider->param connected
+
+  enum Source:
+    case Param, Slider
+
+  // assemble listeners
+  override protected val listeners =
+    param.toSeq.map((p: Parameter) => 
+      Some(Source.Param) -> (p.value().set(_))) :+ (
+      None -> ((v: Double) => updateLed(p2s(v)))
+    )
+
+  // wire senders
+  slider.value().addValueObserver((v: Double) => if (isOn && isActive) set(s2p(v), Source.Slider))
+  param.foreach(_.value().addValueObserver((v: Double) => if (isOn) set(v, Source.Param)))
+
+  // scale param->slider
+  inline def p2s(v: Double): Int =
+    (((v - range.lower) / range.size).min(1).max(0) * 127).toInt
+
+  inline def s2p(v: Double): Double =
+    v * range.size + range.lower
+}
 
 class SliderBankMode[Proxy, Param](
   override val id: String,
@@ -30,13 +68,26 @@ class SliderBankMode[Proxy, Param](
   val param: Proxy => Param,
   val barMode: Seq[BarMode],
   val stripColor: Option[Int => Int] = None,
-)(using ext: MonsterJamExt, j: JamSurface, pValue: ParamValue[Param], exists: Exists[Proxy])
+)(using ext: MonsterJamExt, j: JamSurface, 
+// pValue: ParamValue[Param], 
+exists: Exists[Proxy])
     extends SimpleModeLayer(id)
     with Util {
 
   val proxies: Vector[Proxy]                 = j.stripBank.strips.indices.map(obj).toVector
   val sliderParams: Vector[Param]            = proxies.map(param)
   val paramState: mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
+
+  val sliderOp: Vector[SliderOp] = j.stripBank.strips.indices.toVector.map {idx =>
+    val strip = j.stripBank.strips(idx)
+    SliderOp(
+      j.stripBank.strips(idx).slider,
+      j.stripBank.setValue(idx, _),
+      sliderParams(idx).safeCast[Parameter],
+      paramRange(idx),
+      isOn
+    )
+  }
 
   proxies
     .zip(sliderParams)
@@ -51,27 +102,30 @@ class SliderBankMode[Proxy, Param](
   val paramKnowsValue: Boolean = true // UserControls don't and that's sad
   val paramValueCache: Seq[Watched[Double]] = Seq.fill(8)(Ref(0.0)) // unscaled
 
-  def paramValueOrCache(idx: Int): Double =
-    if (paramKnowsValue) pValue.get(sliderParams(idx)) else paramValueCache(idx).get
+  // def paramValueOrCache(idx: Int): Double =
+  //   if (paramKnowsValue) pValue.get(sliderParams(idx)) else paramValueCache(idx).get
 
-  def paramRange(idx: Int): (Double, Double) = (0.0, 1.0)
+  def paramRange(idx: Int): PRange = PRange(0.0, 1.0)
 
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
     if (force || paramState(idx) == State.Normal) { // check state when binding from outside
-      val (min, max) = paramRange(idx)
+      // val (min: Double, max: Double) = paramRange(idx)
       // ext.host.println(s"$name binding $idx with $max")
 
-      sliderParams(idx).safeMap(j.stripBank.strips(idx).slider.setBindingWithRange(_, min, max))
+      // sliderParams(idx).safeMap(j.stripBank.strips(idx).slider.setBindingWithRange(_, min, max))
 
       // force update to account for value lag when scrolling bank
-      updateStrip(idx).valueChanged(pValue.get(sliderParams(idx)))
+      // updateStrip(idx).valueChanged(pValue.get(sliderParams(idx)))
+      sliderOp(idx).isActive = true
+      sliderOp(idx).sync()
     }
 
   def unbind(idx: Int): Unit =
     // bindings need clearing because they interfere with shift tracking
-    j.stripBank.strips(idx).slider.clearBindings()
+    // j.stripBank.strips(idx).slider.clearBindings()
     // updateStrip(idx).valueChanged(paramValueOrCache(idx))
-    updateStrip(idx).valueChanged(0.5)
+    // updateStrip(idx).valueChanged(0.5)
+    sliderOp(idx).isActive = false
     ()
 
   def updateStrip(idx: Int): DoubleValueChangedCallback =
@@ -88,6 +142,8 @@ class SliderBankMode[Proxy, Param](
 
     var offsetObserver: Double => Unit = _ => ()
     strip.slider.value().addValueObserver(offsetObserver(_))
+
+    val thisSlider = sliderOp(idx)
 
     var startValue: Option[Double] = None
 
@@ -114,23 +170,23 @@ class SliderBankMode[Proxy, Param](
         case (true, true, _: PressEvent, state) =>
           if (state == Normal)
             unbind(idx)
-          val current = pValue.get(param)
+          val current = thisSlider.get // pValue.get(param)
           startValue = None
           offsetObserver = { v =>
             val offset  = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
-            pValue.set(param, floored)
+            thisSlider.set(floored, null)
             if (startValue.isEmpty) startValue = Some(v)
           }
           ShiftTracking
         case (true, _, StripR, ShiftTracking) =>
           offsetObserver = _ => ()
-          updateStrip(idx).valueChanged(pValue.get(param))
+          // updateStrip(idx).valueChanged(pValue.get(param))
           ShiftTracking
         case (_, _, _: ReleaseEvent, ShiftTracking) =>
           offsetObserver = _ => ()
           bindWithRange(idx, force = true)
-          updateStrip(idx).valueChanged(pValue.get(param))
+          // updateStrip(idx).valueChanged(pValue.get(param))
           Normal
         case _ =>
           Normal
@@ -144,17 +200,17 @@ class SliderBankMode[Proxy, Param](
     // proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
 
     // move slider dot
-    if (paramKnowsValue) {
-      // param.value().markInterested()
-      pValue.addValueObserver(param, updateStrip(idx))
-    } else {
-      val tv = strip.slider.targetValue()
-      val hv = strip.slider.hasTargetValue
-      tv.markInterested()
-      hv.markInterested()
-      tv.addValueObserver(v => if (hv.get()) updateStrip(idx).valueChanged(v))
-      hv.addValueObserver(v => updateStrip(idx).valueChanged(if (v) tv.get() else 0))
-    }
+    // if (paramKnowsValue) {
+    //   // param.value().markInterested()
+    //   pValue.addValueObserver(param, updateStrip(idx))
+    // } else {
+    //   val tv = strip.slider.targetValue()
+    //   val hv = strip.slider.hasTargetValue
+    //   tv.markInterested()
+    //   hv.markInterested()
+    //   tv.addValueObserver(v => if (hv.get()) updateStrip(idx).valueChanged(v))
+    //   hv.addValueObserver(v => updateStrip(idx).valueChanged(if (v) tv.get() else 0))
+    // }
 
     proxy match {
       case channel: Channel =>
@@ -235,7 +291,8 @@ class SliderBankMode[Proxy, Param](
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit =
-    j.stripBank.setValue(idx, (paramValueOrCache(idx) * 127 / paramRange(idx)._2).toInt, flush)
+    sliderOp(idx).sync()
+    // j.stripBank.setValue(idx)((paramValueOrCache(idx) * 127 / paramRange(idx)._2).toInt, flush)
 
   override def onActivate(): Unit = {
 

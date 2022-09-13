@@ -8,6 +8,7 @@ import com.github.unthingable.jam.surface.JamTouchStrip
 import com.github.unthingable.jam.{Jam, SliderBankMode}
 
 import scala.collection.mutable
+import com.github.unthingable.jam.PRange
 
 trait Level { this: Jam =>
   lazy val levelCycle = new ModeButtonCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
@@ -34,7 +35,7 @@ trait Level { this: Jam =>
           updateLimits(None)
         }
 
-        override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
+        override def paramRange(idx: Int): PRange = PRange(0.0, paramLimits(idx))
 
         def updateLimits(maybeType: Option[(Int, String)], bind: Boolean = true): Unit = {
           val max      = 1.259921049894873

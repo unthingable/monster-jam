@@ -77,7 +77,7 @@ class EventBus[BaseE] {
   def clearSub(e: BaseE): Unit =
     valueSubs.remove(e)
 
-  inline def getSub[E <: BaseE](e: EvtMatcher[E]): mutable.HashSet[Reactor[E]] =
+  inline def getSub[E <: BaseE](inline e: EvtMatcher[E]): mutable.HashSet[Reactor[E]] =
     inline e match
       case ev: E => valueSubs.getOrElseUpdate(ev, mutable.HashSet.empty[Reactor[_]]).asInstanceOf[mutable.HashSet[Reactor[E]]]
       case ec: Class[_] => classSubs.getOrElseUpdate(ec, mutable.HashSet.empty[Reactor[_]]).asInstanceOf[mutable.HashSet[Reactor[E]]]

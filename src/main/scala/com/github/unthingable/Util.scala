@@ -53,12 +53,12 @@ object Util extends Util {
       obj
 
     @targetName("tracem")
-    transparent inline def trace(msg: String): A =
+    transparent inline def trace(inline msg: String): A =
       Util.println(s"$msg $obj")
       obj
 
     @targetName("tracefm")
-    transparent inline def trace(msg: A => String): A =
+    transparent inline def trace(inline msg: A => String): A =
       Util.println(msg(obj))
       obj
 
@@ -67,7 +67,7 @@ object Util extends Util {
         case b: B => Some(b)
         case _    => None
 
-    inline def safeMap[B, C](f: B => C): Option[C] =
+    inline def safeMap[B, C](inline f: B => C): Option[C] =
       obj match
         case b: B => Some(f(b))
         case _    => None

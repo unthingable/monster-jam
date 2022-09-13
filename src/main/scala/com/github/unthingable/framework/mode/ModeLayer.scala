@@ -45,10 +45,10 @@ trait ModeLayer extends IntActivatedLayer, HasId {
   inline final def dirtyBindingsWithMode(withBindings: Binding[_,_,_]*): Seq[OutBinding[_,_,_]] =
     dirtyBindings((modeBindings.outBindings ++ withBindings).toSeq*)
 
-  inline final def isOlderThan(duration: Duration): Boolean =
+  inline final def isOlderThan(inline duration: Duration): Boolean =
     activeAt.exists(act => Instant.now().isAfter(act.plus(duration)))
 
-  inline final def isOlderThan(instant: Instant): Boolean =
+  inline final def isOlderThan(inline instant: Instant): Boolean =
     activeAt.exists(act => instant.isAfter(act))
 
   // called when layer is activated/deactivated by the container
