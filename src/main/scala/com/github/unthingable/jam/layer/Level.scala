@@ -5,15 +5,16 @@ import com.github.unthingable.Util
 import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamTouchStrip
-import com.github.unthingable.jam.{Jam, SliderBankMode}
+import com.github.unthingable.jam.{Jam, SliderBankMode, JamParameter}
 
 import scala.collection.mutable
 import com.github.unthingable.jam.PRange
 
 trait Level { this: Jam =>
   lazy val levelCycle = new ModeButtonCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
+    val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
     override val subModes = Vector(
-      new SliderBankMode("strips volume", trackBank.getItemAt, _.volume(), Seq.fill(8)(BarMode.DUAL)) {
+      new SliderBankMode("strips volume", trackBank.getItemAt, p => JamParameter.Regular(p.volume()), Seq.fill(8)(BarMode.DUAL)) {
         EIGHT.foreach { idx =>
           val track = trackBank.getItemAt(idx)
           track.trackType().markInterested()
@@ -21,7 +22,6 @@ trait Level { this: Jam =>
         }
         ext.preferences.limitLevel.addValueObserver(_ => if (isOn) updateLimits(None))
 
-        val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
 
         proxies.forindex { case (track, idx) =>
           val strip: JamTouchStrip = j.stripBank.strips(idx)
@@ -64,7 +64,7 @@ trait Level { this: Jam =>
           }
         }
       },
-      new SliderBankMode("strips pan", trackBank.getItemAt, _.pan(), Seq.fill(8)(BarMode.PAN)) ,
+      new SliderBankMode("strips pan", trackBank.getItemAt, p => JamParameter.Regular(p.pan()), Seq.fill(8)(BarMode.PAN)) ,
     )
   }
 }

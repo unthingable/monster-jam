@@ -34,20 +34,23 @@ class RefSub[A](init: A) extends Ref[A](init):
   override val onChange: (A, A) => Unit = (_, v) => listeners.foreach(_(v))
 
 // like Watched, but with selective notifications
-abstract class RefSubSelective[A](init: A):
+abstract class RefSubSelective[A]:
   type Token = Any // represents value sender/receiver
-  private var value: (A, Token) = (init, null)
-  protected val listeners: Iterable[(Option[Token], A => Unit)]
+  type Listener = (Option[Token], A => Unit)
+  def init: A
+  protected var value: (A, Token) = (init, null)
+  protected val listeners: Iterable[Listener]
 
   inline def get: A = value._1
 
-  inline def set(inline v: A, inline token: Token): Unit =
+  // inline def set(inline v: A, inline token: Token): Unit =
+  def set(v: A, token: Token): Unit =
     val old = value
     value = (v, token)
-    if (v != old._1)
-      sync()
-  
-  inline def sync(): Unit =
-      listeners.foreach((listenerToken, f) =>
-        if (listenerToken.isEmpty || !listenerToken.contains(value._2)) f(value._1)
-      )
+    // if (value._1 != old._1)
+    push()
+
+  inline def push(): Unit =
+    listeners.foreach((listenerToken, f) =>
+      if (!listenerToken.contains(value._2)) f(value._1)
+    )

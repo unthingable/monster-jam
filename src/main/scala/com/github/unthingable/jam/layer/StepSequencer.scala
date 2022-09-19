@@ -51,6 +51,7 @@ import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.jam.SliderBankMode
 import com.bitwig.`extension`.controller.api.Parameter
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.JamParameter
 
 trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
@@ -120,9 +121,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     7 -> StepMode.Eight
   )
 
-  object stepSequencer extends ModeCycleLayer("STEP")
-    with ListeningLayer
-    with TrackedState(selectedClipTrack) {
+  object stepSequencer
+      extends ModeCycleLayer("STEP")
+      with ListeningLayer
+      with TrackedState(selectedClipTrack) {
     val gridHeight               = 128
     val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
@@ -482,21 +484,21 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     lazy val tune = new ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select) {
-      inline val uOffset = 8*8
+      inline val uOffset = 8 * 8
       // because first 8*8 are for regular mappable user controls
-      val uBank = ext.host.createUserControls(uOffset + 16) 
+      val uBank = ext.host.createUserControls(uOffset + 16)
 
       uBank.getControl(1).value().set(0.4)
       uBank.getControl(1).value().addValueObserver(_ => ())
 
       override val subModes: Vector[ModeLayer] = Vector(
-        new SliderBankMode("note exp", 
-        i => uBank.getControl(i + uOffset), 
-        identity, 
-        Seq.fill(8)(BarMode.SINGLE),
-        // existsOverride = _ => true
+        new SliderBankMode(
+          "note exp",
+          i => uBank.getControl(i + uOffset),
+          _ => JamParameter.Internal,
+          Seq.fill(8)(BarMode.SINGLE),
         ) {
-          override val paramKnowsValue: Boolean = false
+          // override val paramKnowsValue: Boolean = false
         }
       )
     }
@@ -513,7 +515,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       tune,
     )
 
-    def onStepState(from: StepState, to: StepState): Unit = 
+    def onStepState(from: StepState, to: StepState): Unit =
       // TODO update watched params for currently selected notestep
       ()
 

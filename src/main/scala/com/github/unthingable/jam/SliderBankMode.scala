@@ -9,6 +9,7 @@ import com.bitwig.extension.controller.api.{
   RemoteControl,
   Send
 }
+import com.bitwig.extension.controller.api.HardwareSlider
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, HB}
 import com.github.unthingable.{MonsterJamExt, Util}
@@ -23,67 +24,257 @@ import scala.collection.mutable.ArrayBuffer
 import SliderBankMode.*
 import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.Ref
-import com.bitwig.`extension`.controller.api.HardwareSlider
 import com.github.unthingable.framework.RefSubSelective
+import com.github.unthingable.framework.binding.Bindable
 
-case class PRange(lower: Double, upper: Double):
-  val size = upper - lower
+case class PRange(min: Double, max: Double):
+  val size = max - min
 
-// value is unscaled parameter value
-class SliderOp(
-  slider: HardwareSlider, 
-  updateLed: Int => Unit, 
-  val param: Option[Parameter], 
-  range: => PRange, // lower/upper value limit correspoding to 0/127
-  isOn: => Boolean
-) extends RefSubSelective[Double](0) {
+sealed trait JamParameter
 
-  var isActive: Boolean = true // slider->param connected
+object JamParameter:
+  sealed trait WithParam extends JamParameter:
+    val p: Parameter
 
+  case object Internal                 extends JamParameter
+  case class Regular(p: Parameter)     extends WithParam
+  case class UserControl(p: Parameter) extends WithParam
+
+sealed trait SliderOp extends RefSubSelective[Double] with Bindable:
+  def reset(): Unit
+  def pull(): Unit
+
+object SliderOp {
+  import JamParameter.*
   enum Source:
     case Param, Slider
 
+  def apply(
+    idx: Int, // for debugging
+    slider: HardwareSlider,
+    updateLed: Int => Unit,
+    param: JamParameter,
+    range: => PRange, // lower/upper value limit corresponding to 0/127
+    isParentOn: => Boolean
+  )(using j: JamSurface, ext: MonsterJamExt): SliderOp = param match
+    case Regular(p) =>
+      new SliderOpBase(idx, slider, updateLed, range, isParentOn) {
+        p.value.markInterested()
+        p.name().markInterested()
+        p.value().addValueObserver((v: Double) => if (isParentOn) set(v, Source.Param))
+
+        override def paramListeners: Seq[Listener] = Seq(
+          Some(Source.Param) -> ((v: Double) => if (isParentOn) p.value().set(v))
+        )
+
+        override inline def bind(): Unit =
+          _range = range
+          slider.setBindingWithRange(p, _range.min, _range.max)
+
+        override inline def clear(): Unit = slider.clearBindings()
+
+        override inline def reset(): Unit = p.reset()
+
+        override inline def pull(): Unit = set(p.value().get(), Source.Param)
+      }
+    case UserControl(p) =>
+      new SliderOpBase(idx, slider, updateLed, range, isParentOn) {
+        // protected var isBound: Boolean = false // slider->value connected
+        // protected def isActive         = isBound && isParentOn
+
+        // val ghostSlider = j.stripBank.ghostSliders(this.idx)
+        // val ghostSlider = ext.hw.createHardwareSlider(s"${this.idx} ${scala.math.random}")
+        private val tv = slider.targetValue()
+        private val hv = slider.hasTargetValue()
+        tv.markInterested()
+        hv.markInterested()
+        tv.addValueObserver(v => if (isParentOn && hv.get()) set(v, Source.Param))
+        hv.addValueObserver(v => if (isParentOn) set(if (v) tv.get() else get, Source.Param))
+
+        override def paramListeners: Seq[Listener] = Seq(
+          // Some(Source.Param) -> ((v: Double) => if (isParentOn) p.value().set(v)),
+          // None -> ((v: Double) => if (isParentOn) p.value().set(v)),
+          // None -> (v => if (isActive) ghostSlider.targetValue())
+        )
+
+        override inline def bind(): Unit =
+          _range = range
+          // ghostSlider.clearBindings()
+          // isBound = true
+          slider.setBindingWithRange(p, _range.min, _range.max)
+          // ghostSlider.setBindingWithRange(p, _range.min, _range.max)
+
+        override inline def clear(): Unit =
+          slider.clearBindings()
+          // isBound = false
+
+        override inline def reset(): Unit = p.reset()
+
+        override inline def pull(): Unit = ()
+        // Util.println("pull")
+        // f (hv.get()) slider.targetValue().get() else 0, Source.Param)
+      }
+    case Internal =>
+      new SliderOpBase(idx, slider, updateLed, range, isParentOn) {
+        slider.value().addValueObserver((v: Double) => if (isActive) set(s2p(v), Source.Slider))
+
+        protected var isBound: Boolean = false // slider->value connected
+        protected def isActive         = isBound && isParentOn
+
+        override def paramListeners: Seq[Listener] = Seq.empty
+
+        override inline def bind(): Unit =
+          _range = range
+          isBound = true
+
+        override inline def clear(): Unit = isBound = false
+
+        override inline def reset(): Unit = ()
+
+        override inline def pull(): Unit = ()
+      }
+}
+
+// value is unscaled parameter value
+abstract class SliderOpBase(
+  val idx: Int, // for debugging
+  slider: HardwareSlider,
+  updateLed: Int => Unit,
+  // val param: JamParameter,
+  range: => PRange, // lower/upper value limit corresponding to 0/127
+  isParentOn: => Boolean
+) extends SliderOp {
+  import JamParameter.*
+  import SliderOp.*
+
+  protected var _range: PRange = range // efficiency cache
+
+  override val init: Double = 0
+
+  // init
+  // param match
+  //   case Regular(p) =>
+  //     p.value.markInterested()
+  //     p.name().markInterested()
+  //     p.value().addValueObserver((v: Double) => if (isParentOn) set(v, Source.Param))
+  //   case UserControl(_) =>
+  //     val tv = slider.targetValue()
+  //     val hv = slider.hasTargetValue()
+  //     tv.markInterested()
+  //     hv.markInterested()
+  //     tv.addValueObserver(v => if (isParentOn && hv.get()) set(v, Source.Param))
+  //     hv.addValueObserver(v => if (isParentOn) set(if (v) tv.get() else get, Source.Param))
+  //   case Internal =>
+  //     slider.value().addValueObserver((v: Double) => if (isActive) set(s2p(v), Source.Slider))
+
   // assemble listeners
-  override protected val listeners =
-    param.toSeq.map((p: Parameter) => 
-      Some(Source.Param) -> (p.value().set(_))) :+ (
-      None -> ((v: Double) => updateLed(p2s(v)))
-    )
+  protected def paramListeners: Seq[Listener]
+
+  override protected val listeners: Iterable[Listener] = paramListeners :+ (
+    None -> ((v: Double) => updateLed(p2s(v)))
+  )
+  // :+ (
+  //   None -> (v => Util.println(s"$idx $value"))
+  // )
+
+  // override protected val listeners =
+  //   (param match
+  //     case wp: WithParam =>
+  //       val p = wp.p
+  //       Seq(
+  //         Some(Source.Param) -> ((v: Double) =>
+  //           Util.println(s"$idx listener set $v")
+  //           if (isParentOn) p.value().set(v))
+  //       )
+  //     case _ =>
+  //       Seq.empty
+  //   )
+  //     :+ (
+  //       None -> ((v: Double) => updateLed(p2s(v)))
+  //     )
+  //     :+ (
+  //       None -> (v => Util.println(s"$idx $value"))
+  //     )
 
   // wire senders
-  slider.value().addValueObserver((v: Double) => if (isOn && isActive) set(s2p(v), Source.Slider))
-  param.foreach(_.value().addValueObserver((v: Double) => if (isOn) set(v, Source.Param)))
+  // val _bind: () => Unit = param match
+  //   case wp: WithParam => () => slider.setBindingWithRange(wp.p, range.min, range.max)
+  //   case Internal      => () => isBound = true
+
+  // val _clear: () => Unit = param match
+  //   case wp: WithParam => () => slider.clearBindings()
+  //   case Internal      => () => isBound = false
+
+  // override inline def bind() =
+  //   _range = range
+  //   _bind()
+  // override inline def clear() =
+  //   _clear()
+
+  // param.foreach(p =>
+  //   p.exists().markInterested()
+  //   Util.println(p.getClass().getName())
+  //   if (p.getClass.getName.contains("Remappable")) // our best guess this is a UserControl
+  //     Util.println(s"$idx remappable")
+  //     val tv = slider.targetValue()
+  //     val hv = slider.hasTargetValue
+  //     tv.markInterested()
+  //     hv.markInterested()
+  //     tv.addValueObserver(v => if (isParentOn && hv.get()) set(v, Source.Param))
+  //     hv.addValueObserver(v => if (isParentOn) set(if (v) tv.get() else 0, Source.Param))
+  //   else
+  //     Util.println(s"$idx regular")
+  //     param.foreach(_.value().addValueObserver((v: Double) => if (isParentOn) set(v, Source.Param)))
+  // )
+
+  // val pull: () => Unit = param match
+  //   case Regular(p) =>
+  //     () => set(p.value().get(), Source.Param)
+  //   case UserControl(p) =>
+  //     () => set(slider.targetValue().get(), Source.Param)
+  //   case _ => () => ()
 
   // scale param->slider
   inline def p2s(v: Double): Int =
-    (((v - range.lower) / range.size).min(1).max(0) * 127).toInt
+    (((v - _range.min) / _range.size).min(1).max(0) * 127).toInt
 
   inline def s2p(v: Double): Double =
-    v * range.size + range.lower
+    v * _range.size + _range.min
+
+  // inline def reset(): Unit =
+  //   inline param match
+  //     case wp: WithParam => wp.p.reset()
+  //     case _             => ()
+
 }
 
-class SliderBankMode[Proxy, Param](
+class SliderBankMode[Proxy, P <: JamParameter](
   override val id: String,
   val obj: Int => Proxy,
-  val param: Proxy => Param,
+  val param: Proxy => P,
   val barMode: Seq[BarMode],
   val stripColor: Option[Int => Int] = None,
-)(using ext: MonsterJamExt, j: JamSurface, 
-// pValue: ParamValue[Param], 
-exists: Exists[Proxy])
-    extends SimpleModeLayer(id)
+)(using
+  ext: MonsterJamExt,
+  j: JamSurface,
+// pValue: ParamValue[Param],
+  exists: Exists[Proxy]
+) extends SimpleModeLayer(id)
     with Util {
 
   val proxies: Vector[Proxy]                 = j.stripBank.strips.indices.map(obj).toVector
-  val sliderParams: Vector[Param]            = proxies.map(param)
+  val sliderParams: Vector[P]                = proxies.map(param)
   val paramState: mutable.ArrayBuffer[State] = mutable.ArrayBuffer.fill(8)(State.Normal)
 
-  val sliderOp: Vector[SliderOp] = j.stripBank.strips.indices.toVector.map {idx =>
-    val strip = j.stripBank.strips(idx)
+  def paramRange(idx: Int): PRange = PRange(0.0, 1.0)
+
+  Util.println(s"$id sliderOps")
+  val sliderOps: Vector[SliderOp] = j.stripBank.strips.zipWithIndex.map { (strip, idx) =>
     SliderOp(
-      j.stripBank.strips(idx).slider,
+      idx,
+      strip.slider,
       j.stripBank.setValue(idx, _),
-      sliderParams(idx).safeCast[Parameter],
+      sliderParams(idx),
       paramRange(idx),
       isOn
     )
@@ -95,17 +286,16 @@ exists: Exists[Proxy])
       param.safeMap[Parameter, Unit] { p =>
         // p.markInterested()
         p.value.markInterested()
+        p.name().markInterested()
       }
       proxy.safeMap[ObjectProxy, Unit](_.exists().markInterested())
     )
 
-  val paramKnowsValue: Boolean = true // UserControls don't and that's sad
+  // val paramKnowsValue: Boolean = true // UserControls don't and that's sad
   val paramValueCache: Seq[Watched[Double]] = Seq.fill(8)(Ref(0.0)) // unscaled
 
   // def paramValueOrCache(idx: Int): Double =
   //   if (paramKnowsValue) pValue.get(sliderParams(idx)) else paramValueCache(idx).get
-
-  def paramRange(idx: Int): PRange = PRange(0.0, 1.0)
 
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
     if (force || paramState(idx) == State.Normal) { // check state when binding from outside
@@ -116,8 +306,10 @@ exists: Exists[Proxy])
 
       // force update to account for value lag when scrolling bank
       // updateStrip(idx).valueChanged(pValue.get(sliderParams(idx)))
-      sliderOp(idx).isActive = true
-      sliderOp(idx).sync()
+      sliderOps(idx).bind()
+      // sliderOps(idx).push()
+      sliderOps(idx).pull()
+      // ext.host.scheduleTask(() => sliderOps(idx).pull(), 10)
     }
 
   def unbind(idx: Int): Unit =
@@ -125,7 +317,7 @@ exists: Exists[Proxy])
     // j.stripBank.strips(idx).slider.clearBindings()
     // updateStrip(idx).valueChanged(paramValueOrCache(idx))
     // updateStrip(idx).valueChanged(0.5)
-    sliderOp(idx).isActive = false
+    sliderOps(idx).clear()
     ()
 
   def updateStrip(idx: Int): DoubleValueChangedCallback =
@@ -138,12 +330,11 @@ exists: Exists[Proxy])
   override def modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
     val proxy: Proxy         = proxies(idx)
-    val param: Param         = sliderParams(idx)
 
     var offsetObserver: Double => Unit = _ => ()
     strip.slider.value().addValueObserver(offsetObserver(_))
 
-    val thisSlider = sliderOp(idx)
+    val sliderOp = sliderOps(idx)
 
     var startValue: Option[Double] = None
 
@@ -162,7 +353,8 @@ exists: Exists[Proxy])
           bindWithRange(idx, force = true)
           Normal
         case (_, _, StripP, _) if j.clear.btn.isPressed().get =>
-          param.safeMap[Parameter, Unit](_.reset())
+          // param.safeMap[Parameter, Unit](_.reset())
+          sliderOp.reset()
           Normal
         case (_, _, ShiftP, _) =>
           unbind(idx)
@@ -170,12 +362,12 @@ exists: Exists[Proxy])
         case (true, true, _: PressEvent, state) =>
           if (state == Normal)
             unbind(idx)
-          val current = thisSlider.get // pValue.get(param)
+          val current = sliderOp.get // pValue.get(param)
           startValue = None
           offsetObserver = { v =>
             val offset  = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
-            thisSlider.set(floored, null)
+            sliderOp.set(floored, null)
             if (startValue.isEmpty) startValue = Some(v)
           }
           ShiftTracking
@@ -194,9 +386,14 @@ exists: Exists[Proxy])
       paramState.update(idx, state)
     }
 
-    proxy.safeMap[ObjectProxy, Unit](
-      _.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
-    )
+    proxy
+      .safeCast[ObjectProxy]
+      .orElse(proxy.safeCast[Parameter])
+      .map(p =>
+        p.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
+        Util.println(s"have proxy $idx")
+      )
+      .getOrElse(j.stripBank.setActive(idx, false))
     // proxy.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
 
     // move slider dot
@@ -234,7 +431,10 @@ exists: Exists[Proxy])
     }
 
     import Event._
-    if (paramKnowsValue || true)
+    if (
+      // paramType == ParamType.Regular ||
+      true
+    )
       Vector(
         HB(
           j.clear.btn.pressedAction,
@@ -291,8 +491,9 @@ exists: Exists[Proxy])
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit =
-    sliderOp(idx).sync()
+    sliderOps(idx).pull()
     // j.stripBank.setValue(idx)((paramValueOrCache(idx) * 127 / paramRange(idx)._2).toInt, flush)
+    ()
 
   override def onActivate(): Unit = {
 
@@ -327,12 +528,14 @@ exists: Exists[Proxy])
 
     j.stripBank.flushColors()
 
-    sliderParams.indices.foreach(sync(_, false))
-    if (barMode.contains(BarMode.DUAL))
-      j.stripBank.flushValues()
-
     j.stripBank.strips.indices.foreach(bindWithRange(_))
+
+    // sliderParams.indices.foreach(sync(_, false))
+    sliderOps.foreach(_.pull())
+    // if (barMode.contains(BarMode.DUAL))
+    j.stripBank.flushValues()
     super.onActivate()
+
   }
 
   override def onDeactivate(): Unit = {

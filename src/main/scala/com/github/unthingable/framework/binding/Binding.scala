@@ -15,14 +15,15 @@ import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.HasButtonState
 import com.github.unthingable.framework.HasId
 
-trait Clearable {
+trait Clearable:
   // stop the binding from doing its thing
   def clear(): Unit
-}
 
-trait Named {
+trait Bindable extends Clearable:
+  def bind(): Unit // watch out for idempotence
+
+trait Named:
   def name: String
-}
 
 /**
  * Unmanaged/exclusive bindings are to be left alone when modes are deactivated
@@ -36,8 +37,7 @@ case class BindingBehavior(
   exclusive: Boolean = true
 )
 
-sealed trait Binding[S, B, T] extends Clearable {
-  def bind(): Unit // watch out for idempotence
+sealed trait Binding[S, B, T] extends Bindable {
   def source: S // exclusivity object, will be indexed by ModeGraph for bumping calculus
   def target: T
 

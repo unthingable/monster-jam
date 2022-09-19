@@ -79,7 +79,7 @@ trait Control { this: Jam with MacroL =>
       def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
       override val subModes: Vector[ModeLayer] = (
-        new SliderBankMode("strips remote", page.c.getParameter, identity, Seq.fill(8)(BarMode.DUAL)) {
+        new SliderBankMode("strips remote", page.c.getParameter, JamParameter.Regular.apply, Seq.fill(8)(BarMode.DUAL)) {
 
           j.stripBank.strips.forindex {
             case (strip, idx) =>
@@ -92,14 +92,14 @@ trait Control { this: Jam with MacroL =>
                   )
               )
               val param = sliderParams(idx)
-              param.modulatedValue().markInterested()
-              param.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
+              param.p.modulatedValue().markInterested()
+              param.p.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
           }
 
           override def onActivate(): Unit = {
             sliderParams.forindex {
               case (param, idx) =>
-                j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
+                j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
             }
             super.onActivate()
           }
@@ -122,7 +122,7 @@ trait Control { this: Jam with MacroL =>
             new SliderBankMode(
               s"strips slice $idx",
               obj = i => trackBank.getItemAt(i).createCursorDevice(),
-              param = _.createCursorRemoteControlsPage(8).getParameter(idx),
+              param = p => JamParameter.Regular(p.createCursorRemoteControlsPage(8).getParameter(idx)),
               barMode = Seq.fill(8)(BarMode.DUAL),
               stripColor = Some(_ => Util.rainbow(idx))
             ) {
@@ -155,8 +155,8 @@ trait Control { this: Jam with MacroL =>
                   )
 
                   val param = sliderParams(stripIdx)
-                  param.modulatedValue().markInterested()
-                  param
+                  param.p.modulatedValue().markInterested()
+                  param.p
                     .modulatedValue()
                     .addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
               }
@@ -167,7 +167,7 @@ trait Control { this: Jam with MacroL =>
                 currentSlice = idx
                 sliderParams.forindex {
                   case (param, idx) =>
-                    j.stripBank.strips(idx).update((param.modulatedValue().get() * 127).toInt)
+                    j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
                 }
                 pressL = false
                 pressR = false
@@ -222,8 +222,8 @@ trait Control { this: Jam with MacroL =>
         new SliderBankMode(
           s"strips user bank $idx",
           i => userBank.getControl(i + idx),
-          identity,
-          barMode = Seq.fill(8)(BarMode.SINGLE)
+          JamParameter.UserControl.apply,
+          barMode = Seq.fill(8)(BarMode.SINGLE),
         ) {
           // override val paramKnowsValue: Boolean = false
 

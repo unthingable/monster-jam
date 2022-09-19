@@ -7,12 +7,12 @@ import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButtonCyc
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Jam, SliderBankMode}
+import com.github.unthingable.jam.{Jam, SliderBankMode, JamParameter}
 
 trait Aux { this: Jam =>
   lazy val auxLayer = new ModeButtonCycleLayer("AUX", j.aux, CycleMode.Select) with Util {
     override val subModes = EIGHT.map(idx =>
-      new SliderBankMode("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), identity, Seq.fill(8)(BarMode.SINGLE))
+      new SliderBankMode("strips aux", trackBank.getItemAt(_).sendBank().getItemAt(idx), JamParameter.Regular.apply, Seq.fill(8)(BarMode.SINGLE))
       )
   }
 
