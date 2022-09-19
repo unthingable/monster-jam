@@ -44,7 +44,7 @@ abstract class RefSubSelective[A]:
   inline def get: A = value._1
 
   // inline def set(inline v: A, inline token: Token): Unit =
-  def set(v: A, token: Token): Unit =
+  inline def set(v: A, token: Token): Unit =
     val old = value
     value = (v, token)
     // if (value._1 != old._1)
