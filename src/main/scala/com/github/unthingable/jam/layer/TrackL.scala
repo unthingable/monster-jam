@@ -11,8 +11,16 @@ import java.util.function.BooleanSupplier
 import com.github.unthingable.framework.binding.EB
 
 trait TrackL { this: Jam =>
+  /*
+    Workaround for weird TrackBank.scrollBy() behavior - if next page is empty it won't scroll right,
+    instead it will always jump to (last track index - bank size) [117008]
+   */
+  def scrollBy(n: Int): Unit =
+    trackBank.scrollPosition().set(trackBank.scrollPosition().get() + n)
+
   lazy val trackGroup = new SimpleModeLayer("trackGroup") {
     ext.cursorTrack.position().markInterested()
+    var lastPress: Option[Int] = None
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
       val btn       = j.groupButtons(idx)
@@ -31,9 +39,10 @@ trait TrackL { this: Jam =>
       track.position().markInterested()
       track.trackType().markInterested()
 
-      def handlePress(): Unit = {
+      def handlePress(): Unit =
         val now = Instant.now()
-        if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
+        if (lastPress.exists(_ != idx)) lastPress.foreach(i => scrollBy(i - idx))
+        else if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
 
           // val trackId  = tracker.trackId(track)
           // val callback = () => {
@@ -56,7 +65,11 @@ trait TrackL { this: Jam =>
         else if (GlobalMode.Duplicate.isOn) track.duplicate()
         else track.selectInMixer()
         pressedOn = now
-      }
+        lastPress = Some(idx)
+
+      def handleRelease(): Unit =
+        if (lastPress.contains(idx))
+          lastPress = None
 
       Vector(
         SupColorStateB(
@@ -73,7 +86,8 @@ trait TrackL { this: Jam =>
           JamColorState.empty
         ),
         // HB(btn.button.press(), () => trackBank.cursorIndex().set(idx))
-        EB(btn.st.press, s"group $idx pressed: select in mixer", () => handlePress())
+        EB(btn.st.press, s"group $idx pressed: select in mixer", () => handlePress()),
+        EB(btn.st.release, s"group $idx released", () => handleRelease())
       )
     }
   }
@@ -92,13 +106,6 @@ trait TrackL { this: Jam =>
       track.solo().markInterested()
       track.arm().markInterested()
       trackBank.scrollPosition().markInterested()
-
-      /*
-      Workaround for weird TrackBank.scrollBy() behavior - if next page is empty it won't scroll right,
-      instead it will always jump to (last track index - bank size) [117008]
-       */
-      def scrollBy(n: Int): Unit =
-        trackBank.scrollPosition().set(trackBank.scrollPosition().get() + n)
 
       override val modeBindings: Seq[Binding[_, _, _]] = Vector(
         SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Mod.blink3),
