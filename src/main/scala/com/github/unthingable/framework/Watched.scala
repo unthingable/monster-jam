@@ -33,18 +33,17 @@ class RefSub[A](init: A) extends Ref[A](init):
 
   override val onChange: (A, A) => Unit = (_, v) => listeners.foreach(_(v))
 
-// like Watched, but with selective notifications
-abstract class RefSubSelective[A]:
-  type Token = Any // represents value sender/receiver
+/* like Watched, but with selective notifications */
+abstract class RefSubSelective[Token, A]:
   type Listener = (Option[Token], A => Unit)
-  def init: A
-  protected var value: (A, Token) = (init, null)
-  protected val listeners: Iterable[Listener]
+  def init: (A, Token)
+  protected var value: (A, Token) = init
+  protected def listeners: Iterable[Listener]
 
   inline def get: A = value._1
 
-  // inline def set(inline v: A, inline token: Token): Unit =
-  inline def set(v: A, token: Token): Unit =
+  inline def set(inline v: A, inline token: Token): Unit =
+  // def set(v: A, token: Token): Unit =
     val old = value
     value = (v, token)
     // if (value._1 != old._1)
@@ -54,3 +53,12 @@ abstract class RefSubSelective[A]:
     listeners.foreach((listenerToken, f) =>
       if (!listenerToken.contains(value._2)) f(value._1)
     )
+
+class GetSetProxyBase[A]:
+  protected var value: Option[A] = None
+  def setValue(v: A): Unit = value = Some(v)
+  def clearValue(): Unit = value = None
+
+case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B) => Unit) extends GetSetProxyBase[A]:
+  def get: B = value.map(getf).getOrElse(default)
+  def set(v: B) = value.foreach(setf(_, v))

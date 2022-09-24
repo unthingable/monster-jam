@@ -36,6 +36,10 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
     if (flush) flushColors()
   }
 
+  inline def setActive(f: Int => Boolean): Unit =
+    (0 until 8).foreach(idx => active.update(idx, f(idx)))
+    flushColors()
+
   def flushColors(): Unit =
     ext.midiOut.sendSysex(createCommand("05",
       colors.zip(active).zipWithIndex.map { case ((n, a), idx) => f"${if (a) barMode(idx).v else "00"}${n}%02x"}.mkString))

@@ -36,18 +36,20 @@ object JamParameter:
   sealed trait WithParam extends JamParameter:
     val p: Parameter
 
-  case object Internal                 extends JamParameter
-  case class Regular(p: Parameter)     extends WithParam
-  case class UserControl(p: Parameter) extends WithParam
+  case class Internal(callback: Double => Unit) extends JamParameter
+  case class Regular(p: Parameter)              extends WithParam
+  case class UserControl(p: Parameter)          extends WithParam
+  case object Empty                             extends JamParameter
 
-sealed trait SliderOp extends RefSubSelective[Double] with Bindable:
+sealed trait SliderOp extends RefSubSelective[SliderOp.Source, Double] with Bindable:
   def reset(): Unit
   def pull(): Unit
 
 object SliderOp {
   import JamParameter.*
+
   enum Source:
-    case Param, Slider
+    case Param, Slider, Internal, Init
 
   def apply(
     idx: Int, // for debugging
@@ -99,14 +101,14 @@ object SliderOp {
 
         override inline def pull(): Unit = ()
 
-    case Internal =>
+    case Internal(f) =>
       new SliderOpBase(idx, slider, updateLed, range, isParentOn):
         slider.value().addValueObserver((v: Double) => if (isActive) set(s2p(v), Source.Slider))
 
         protected var isBound: Boolean = false // slider->value connected
-        protected inline def isActive         = isBound && isParentOn
+        protected inline def isActive  = isBound && isParentOn
 
-        override def paramListeners: Seq[Listener] = Seq.empty
+        override def paramListeners: Seq[Listener] = Seq(Some(Source.Internal) -> f)
 
         override inline def bind(): Unit =
           _range = range
@@ -117,6 +119,15 @@ object SliderOp {
         override inline def reset(): Unit = ()
 
         override inline def pull(): Unit = push()
+    case Empty =>
+      new SliderOp {
+        def bind(): Unit                            = ()
+        def clear(): Unit                           = ()
+        val init: (Double, Source)                  = (0, Source.Init)
+        protected def listeners: Iterable[Listener] = Vector.empty
+        def pull(): Unit                            = ()
+        def reset(): Unit                           = ()
+      }
 }
 
 // value is unscaled parameter value
@@ -132,7 +143,7 @@ abstract class SliderOpBase(
 
   protected var _range: PRange = range // efficiency cache
 
-  override val init: Double = 0
+  override def init = (0, Source.Init)
 
   // assemble listeners
   protected def paramListeners: Seq[Listener]
@@ -367,7 +378,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
               Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
             case _: RemoteControl =>
               Some(Util.rainbow(idx))
-            case _: Parameter =>
+            case _ =>
               // a random parameter we know nothing about (probably from UserControlBank)
               Some(JamColorBase.RED)
           })
@@ -418,4 +429,7 @@ object SliderBankMode {
 
   given Exists[ObjectProxy] with
     def apply(p: ObjectProxy) = p.exists().get()
+
+  given Exists[Option[_]] with
+    def apply(p: Option[_]) = p.isDefined
 }

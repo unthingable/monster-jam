@@ -52,6 +52,8 @@ import com.github.unthingable.jam.SliderBankMode
 import com.bitwig.`extension`.controller.api.Parameter
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderOp
+import com.github.unthingable.framework.GetSetProxy
 
 trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
@@ -483,24 +485,52 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
     )
 
-    lazy val tune = new ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select) {
-      inline val uOffset = 8 * 8
-      // because first 8*8 are for regular mappable user controls
-      val uBank = ext.host.createUserControls(uOffset + 16)
+    object tune extends ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select) {
+      val P = GetSetProxy[NoteStep, Double](0)
+      val proxies: Vector[Option[GetSetProxy[NoteStep, Double]]] = Vector(
+        P(_.velocity(), (s, v) => s.setVelocity(v)),
+        P(_.releaseVelocity(), (s, v) => s.setReleaseVelocity(v)),
+        P(_.velocitySpread(), (s, v) => s.setVelocitySpread(v)),
+        (), // the missing note start, reserved for future when this hopefully gets added
+        P(_.duration(), (s, v) => s.setDuration(v)),
+        P(_.pan(), (s, v) => s.setPan(v)),
+        P(_.timbre(), (s, v) => s.setTimbre(v)),
+        P(_.pressure(), (s, v) => s.setPressure(v)),
+      ).map {
+        case p: GetSetProxy[NoteStep, Double] @unchecked => Some(p)
+        case _: Unit                                     => None
+      }
 
-      uBank.getControl(1).value().set(0.4)
-      uBank.getControl(1).value().addValueObserver(_ => ())
+      val realProxies = proxies.flatten
+      val mask        = proxies.map(_.isDefined)
 
-      override val subModes: Vector[ModeLayer] = Vector(
-        new SliderBankMode(
-          "note exp",
-          i => uBank.getControl(i + uOffset),
-          _ => JamParameter.Internal,
-          Seq.fill(8)(BarMode.SINGLE),
-        ) {
-          // override val paramKnowsValue: Boolean = false
-        }
-      )
+      def setCurrentStep(step: Option[NoteStep]): Unit =
+        step match
+          case Some(st) =>
+            realProxies.foreach(_.setValue(st))
+            proxies
+              .zip(sliders1.sliderOps)
+              .foreach((p, s) => p.foreach(realp => s.set(realp.get, SliderOp.Source.Internal)))
+            j.stripBank.setActive(mask)
+
+          case None =>
+            realProxies.foreach(_.clearValue())
+            j.stripBank.setActive(_ => false)
+
+      val callbacks: Vector[Option[Double => Unit]] =
+        proxies.map(_.map(_.set))
+
+      val sliders1 = new SliderBankMode(
+        "note exp",
+        callbacks,
+        _.map(JamParameter.Internal.apply).getOrElse(JamParameter.Empty),
+        Seq.fill(8)(BarMode.SINGLE),
+        stripColor = Some(_ => JamColorBase.RED)
+      ) {
+        // override val paramKnowsValue: Boolean = false
+      }
+
+      override val subModes: Vector[ModeLayer] = Vector(sliders1)
     }
 
     override val subModes: Vector[ModeLayer] = Vector(
@@ -517,7 +547,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def onStepState(from: StepState, to: StepState): Unit =
       // TODO update watched params for currently selected notestep
-      ()
+      val lastStep: Option[NoteStep] = for {
+        prev <- from.steps.lastOption
+        curr <- to.steps.lastOption
+        step <- Option.when(prev._2 != curr._2)(curr)
+      } yield step._2
+      tune.setCurrentStep(lastStep)
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, stepEnc, dpadStep) ++ subModes.filter(_.isOn)).distinct

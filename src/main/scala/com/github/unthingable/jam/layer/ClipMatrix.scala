@@ -124,8 +124,9 @@ trait ClipMatrix { this: Jam =>
             None
           case Some(qSize) =>
             val beat = ext.transport.playPosition().get()
+            // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
             if (beat % (qSize * 4) < launchTolerance) // * 4 because this is bars
-              Some(clipQString, "continue_immediately")
+              Some(qString, "continue_immediately")
             else
               None
 
