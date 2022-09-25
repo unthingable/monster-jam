@@ -9,7 +9,7 @@ import scala.annotation.targetName
 import scala.reflect.ClassTag
 
 class EventBus[BaseE] {
-  type Reactor[E <: BaseE] = E => Unit
+  type Reactor[E <: BaseE]     = E => Unit
   type EvtMatcher[+E <: BaseE] = E | Class[_]
   case class EvtContext[+E <: BaseE](e: E, ctx: String)
 
@@ -18,7 +18,6 @@ class EventBus[BaseE] {
 
   // private val Subs = mutable.HashMap.empty[Class[? <: BaseE], mutable.HashSet[Reactor[_]]]
 
-  
   /* Janky actor with a queue, no mind paid to concurrency.
      Assuming the extention is single-threaded this should be fine.
    */
@@ -79,11 +78,17 @@ class EventBus[BaseE] {
 
   inline def getSub[E <: BaseE](inline e: EvtMatcher[E]): mutable.HashSet[Reactor[E]] =
     inline e match
-      case ev: E => valueSubs.getOrElseUpdate(ev, mutable.HashSet.empty[Reactor[_]]).asInstanceOf[mutable.HashSet[Reactor[E]]]
-      case ec: Class[_] => classSubs.getOrElseUpdate(ec, mutable.HashSet.empty[Reactor[_]]).asInstanceOf[mutable.HashSet[Reactor[E]]]
+      case ev: E =>
+        valueSubs
+          .getOrElseUpdate(ev, mutable.HashSet.empty[Reactor[_]])
+          .asInstanceOf[mutable.HashSet[Reactor[E]]]
+      case ec: Class[_] =>
+        classSubs
+          .getOrElseUpdate(ec, mutable.HashSet.empty[Reactor[_]])
+          .asInstanceOf[mutable.HashSet[Reactor[E]]]
 
   private def receiversFor[E <: BaseE](e: E): Iterable[Reactor[E]] =
-    (valueSubs.get(e).toSeq.flatten 
-    ++ classSubs.get(e.getClass()).toSeq.flatten)
-    .asInstanceOf[Iterable[Reactor[E]]]
+    (valueSubs.get(e).toSeq.flatten
+      ++ classSubs.get(e.getClass()).toSeq.flatten)
+      .asInstanceOf[Iterable[Reactor[E]]]
 }
