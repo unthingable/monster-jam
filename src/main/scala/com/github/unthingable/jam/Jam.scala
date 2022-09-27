@@ -34,7 +34,8 @@ class Jam(implicit val ext: MonsterJamExt)
   // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
 
-  lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
+  // lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
+  val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
   def selectedObserver(track: Int): IndexedBooleanValueChangedCallback = (idx: Int, selected: Boolean) =>
     if (selected)
       ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))

@@ -149,7 +149,7 @@ abstract class SliderOpBase(
   protected def paramListeners: Seq[Listener]
 
   override protected val listeners: Iterable[Listener] = paramListeners :+ (
-    None -> ((v: Double) => updateLed(p2s(v)))
+    None -> ((v: Double) => if (isParentOn) updateLed(p2s(v)))
   )
   // :+ (
   //   None -> (v => Util.println(s"$idx $value"))
@@ -190,7 +190,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
       j.stripBank.setValue(idx, _),
       sliderParams(idx),
       paramRange(idx),
-      isOn
+      isOn && j.stripBank.active(idx)
     )
   }
 

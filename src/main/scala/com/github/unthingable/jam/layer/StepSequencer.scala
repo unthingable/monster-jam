@@ -143,17 +143,20 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     // clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
     // follow track selection
-    ext.cursorTrack
-      .position()
-      .addValueObserver(v =>
-        selectedClipTrack.selectChannel(ext.cursorTrack)
-        // updateState(ext.cursorTrack)
-        ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
-      )
+    // ext.cursorTrack
+    //   .position()
+    //   .addValueObserver(v =>
+    //     selectedClipTrack.selectChannel(ext.cursorTrack)
+    //     // updateState(ext.cursorTrack)
+    //     ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
+    //   )
 
     // follow clip selection
     ext.events.addSub((e: ClipSelected) =>
-      if (isOn) selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
+      Util.println(s"received $e")
+      // if (isOn)
+      // selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
+      localState.selectedSteps.update(e.globalTrack, e.globalClip)
     )
 
     Vector(
@@ -177,6 +180,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     object localState:
       var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
+      val selectedSteps                 = mutable.HashMap.empty[Int, Int]
 
     clip.setStepSize(ts.stepSize)
     // clip.scrollToKey(12 * 3)
@@ -236,31 +240,34 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def stepPress(x: Int, y: Int): Unit =
       inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
 
-      val newState: StepState = localState.stepState.get match
-        case StepState(Nil, _) =>
-          val step = stepAt(x, y)
-          if (step.state == NSState.Empty)
-            clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
-            StepState(List((Point(x, y), step)), true)
-          else StepState(List((Point(x, y), step)), false)
-        case st @ StepState(p @ (Point(x0, y0), _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
-          val step: NoteStep = stepAt(x0, y0)
-          val newDuration    = ts.stepSize * (x - x0 + 1)
-          if (step.duration() == newDuration)
-            step.setDuration(ts.stepSize)
-          else
-            step.setDuration(newDuration)
-          st.copy(noRelease = true)
-        case st @ StepState(steps, noRelease) if hasStep =>
-          StepState(steps :+ (Point(x, y), stepAt(x, y)), noRelease)
-        case st => st
+      val newState: StepState =
+        val step  = stepAt(x, y)
+        val pstep = PointStep(Point(x, y), step, Instant.now())
+        localState.stepState.get match
+          case StepState(Nil, _) =>
+            if (step.state == NSState.Empty)
+              clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
+              StepState(List(PointStep(Point(x, y), stepAt(x, y), Instant.now())), true)
+            else StepState(List(pstep), false)
+          case st @ StepState(p @ PointStep(Point(x0, y0), _, _) :: Nil, _)
+              if y == y0 && x > x0 && !hasStep =>
+            val step0: NoteStep = stepAt(x0, y0)
+            val newDuration     = ts.stepSize * (x - x0 + 1)
+            if (step0.duration() == newDuration)
+              step0.setDuration(ts.stepSize)
+            else
+              step0.setDuration(newDuration)
+            st.copy(noRelease = true)
+          case st @ StepState(steps, noRelease) if hasStep =>
+            StepState(steps :+ pstep, noRelease)
+          case st => st
       localState.stepState.set(newState)
       // Util.println(stepState.toString())
 
     def stepRelease(X: Int, Y: Int): Unit =
       val newState = localState.stepState.get match
-        case StepState((Point(X, Y), _) :: Nil, noRelease) =>
-          if (!noRelease)
+        case StepState(PointStep(Point(X, Y), _, pressed) :: Nil, noRelease) =>
+          if (!noRelease && !pressed.isBefore(Instant.now().minusMillis(300)))
             val step = stepAt(X, Y)
             step.state match
               case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
@@ -507,14 +514,16 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       def setCurrentStep(step: Option[NoteStep]): Unit =
         step match
           case Some(st) =>
+            Util.println(s"setting active $mask")
             realProxies.foreach(_.setValue(st))
+            j.stripBank.setActive(mask)
             proxies
               .zip(sliders1.sliderOps)
               .foreach((p, s) => p.foreach(realp => s.set(realp.get, SliderOp.Source.Internal)))
-            j.stripBank.setActive(mask)
-
           case None =>
             realProxies.foreach(_.clearValue())
+            Util.println("setting inactive")
+            sliders1.sliderOps.foreach(_.set(0, SliderOp.Source.Internal))
             j.stripBank.setActive(_ => false)
 
       val callbacks: Vector[Option[Double => Unit]] =
@@ -526,10 +535,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         _.map(JamParameter.Internal.apply).getOrElse(JamParameter.Empty),
         Seq.fill(8)(BarMode.SINGLE),
         stripColor = Some(_ => JamColorBase.RED)
-      ) {
-        // override val paramKnowsValue: Boolean = false
-      }
+      ):
+        override def onActivate(): Unit =
+          super.onActivate()
+          setCurrentStep(localState.stepState.get.steps.lastOption.map(_.step))
 
+      override def onActivate(): Unit =
+        super.onActivate()
+        select(0)
       override val subModes: Vector[ModeLayer] = Vector(sliders1)
     }
 
@@ -546,13 +559,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     def onStepState(from: StepState, to: StepState): Unit =
-      // TODO update watched params for currently selected notestep
-      val lastStep: Option[NoteStep] = for {
-        prev <- from.steps.lastOption
-        curr <- to.steps.lastOption
-        step <- Option.when(prev._2 != curr._2)(curr)
-      } yield step._2
-      tune.setCurrentStep(lastStep)
+      if (tune.isOn)
+        val prev = from.steps.lastOption.map(_.step)
+        val curr = to.steps.lastOption.map(_.step)
+        if (prev != curr)
+          tune.setCurrentStep(curr)
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, stepEnc, dpadStep) ++ subModes.filter(_.isOn)).distinct
@@ -571,6 +582,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     override def onActivate(): Unit =
       restoreState()
       super.onActivate()
+      if (!clip.exists().get())
+        // only works for tracks with no clips, but ok
+        val t = selectedClipTrack.position().get()
+        val c = localState.selectedSteps.getOrElse(t, 0)
+        selectedClipTrack.createNewLauncherClip(c)
+        trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
   }
 }
 
@@ -600,4 +617,8 @@ repeat curve
 repeat vel end
 
 mute
+
+problems:
+  deactivating STEP with TUNE should reactivate previous slider mode
+  dirty TUNE tracking
  */

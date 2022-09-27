@@ -18,10 +18,10 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
     .toVector
     .forindex(_.slider.setIndexInGroup(_))
 
-  var barMode: Int => BarMode                   = _ => BarMode.DUAL
-  private val colors: mutable.ArraySeq[Int]     = mutable.ArraySeq.fill(8)(0)
-  private val values: mutable.ArraySeq[Int]     = mutable.ArraySeq.fill(8)(0)
-  private val active: mutable.ArraySeq[Boolean] = mutable.ArraySeq.fill(8)(false)
+  var barMode: Int => BarMode               = _ => BarMode.DUAL
+  private val colors: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
+  private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
+  val active: mutable.ArraySeq[Boolean]     = mutable.ArraySeq.fill(8)(false)
 
   def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
     // some more NI magic for you, white is not the same for strips. Also we can't really show black tracks.

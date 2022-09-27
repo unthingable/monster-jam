@@ -2,6 +2,7 @@ package com.github.unthingable.jam.stepSequencer
 
 import com.github.unthingable.framework.quant
 import com.bitwig.extension.controller.api.NoteStep
+import java.time.Instant
 
 enum StepMode(val keyRows: Int):
   case One extends StepMode(1)
@@ -19,7 +20,9 @@ case class Point(x: Int, y: Int)
 
 inline def Noop = () => Vector.empty
 
-case class StepState(steps: List[(Point, NoteStep)], noRelease: Boolean)
+case class PointStep(point: Point, step: NoteStep, pressed: Instant)
+
+case class StepState(steps: List[PointStep], noRelease: Boolean)
 
 case class SeqState(
   channel: Int,
