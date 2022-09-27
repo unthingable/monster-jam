@@ -267,7 +267,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def stepRelease(X: Int, Y: Int): Unit =
       val newState = localState.stepState.get match
         case StepState(PointStep(Point(X, Y), _, pressed) :: Nil, noRelease) =>
-          if (!noRelease && !pressed.isBefore(Instant.now().minusMillis(300)))
+          if (!noRelease && !pressed.isBefore(Instant.now().minusMillis(200)))
             val step = stepAt(X, Y)
             step.state match
               case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
@@ -511,20 +511,19 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       val realProxies = proxies.flatten
       val mask        = proxies.map(_.isDefined)
 
-      def setCurrentStep(step: Option[NoteStep]): Unit =
-        step match
-          case Some(st) =>
-            Util.println(s"setting active $mask")
-            realProxies.foreach(_.setValue(st))
-            j.stripBank.setActive(mask)
-            proxies
-              .zip(sliders1.sliderOps)
-              .foreach((p, s) => p.foreach(realp => s.set(realp.get, SliderOp.Source.Internal)))
-          case None =>
-            realProxies.foreach(_.clearValue())
-            Util.println("setting inactive")
-            sliders1.sliderOps.foreach(_.set(0, SliderOp.Source.Internal))
-            j.stripBank.setActive(_ => false)
+      def setCurrentSteps(steps: Iterable[NoteStep]): Unit =
+        if (steps.nonEmpty)
+          Util.println(s"setting active $mask")
+          realProxies.foreach(_.setValue(steps))
+          j.stripBank.setActive(mask)
+          proxies
+            .zip(sliders1.sliderOps)
+            .foreach((p, s) => p.foreach(realp => s.set(realp.get, SliderOp.Source.Internal)))
+        else
+          realProxies.foreach(_.clearValue())
+          Util.println("setting inactive")
+          sliders1.sliderOps.foreach(_.set(0, SliderOp.Source.Internal))
+          j.stripBank.setActive(_ => false)
 
       val callbacks: Vector[Option[Double => Unit]] =
         proxies.map(_.map(_.set))
@@ -538,7 +537,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       ):
         override def onActivate(): Unit =
           super.onActivate()
-          setCurrentStep(localState.stepState.get.steps.lastOption.map(_.step))
+          setCurrentSteps(localState.stepState.get.steps.map(_.step))
 
       override def onActivate(): Unit =
         super.onActivate()
@@ -560,10 +559,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def onStepState(from: StepState, to: StepState): Unit =
       if (tune.isOn)
-        val prev = from.steps.lastOption.map(_.step)
-        val curr = to.steps.lastOption.map(_.step)
+        val prev = from.steps.map(_.step)
+        val curr = to.steps.map(_.step)
         if (prev != curr)
-          tune.setCurrentStep(curr)
+          tune.setCurrentSteps(curr)
 
     override def subModesToActivate =
       (Vector(stepMatrix, stepPages, stepEnc, dpadStep) ++ subModes.filter(_.isOn)).distinct

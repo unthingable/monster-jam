@@ -55,10 +55,12 @@ abstract class RefSubSelective[Token, A]:
     )
 
 class GetSetProxyBase[A]:
-  protected var value: Option[A] = None
-  def setValue(v: A): Unit = value = Some(v)
-  def clearValue(): Unit = value = None
+  protected val value = mutable.ListBuffer.empty[A]
+  def setValue(v: Iterable[A]): Unit = 
+    value.clear()
+    value.addAll(v)
+  def clearValue(): Unit = value.clear()
 
 case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B) => Unit) extends GetSetProxyBase[A]:
-  def get: B = value.map(getf).getOrElse(default)
+  def get: B = value.map(getf).lastOption.getOrElse(default)
   def set(v: B) = value.foreach(setf(_, v))
