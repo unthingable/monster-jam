@@ -390,13 +390,15 @@ class SliderBankMode[Proxy, P <: JamParameter](
 
     j.stripBank.flushColors()
 
+    super.onActivate()
+
+    sliderOps.foreach(_.pull())
     j.stripBank.strips.indices.foreach(bindWithRange(_))
 
     // sliderParams.indices.foreach(sync(_, false))
-    sliderOps.foreach(_.pull())
     if (barMode.contains(BarMode.DUAL))
       j.stripBank.flushValues()
-    super.onActivate()
+
 
   }
 
