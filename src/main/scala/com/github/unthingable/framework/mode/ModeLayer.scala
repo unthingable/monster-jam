@@ -135,7 +135,11 @@ object SimpleModeLayer {
 }
 
 enum GateMode:
-  case Gate, Toggle, Auto, OneWay
+  case Gate, // active only when mode button is pressed
+    Toggle,
+    Auto,       // toggle on momentary press, gate when held
+    OneWay,     // pressing turns mode on
+    AutoInverse // toggle on momentary press, ignore release after long press
 
 trait ModeButtonLayer(
   val id: String,
@@ -145,7 +149,12 @@ trait ModeButtonLayer(
 )(using ext: MonsterJamExt)
     extends ModeLayer,
       ListeningLayer {
+  import GateMode.*
   private var pressedAt: Instant = null
+  private object NR:
+    // workaround for java.lang.AbstractMethodError: Receiver class com.github.unthingable.jam.Jam$$anon$4 does not define or inherit an implementation of the resolved method 'abstract void noRelease_$eq(boolean)' of interface com.github.unthingable.framework.mode.ModeButtonLayer.
+    var noRelease: Boolean = true
+  import NR.*
 
   override val loadBindings: Seq[Binding[_, _, _]] = Vector(
     EB(
@@ -154,11 +163,19 @@ trait ModeButtonLayer(
       () => {
         Util.println(" isOn: " + isOn)
         pressedAt = Instant.now()
-        // this press is only captured when the mode is still active
-        if (isOn && gateMode == GateMode.OneWay)
-          Vector.empty
-        else
-          activateEvent
+        gateMode match
+          case Auto | Gate =>
+            noRelease = false
+            if (!isOn) activateEvent else Vector.empty
+          case AutoInverse =>
+            noRelease = !isOn
+            if (!isOn) activateEvent else Vector.empty
+          case Toggle =>
+            noRelease = true
+            if (!isOn) activateEvent else deactivateEvent
+          case OneWay =>
+            noRelease = true
+            if (!isOn) activateEvent else Vector.empty
       }
     ),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
@@ -166,20 +183,22 @@ trait ModeButtonLayer(
 
   // TODO inline
   private def released: Seq[ModeCommand[_]] =
-    if (!isOn) Vector.empty
+    inline def isOld = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
+
+    lazy val operated = modeBindings.operatedAfter(pressedAt).nonEmpty
+
+    if (!isOn || noRelease) Vector.empty
     else
       gateMode match {
-        case GateMode.Gate                     => deactivateEvent
-        case GateMode.Toggle | GateMode.OneWay => Vector.empty
-        case GateMode.Auto =>
-          val operated =
-            modeBindings.collect { case x: OutBinding[_, _, _] => x }.exists(_.operatedAt.nonEmpty)
-          val elapsed = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
-          if (operated || elapsed)
+        case Gate => deactivateEvent
+        case Auto =>
+          if (isOld || operated)
             deactivateEvent
-            // Vector(deactivateEvent.value)
           else
             Vector.empty
+        case AutoInverse =>
+          if (isOld || operated) Vector.empty else deactivateEvent
+        case _ => Vector.empty
       }
 }
 
