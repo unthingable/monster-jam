@@ -24,6 +24,9 @@ case class PointStep(point: Point, step: NoteStep, pressed: Instant)
 
 case class StepState(steps: List[PointStep], noRelease: Boolean)
 
+enum ExpMode:
+  case Exp, Operator
+
 case class SeqState(
   channel: Int,
   velocity: Int,
@@ -32,6 +35,7 @@ case class SeqState(
   stepScrollOffset: Int,
   keyScrollOffset: Int, // TOP of viewport
   noteVelVisible: Boolean,
+  expMode: ExpMode,
 ) extends Serializable:
 
   lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
@@ -60,4 +64,5 @@ object SeqState:
     stepScrollOffset = 0,
     keyScrollOffset = 12 * 3, // C1
     noteVelVisible = false,
+    expMode = ExpMode.Exp,
   )

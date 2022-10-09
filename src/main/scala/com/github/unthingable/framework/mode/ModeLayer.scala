@@ -143,7 +143,7 @@ enum GateMode:
 
 trait ModeButtonLayer(
   val id: String,
-  val modeButton: HasButtonState, // & HasLight[_],
+  val modeButton: HasButtonState,
   val gateMode: GateMode = GateMode.Auto,
   override val silent: Boolean = false
 )(using ext: MonsterJamExt)
@@ -176,12 +176,11 @@ trait ModeButtonLayer(
           case OneWay =>
             noRelease = true
             if (!isOn) activateEvent else Vector.empty
-      }
+      }, // bb = BB(exclusive = false)
     ),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
 
-  // TODO inline
   private def released: Seq[ModeCommand[_]] =
     inline def isOld = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
 
@@ -235,9 +234,7 @@ trait HasSubModes:
   def subModesToDeactivate: Vector[ModeLayer]
 
 // duplicates ModeGraph functionality, some day will need a rewrite
-abstract class MultiModeLayer(
-  val id: String,
-)(using ext: MonsterJamExt)
+trait MultiModeLayer(using ext: MonsterJamExt)
     extends ModeLayer,
       HasSubModes {
   override def subModesToActivate: Vector[ModeLayer]   = subModes.filter(_.isOn)
@@ -247,7 +244,7 @@ abstract class MultiModeLayer(
 abstract class ModeCycleLayer(
   override val id: String,
 )(using ext: MonsterJamExt)
-    extends MultiModeLayer(id) {
+    extends MultiModeLayer {
   protected var isStuck: Boolean = false
 
   var selected: Option[Int] = Some(0)

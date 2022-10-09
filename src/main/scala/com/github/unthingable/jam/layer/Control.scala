@@ -126,8 +126,6 @@ trait Control { this: Jam with MacroL =>
               barMode = Seq.fill(8)(BarMode.DUAL),
               stripColor = Some(_ => Util.rainbow(idx))
             ) {
-              override val barMode: Seq[BarMode] = Seq.fill(8)(BarMode.DUAL)
-
               j.stripBank.strips.forindex {
                 case (strip, stripIdx) =>
                   strip.slider.isBeingTouched.markInterested()

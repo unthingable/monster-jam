@@ -167,7 +167,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   override val id: String,
   val obj: Int => Proxy,
   val param: Proxy => P,
-  val barMode: Seq[BarMode],
+  barMode: => Seq[BarMode],
   val stripColor: Option[Int => Int] = None,
 )(using
   ext: MonsterJamExt,
@@ -266,7 +266,10 @@ class SliderBankMode[Proxy, P <: JamParameter](
       .safeCast[ObjectProxy]
       .orElse(proxy.safeCast[Parameter])
       .map(p =>
-        p.exists().addValueObserver(v => if (isOn) j.stripBank.setActive(idx, v))
+        p.exists().addValueObserver(v => 
+          if (isOn) 
+            j.stripBank.setActive(idx, v)
+            sliderOps(idx).pull())
         Util.println(s"have proxy $idx")
       )
       .getOrElse(j.stripBank.setActive(idx, false))
@@ -292,64 +295,45 @@ class SliderBankMode[Proxy, P <: JamParameter](
       case _                => ()
     }
 
-    import Event._
-    if (
-      // paramType == ParamType.Regular ||
-      true
+    import Event.*
+    Vector(
+      HB(
+        j.clear.btn.pressedAction,
+        s"clear $idx pressed",
+        () => engage(ClearP),
+        BB(tracked = false, exclusive = false)
+      ),
+      HB(
+        j.clear.btn.releasedAction,
+        s"clear $idx released",
+        () => engage(ClearR),
+        BB(tracked = false, exclusive = false)
+      ),
+      HB(
+        j.Mod.Shift.btn.pressedAction,
+        s"shift $idx pressed",
+        () => engage(ShiftP),
+        BB(tracked = false, exclusive = false)
+      ),
+      HB(
+        j.Mod.Shift.btn.releasedAction,
+        s"shift $idx released",
+        () => engage(ShiftR),
+        BB(tracked = false, exclusive = false)
+      ),
+      HB(
+        strip.slider.beginTouchAction,
+        s"strip $idx pressed",
+        () => engage(StripP),
+        BB(tracked = true, exclusive = false)
+      ),
+      HB(
+        strip.slider.endTouchAction,
+        s"strip $idx released",
+        () => engage(StripR),
+        BB(tracked = true, exclusive = false)
+      ),
     )
-      Vector(
-        HB(
-          j.clear.btn.pressedAction,
-          s"clear $idx pressed",
-          () => engage(ClearP),
-          BB(tracked = false, exclusive = false)
-        ),
-        HB(
-          j.clear.btn.releasedAction,
-          s"clear $idx released",
-          () => engage(ClearR),
-          BB(tracked = false, exclusive = false)
-        ),
-        HB(
-          j.Mod.Shift.btn.pressedAction,
-          s"shift $idx pressed",
-          () => engage(ShiftP),
-          BB(tracked = false, exclusive = false)
-        ),
-        HB(
-          j.Mod.Shift.btn.releasedAction,
-          s"shift $idx released",
-          () => engage(ShiftR),
-          BB(tracked = false, exclusive = false)
-        ),
-        HB(
-          strip.slider.beginTouchAction,
-          s"strip $idx pressed",
-          () => engage(StripP),
-          BB(tracked = true, exclusive = false)
-        ),
-        HB(
-          strip.slider.endTouchAction,
-          s"strip $idx released",
-          () => engage(StripR),
-          BB(tracked = true, exclusive = false)
-        ),
-      )
-    else
-      Vector( // for dirty tracking
-        HB(
-          strip.slider.beginTouchAction,
-          s"strip $idx pressed",
-          () => (),
-          BB(tracked = true, exclusive = false)
-        ),
-        HB(
-          strip.slider.endTouchAction,
-          s"strip $idx released",
-          () => (),
-          BB(tracked = true, exclusive = false)
-        ),
-      )
   }
 
   private def sync(idx: Int, flush: Boolean = true): Unit =
@@ -398,7 +382,6 @@ class SliderBankMode[Proxy, P <: JamParameter](
     // sliderParams.indices.foreach(sync(_, false))
     if (barMode.contains(BarMode.DUAL))
       j.stripBank.flushValues()
-
 
   }
 
