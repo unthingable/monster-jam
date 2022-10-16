@@ -212,10 +212,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       setState(ts.copy(keyScrollOffset = ts.guardY(offset)))
 
     inline def scrollY(dir: UpDown, size: => Int): Unit =
-      scrollYinc(inline dir match
-        case UpDown.Up   => 1 * size
-        case UpDown.Down => -1 * size
-      )
+      scrollYinc(size * (inline dir match
+        case UpDown.Up   => 1
+        case UpDown.Down => -1
+      ))
 
     inline def scrollY(dir: UpDown): Unit = scrollY(dir, ts.keyPageSize)
 
@@ -418,75 +418,78 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       GateMode.Gate
     )
 
-    lazy val velAndNote = new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
-      selectedClipTrack.playingNotes().markInterested()
-      override def onActivate(): Unit =
-        super.onActivate()
-        setState(ts.copy(noteVelVisible = true))
-        // state.stepViewPort.set(ViewPort(0, 0, 4, 8))
+    lazy val velAndNote =
+      new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
+        selectedClipTrack.playingNotes().markInterested()
+        override def onActivate(): Unit =
+          super.onActivate()
+          setState(ts.copy(noteVelVisible = true))
+          // state.stepViewPort.set(ViewPort(0, 0, 4, 8))
 
-      override def onDeactivate(): Unit =
-        super.onDeactivate()
-        setState(ts.copy(noteVelVisible = false))
-        // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
+        override def onDeactivate(): Unit =
+          super.onDeactivate()
+          setState(ts.copy(noteVelVisible = false))
+          // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
 
-      inline def velNote(vel: Int) = s"Step: velocity $vel"
+        inline def velNote(vel: Int) = s"Step: velocity $vel"
 
-      def setVelocity(vel: Int) =
-        ext.host.showPopupNotification(velNote(vel))
-        setState(ts.copy(velocity = vel))
-        selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
+        def setVelocity(vel: Int) =
+          ext.host.showPopupNotification(velNote(vel))
+          setState(ts.copy(velocity = vel))
+          selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
 
-      def notePress(note: Int): Unit =
-        scrollY(note)
-        selectedClipTrack.startNote(note, ts.velocity)
+        def notePress(note: Int): Unit =
+          scrollY(note)
+          selectedClipTrack.startNote(note, ts.velocity)
 
-      def noteRelease(note: Int): Unit =
-        selectedClipTrack.stopNote(note, ts.velocity)
+        def noteRelease(note: Int): Unit =
+          selectedClipTrack.stopNote(note, ts.velocity)
 
-      val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
-        val btn             = j.matrix(row + 4)(col)
-        inline val velScale = 8
-        val idx             = row * 4 + col
-        val vel             = idx * velScale + (velScale - 1)
-        Vector(
-          SupColorB(
-            btn.light,
-            () => if (ts.velocity / velScale == idx) Color.whiteColor() else clipColor
-          ),
-          EB(btn.st.press, velNote(vel), () => setVelocity(vel))
-        )
+        val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
+          val btn             = j.matrix(row + 4)(col)
+          inline val velScale = 8
+          val idx             = row * 4 + col
+          val vel             = idx * velScale + (velScale - 1)
+          Vector(
+            SupColorB(
+              btn.light,
+              () => if (ts.velocity / velScale == idx) Color.whiteColor() else clipColor
+            ),
+            EB(btn.st.press, velNote(vel), () => setVelocity(vel))
+          )
 
-      private val tmpPageOffset = 32
-      val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
-        val btn     = j.matrix(row + 4)(col + 4)
-        val noteIdx = tmpPageOffset + (3 - row) * 4 + col
-        Vector(
-          SupColorStateB(
-            btn.light,
-            () =>
-              if (noteIdx == ts.keyScrollOffsetGuarded)
-                JamColorState(Color.whiteColor(), 3)
-              else
-                JamColorState(
-                  clipColor,
-                  if (selectedClipTrack.playingNotes().isNotePlaying(noteIdx)) 3 else 0
-                )
-          ),
-          EB(btn.st.press, "set note", () => notePress(noteIdx)),
-          EB(btn.st.release, "release note", () => noteRelease(noteIdx)),
-        )
-      override val modeBindings = velBindings.flatten ++ noteBindings.flatten
-    }
+        private val tmpPageOffset = 32
+        val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
+          val btn     = j.matrix(row + 4)(col + 4)
+          val noteIdx = tmpPageOffset + (3 - row) * 4 + col
+          Vector(
+            SupColorStateB(
+              btn.light,
+              () =>
+                if (noteIdx == ts.keyScrollOffsetGuarded)
+                  JamColorState(Color.whiteColor(), 3)
+                else
+                  JamColorState(
+                    clipColor,
+                    if (selectedClipTrack.playingNotes().isNotePlaying(noteIdx)) 3 else 0
+                  )
+            ),
+            EB(btn.st.press, "set note", () => notePress(noteIdx)),
+            EB(btn.st.release, "release note", () => noteRelease(noteIdx)),
+          )
+        override val modeBindings = velBindings.flatten ++ noteBindings.flatten
+      }
 
-    lazy val notePages = new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
-          override def modeBindings: Seq[Binding[?, ?, ?]] = j.sceneButtons.zipWithIndex.flatMap((btn, idx) => 
+    lazy val notePages =
+      new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
+        override def modeBindings: Seq[Binding[?, ?, ?]] =
+          j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
             Vector(
               EB(btn.st.press, "", () => ()),
               SupColorStateB(btn.light, () => JamColorState(JamColorBase.CYAN, 3))
-            ))
-        }
-
+            )
+          )
+      }
 
     lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
