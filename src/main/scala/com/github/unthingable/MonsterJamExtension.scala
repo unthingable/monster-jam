@@ -37,11 +37,13 @@ case class MonsterJamExt(
   application: Application,
   preferences: MonsterPref,
   docPrefs: MonsterDocPrefs,
-  xmlMap: XmlMap,
   binder: Binder = new Binder(),
   events: EventBus[Event] = new EventBus(),
 ) {
   type Schedulable = (Int, () => Boolean, () => Unit)
+
+  lazy val xmlMap = loadMap(host)
+
   final def run(tasks: Schedulable*): Unit = {
     tasks match {
       case Nil => ()
@@ -90,7 +92,6 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       MonsterDocPrefs(
         EnumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
       ),
-      loadMap(host)
     )
 
     if (ext.preferences.debugOutput.get())
