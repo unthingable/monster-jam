@@ -189,7 +189,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
   bank.itemCount().addValueObserver(_ =>
     // check for collisions
     val hashes = bankRange.map(bank.getItemAt).flatMap(idForBankTrack)
-    if (hashes.distinct.size != hashes.size && ext.preferences.smartTracker.get())
+    if (hashes.distinct.size != hashes.size) // && ext.preferences.smartTracker.get())
       ext.host.showPopupNotification("Track ID hash collision detected, superscenes might not work")
   )
 

@@ -45,7 +45,7 @@ class Jam(implicit val ext: MonsterJamExt)
     t.clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
   }
 
-  ext.preferences.smartTracker.markInterested()
+  // ext.preferences.smartTracker.markInterested()
   given tracker: TrackTracker = UnsafeTracker(superBank)
   // {
   //   if (ext.preferences.smartTracker.get())
