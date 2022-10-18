@@ -188,7 +188,7 @@ trait SceneL { this: Jam =>
 
       if (pressedAt.exists(instant =>
         instant.plusMillis(400).isAfter(Instant.now())
-        || pageMatrix.modeBindings.operatedAfter(instant).nonEmpty))
+        || pageMatrix.modeBindings.hasOperatedAfter(instant)))
         cycle()
 
       pressedAt = None

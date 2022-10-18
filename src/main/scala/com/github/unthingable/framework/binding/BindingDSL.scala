@@ -71,7 +71,10 @@ transparent trait BindingDSL extends ActionDSL {
       case x: OutBinding[_, _, _] => x
     }
     def operatedAfter(instant: Instant): Iterable[OutBinding[_, _, _]] =
-      bindings.outBindings.filter(_.operatedAt.exists(_.isAfter(instant)))
+      bindings.outBindings.view.filter(_.operatedAt.exists(_.isAfter(instant)))
+
+    def hasOperatedAfter(instant: Instant): Boolean =
+      bindings.outBindings.view.exists(_.operatedAt.exists(_.isAfter(instant)))
   }
 
   inline def stepTarget(inc: () => Unit, dec: () => Unit)(using

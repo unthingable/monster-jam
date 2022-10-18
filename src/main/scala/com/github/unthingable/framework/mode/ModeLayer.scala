@@ -50,17 +50,23 @@ trait ModeLayer extends IntActivatedLayer, HasId {
 
   def silent: Boolean = false
 
-  private var activeAt: Option[Instant] = None
+  protected var activeAt: Option[Instant] = None
 
   final inline def isOn: Boolean = activeAt.isDefined
 
-  final inline def dirtyBindings(withBindings: Binding[_, _, _]*): Seq[OutBinding[_, _, _]] =
-    activeAt.toSeq.flatMap(withBindings.operatedAfter)
-
-  final inline def dirtyBindingsWithMode(
+  final private inline def dirtyBindings(
     withBindings: Binding[_, _, _]*
   ): Seq[OutBinding[_, _, _]] =
-    dirtyBindings((modeBindings.outBindings ++ withBindings).toSeq*)
+    activeAt.toSeq.flatMap(withBindings.operatedAfter)
+
+  // because activeAt is hidden now
+  final inline def hasDirtyBindings(withBindings: Binding[_, _, _]*): Boolean =
+    activeAt.map(withBindings.hasOperatedAfter).getOrElse(false)
+
+  // final inline def dirtyBindingsWithMode(
+  //   withBindings: Binding[_, _, _]*
+  // ): Seq[OutBinding[_, _, _]] =
+  //   dirtyBindings((modeBindings.outBindings ++ withBindings).toSeq*)
 
   final inline def isOlderThan(inline duration: Duration): Boolean =
     activeAt.exists(act => Instant.now().isAfter(act.plus(duration)))
@@ -182,21 +188,21 @@ trait ModeButtonLayer(
   ) ++ maybeLightB(modeButton)
 
   private def released: Seq[ModeCommand[_]] =
-    inline def isOld = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
-
-    lazy val operated = modeBindings.operatedAfter(pressedAt).nonEmpty
+    inline def isHeldLongEnough = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
+    inline def operated         = modeBindings.hasOperatedAfter(pressedAt)
+    inline def isAlreadyOn      = activeAt.map(pressedAt.isAfter).getOrElse(false)
 
     if (!isOn || noRelease) Vector.empty
     else
       gateMode match {
         case Gate => deactivateEvent
         case Auto =>
-          if (isOld || operated)
+          if (isHeldLongEnough || isAlreadyOn || operated)
             deactivateEvent
           else
             Vector.empty
         case AutoInverse =>
-          if (isOld || operated) Vector.empty else deactivateEvent
+          if (isHeldLongEnough || operated) Vector.empty else deactivateEvent
         case _ => Vector.empty
       }
 }
@@ -234,9 +240,7 @@ trait HasSubModes:
   def subModesToDeactivate: Vector[ModeLayer]
 
 // duplicates ModeGraph functionality, some day will need a rewrite
-trait MultiModeLayer(using ext: MonsterJamExt)
-    extends ModeLayer,
-      HasSubModes {
+trait MultiModeLayer(using ext: MonsterJamExt) extends ModeLayer, HasSubModes {
   override def subModesToActivate: Vector[ModeLayer]   = subModes.filter(_.isOn)
   override def subModesToDeactivate: Vector[ModeLayer] = subModes.filter(_.isOn)
 }
@@ -322,7 +326,7 @@ abstract class ModeButtonCycleLayer(
     (isOn, cycleMode: CycleMode) match {
       case (true, CycleMode.Gate) => deactivateEvent
       case (true, CycleMode.Sticky) =>
-        lazy val operated = dirtyBindings(operatedBindings.toSeq*).nonEmpty
+        lazy val operated = hasDirtyBindings(operatedBindings.toSeq*)
 
         if (isStuck || !isOlderThan(Duration.ofMillis(500)) || operated) {
           isStuck = false

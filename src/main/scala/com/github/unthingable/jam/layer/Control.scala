@@ -200,7 +200,7 @@ trait Control { this: Jam with MacroL =>
                     () =>
                       if (
                         isOlderThan(Duration.ofMillis(500))
-                        || dirtyBindings(superBindings*).nonEmpty
+                        || hasDirtyBindings(superBindings*)
                       )
                         selectSlice(previousSlice)
                   ),
@@ -247,9 +247,9 @@ trait Control { this: Jam with MacroL =>
                 () =>
                   if (
                     isOlderThan(Duration.ofMillis(500))
-                    || dirtyBindings(superBindings*)
+                    || hasDirtyBindings(superBindings*)
                       // .trace(x => s"group release: dirty: ${x.map(_.name).mkString(",")}")
-                      .nonEmpty
+                      // .nonEmpty
                   ) {
                     currentUserPage = previousUserPage
                     selectUser()
