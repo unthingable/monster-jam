@@ -95,7 +95,12 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     )
 
     if (ext.preferences.debugOutput.get())
-      printer = util.Printer(s => {host.println(s); java.lang.System.out.println(s)})
+      import java.time.{Instant, ZoneId}
+      import java.time.format.DateTimeFormatter
+      val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
+      printer = util.Printer(s => 
+        host.println(s)
+        java.lang.System.out.println(if (s.nonEmpty) s"MJ ${dtf.format(Instant.now())} " + s else ""))
       Util.println = printer.println
     else
       Util.println = _ => ()
