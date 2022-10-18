@@ -55,6 +55,7 @@ import com.github.unthingable.jam.JamParameter
 import com.github.unthingable.jam.SliderOp
 import com.github.unthingable.framework.GetSetProxy
 import com.bitwig.`extension`.controller.api.NoteOccurrence
+import com.bitwig.`extension`.controller.api.Clip
 
 trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
@@ -131,6 +132,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     val gridHeight               = 128
     val gridWidth                = 64
     val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
+    val secondClip = selectedClipTrack.createLauncherCursorClip(1,1)
     val devices: DeviceBank      = selectedClipTrack.createDeviceBank(1)
 
     // a mirror of the bitwig clip, channel / x / y
@@ -161,6 +163,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
     Vector(
+      secondClip.exists,
+      secondClip.clipLauncherSlot.sceneIndex,
       clip.exists,
       clip.getPlayStart,
       clip.getPlayStop,
@@ -509,7 +513,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       val P = GetSetProxy[NoteStep, Double](0)
 
       val proxies: Vector[Option[GetSetProxy[NoteStep, Double]]] = Vector(
-        // expressions
+        // -- expressions
         P(_.velocity(), (s, v) => s.setVelocity(v)),
         P(_.releaseVelocity(), (s, v) => s.setReleaseVelocity(v)),
         P(_.velocitySpread(), (s, v) => s.setVelocitySpread(v)),
@@ -518,7 +522,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         P(_.pan(), (s, v) => s.setPan(v)),
         P(_.timbre(), (s, v) => s.setTimbre(v)),
         P(_.pressure(), (s, v) => s.setPressure(v)),
-        // operators
+        // -- operators
         P(_.chance(), (s, v) => s.setChance(v)),
         // P(_.occurrence().ordinal() / NoteOccurrence.values().length.toDouble, (s, v) => s.setOccurrence(NoteOccurrence.values.apply((v * 10).toInt))),
         // P(_.isRecurrenceEnabled(), (s, v) => s.setChance(v)),
@@ -619,15 +623,30 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
 
+    // TODO refactor this already
+    // Find the first existing clip on a track
+    def findClip(): Option[Clip] =
+      secondClip.selectFirst()
+      var cnt = 0
+      while (cnt < 64 && !secondClip.exists().get())
+        cnt += 1
+        secondClip.selectNext()
+      if (secondClip.exists().get()) Some(secondClip) else None      
+
     override def onActivate(): Unit =
       restoreState()
       super.onActivate()
+
       if (!clip.exists().get())
-        // only works for tracks with no clips, but ok
-        val t = selectedClipTrack.position().get()
-        val c = localState.selectedSteps.getOrElse(t, 0)
-        selectedClipTrack.createNewLauncherClip(c)
-        trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
+        findClip() match
+          case None => 
+            val t = selectedClipTrack.position().get()
+            val c = localState.selectedSteps.getOrElse(t, 0)
+            selectedClipTrack.createNewLauncherClip(c)
+            trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
+          case Some(foundClip) =>
+            clip.selectClip(foundClip)
+            clip.clipLauncherSlot().select()
   }
 }
 
