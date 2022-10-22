@@ -509,7 +509,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
     )
 
-    object tune extends ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select) {
+    object tune extends ModeButtonCycleLayer("step TUNE", j.tune, CycleMode.Select, gateMode = GateMode.Auto) {
       val P = GetSetProxy[NoteStep, Double](0)
 
       val proxies: Vector[Option[GetSetProxy[NoteStep, Double]]] = Vector(
@@ -677,7 +677,10 @@ repeat vel end
 
 mute
 
+- select clips by holding STEP
+
 problems:
   deactivating STEP with TUNE should reactivate previous slider mode
+    - multibutton cycle mode? or exclusive reactivator?
   dirty TUNE tracking
  */

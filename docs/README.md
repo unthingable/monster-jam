@@ -115,6 +115,8 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
 * **CLEAR+(PAD)**: Delete the clip
 * **DUPLICATE**: To duplicate a clip keep the duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip with content); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 
+MonsterJam will attempt to retroactively launch the clip "on time" even if you are a little late triggering it, meaning you don't have to always "cue" it up in advance and let your musician reflexes take over. See **Launch tolerance** setting.
+
 ## Page navigation
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
@@ -175,6 +177,8 @@ Same goes for remote control pages within a device. You can use Device Selector 
 
 * **STEP**: Toggle sequencer mode
 
+Step sequencer settings are stored per track and saved with the project.
+
 ## Default layout
 
 * Scene buttons (top): sequencer pages. Currently selected page is bright white, currently playing page is dim white.
@@ -187,6 +191,10 @@ Same goes for remote control pages within a device. You can use Device Selector 
 ### Scene buttons 
 ### Pad matrix
 
+## Clip creation/selection behavior
+
+When activating Step Sequencer:
+* If the current active track has no existing clip, 
 
 ## Entering legato notes
 
@@ -331,14 +339,7 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * _0 dB_: slider maximum is 0 dB for all tracks
   * _-10 dB_: slider maximum is -10 dB for all tracks
   * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
-* **Enable track tracker**: use extreme cleverness to follow the tracks as layout changes.
-  * Why you want this:
-    * SuperScenes will work correctly even if tracks have changed positions
-    * Scroll window will maintain its position when folding/unfolding tracks
-  * Why you may not want this: track tracker introduces tiny variations in track colors (specifically the alpha channel).
-    * This modifies the project even if you didn't do anything, so it will ask you to save
-    * Track color selectors will not display the color as selected
-
+* **Launch Q: Launch tolerance**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
 * **Verbose console output**: if yoo're me or just really curious about internal workings of MonsterJam,
 you can turn it on, otherwise leave it off.
 
@@ -349,3 +350,28 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 (Open Studio I/O Panel and look under Maschine Jam)
 
 * Hide disabled: tracks — disabled tracks are skipped
+
+# Changelog
+
+## 8.0
+
+### New features
+
+* Step sequencer (WIP)
+* Lenient launch: launching clips on time or even a little late still applies correct quantization
+* Natural track scrolling: instantly scroll by an arbitrary number of tracks (less than 8) by pressing a track button while holding another
+* Refactored Track Tracker no longer causes extraneous project modifications
+* Setting to toggle console output
+* Added stdout output for easier debugging
+* API 17
+* Completely refactored mode layers and button handlers
+
+
+### Fixes
+
+* Now compiles on Windows
+* Fixed NPE while loading optional mappings on Windows
+* Page matrix scrolling could result in errors
+* SuperScenes did not work in newer Bitwig versions
+* UserControl page navigation was broken
+* Scala 3

@@ -198,6 +198,7 @@ object Graph {
           )
           // .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
+          
       val bumpNodes: Iterable[ModeNode] = bumpBindings
         .flatMap(_.bumped.map(_._2))
         // FIXME hack: can't bump own submodes
