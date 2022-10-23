@@ -63,11 +63,6 @@ trait ModeLayer extends IntActivatedLayer, HasId {
   final inline def hasDirtyBindings(withBindings: Binding[_, _, _]*): Boolean =
     activeAt.map(withBindings.hasOperatedAfter).getOrElse(false)
 
-  // final inline def dirtyBindingsWithMode(
-  //   withBindings: Binding[_, _, _]*
-  // ): Seq[OutBinding[_, _, _]] =
-  //   dirtyBindings((modeBindings.outBindings ++ withBindings).toSeq*)
-
   final inline def isOlderThan(inline duration: Duration): Boolean =
     activeAt.exists(act => Instant.now().isAfter(act.plus(duration)))
 
@@ -300,9 +295,6 @@ abstract class ModeCycleLayer(
 
 abstract class ModeButtonCycleLayer(
   override val id: String,
-  // val modeButton: OnOffButton with HwButton, // Button[_ <: ButtonActions],
-  // val modeButton: OnOffButton with Button[_ <: ButtonActions],
-  // val modeButton: JamOnOffButton,
   override val modeButton: HasButtonState,
   val cycleMode: CycleMode,
   override val gateMode: GateMode = GateMode.OneWay,
@@ -339,10 +331,6 @@ abstract class ModeButtonCycleLayer(
 
   // overrideable
   def lightOn: BooleanSupplier = () => isOn
-
-  // override final val loadBindings: Seq[Binding[_, _, _]] = Vector(
-  //   EB(modeButton.st.press, s"$name cycle load MB pressed", () => if (!isOn) activateEvent else Seq.empty, BB(tracked = false))
-  // ) ++ maybeLightB(modeButton)
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
