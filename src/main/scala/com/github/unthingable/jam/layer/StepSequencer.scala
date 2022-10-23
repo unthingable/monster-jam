@@ -72,9 +72,9 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
 
   def storeState(): Unit =
     val data = Util.serialize(stateCache.toSeq)
-    Util.println(
-      s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
-    )
+    // Util.println(
+    //   s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
+    // )
     stateStore.set(data)
 
   def restoreState(): Unit =

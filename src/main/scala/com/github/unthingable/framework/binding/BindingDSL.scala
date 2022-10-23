@@ -81,8 +81,8 @@ transparent trait BindingDSL extends ActionDSL {
     ext: MonsterJamExt
   ): RelativeHardwarControlBindable =
     ext.host.createRelativeHardwareControlStepTarget(
-      action("inc", inc),
-      action("dec", dec)
+      action("", inc),
+      action("", dec)
     )
 }
 
