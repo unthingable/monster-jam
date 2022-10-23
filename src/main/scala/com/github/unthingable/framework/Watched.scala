@@ -55,12 +55,22 @@ abstract class RefSubSelective[Token, A]:
     )
 
 class GetSetProxyBase[A]:
-  protected val value = mutable.ListBuffer.empty[A]
-  def setValue(v: Iterable[A]): Unit = 
-    value.clear()
-    value.addAll(v)
-  def clearValue(): Unit = value.clear()
+  protected val target = mutable.ListBuffer.empty[A]
+  def setTarget(v: Iterable[A]): Unit = 
+    target.clear()
+    target.addAll(v)
+  def clearTarget(): Unit = target.clear()
 
-case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B) => Unit) extends GetSetProxyBase[A]:
-  def get: B = value.map(getf).lastOption.getOrElse(default)
-  def set(v: B) = value.foreach(setf(_, v))
+trait Delta[A]:
+  def apply(a: A, b: A): A
+
+case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B, B) => Unit)(using delta: Delta[B]) extends GetSetProxyBase[A]:
+  protected var value: B = default
+  def get: B = target.map(getf).lastOption.getOrElse(default)
+  def set(v: B) = 
+    target.foreach(setf(_, v, delta(value, v)))
+    value = v
+
+object GetSetProxy:
+  given Delta[Double] with
+    def apply(a: Double, b: Double) = b - a
