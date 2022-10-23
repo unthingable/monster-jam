@@ -2,16 +2,19 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util
+import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer}
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamTouchStrip
-import com.github.unthingable.jam.{CycleMode, Jam, ModeButtonCycleLayer, SliderBankMode}
+import com.github.unthingable.jam.{Jam, SliderBankMode, JamParameter}
 
 import scala.collection.mutable
+import com.github.unthingable.jam.PRange
 
 trait Level { this: Jam =>
   lazy val levelCycle = new ModeButtonCycleLayer("LEVEL", j.level, CycleMode.Cycle) with Util {
+    val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
     override val subModes = Vector(
-      new SliderBankMode[Track]("strips volume", trackBank.getItemAt, _.volume()) {
+      new SliderBankMode("strips volume", trackBank.getItemAt, p => JamParameter.Regular(p.volume()), Seq.fill(8)(BarMode.DUAL)) {
         EIGHT.foreach { idx =>
           val track = trackBank.getItemAt(idx)
           track.trackType().markInterested()
@@ -19,23 +22,20 @@ trait Level { this: Jam =>
         }
         ext.preferences.limitLevel.addValueObserver(_ => if (isOn) updateLimits(None))
 
-        val paramLimits: mutable.Seq[Double] = mutable.ArrayBuffer.fill(8)(1.0)
-
-        override val barMode: BarMode = BarMode.DUAL
 
         proxies.forindex { case (track, idx) =>
           val strip: JamTouchStrip = j.stripBank.strips(idx)
           track.addVuMeterObserver(128, -1, true, v => if (isOn) strip.update(v))
         }
 
-        override def activate(): Unit = {
-          super.activate()
+        override def onActivate(): Unit = {
+          super.onActivate()
           // clear meter values from whatever was happening before, let VU meters self update
           j.stripBank.strips.foreach(_.update(0))
           updateLimits(None)
         }
 
-        override def paramRange(idx: Int): (Double, Double) = (0.0, paramLimits(idx))
+        override def paramRange(idx: Int): PRange = PRange(0.0, paramLimits(idx))
 
         def updateLimits(maybeType: Option[(Int, String)], bind: Boolean = true): Unit = {
           val max      = 1.259921049894873
@@ -53,9 +53,9 @@ trait Level { this: Jam =>
                     //case "Effect" | "Master" => 1.0
                     case _ => minusTen / max
                   }
-                case LimitLevels.Zero     => zero / max
-                case LimitLevels.MinusTen => minusTen / max
-                case _        => 1.0
+                case LimitLevels.`0dB`   => zero / max
+                case LimitLevels.`-10dB` => minusTen / max
+                // case _        => 1.0
               })
               Util.println(f"updateLimits: $idx limit ${paramLimits(idx)}%1.2f:$trackType")
               if (bind)
@@ -64,9 +64,7 @@ trait Level { this: Jam =>
           }
         }
       },
-      new SliderBankMode[Track]("strips pan", trackBank.getItemAt, _.pan()) {
-        override val barMode: BarMode = BarMode.PAN
-      },
+      new SliderBankMode("strips pan", trackBank.getItemAt, p => JamParameter.Regular(p.pan()), Seq.fill(8)(BarMode.PAN)) ,
     )
   }
 }

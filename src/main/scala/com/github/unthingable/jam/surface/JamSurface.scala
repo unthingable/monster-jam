@@ -2,26 +2,36 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
-import com.bitwig.extension.controller.api.{BooleanValue, HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
+import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
+import com.github.unthingable.framework.binding.{HB, ButtonEvt}
+// import com.github.unthingable.jam.surface.JamControl.HbOps
 import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.{HB, surface}
+import com.github.unthingable.framework.HasId
+import com.github.unthingable.jam.surface.KeyMaster.JC
+import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 
 /* Surface model with all the controls, wired to MIDI */
 
-trait HasButton {val button: FakeButton }
-
 class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
-  private def b(id: String) = JamOnOffButton(ext.xmlMap.button(id))
+  private def b(id: String) = {
+    val info = ext.xmlMap.button(id)
+    val button = JamControl.button(info)
+    val led = JamControl.onOffLight(info)
+    JamOnOffButton(id, button, led)
+  }
 
-  object Modifiers {
-    var Shift: OnOffButton with HasButton = new OnOffButton with HasButton {
-      override val button: FakeButton         = FakeButton()
-      override val light : OnOffHardwareLight = ext.hw.createOnOffHardwareLight("shift_LED") // fake
-      override val pressedAction: HB.HBS      = button.pressedAction
-      override val releasedAction: HB.HBS     = button.releasedAction
-      override val isPressed: () => Boolean   = () => button.isPressed
+  object Mod {
+    object Shift extends HasButtonState, HasId, HasFakeButton {
+      val id  = "SHIFT"
+      val btn = FakeButton(id)
+      val st  = ButtonStateSupplier(this, btn)
+
+      btn.pressedAction.addBinding(JamControl.handle(id, RawButtonEvent.Press))
+      btn.releasedAction.addBinding(JamControl.handle(id, RawButtonEvent.Release))
+
+      override def toString: String = "BtnSHIFT"
     }
 
     var blink : Boolean = false // on 50% of the time
@@ -56,8 +66,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   val auto = b("BtnAuto")
 
   object encoder {
-    val push: HardwareButton = JamButton(ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems)).button
-    val touch: HardwareButton = JamButton(ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems)).button
+    val push: HardwareButton = JamControl.button(ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems))
+    val touch: HardwareButton = JamControl.button(ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems))
     val turn: RelativeHardwareKnob = {
       val enc: MidiInfo = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
       val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
@@ -70,51 +80,66 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   object dpad {
-    private def dpadInfo(idx: Int): MidiInfo = ext.xmlMap.button(s"BtnDpad$idx")
-
-    private def button(idx: Int) = {
-      val info = dpadInfo(idx)
-      JamOnOffButton(info)
+    private def b(idx: Int) = {
+      val id = s"BtnDpad$idx"
+      val info = ext.xmlMap.button(id)
+      val button = JamControl.button(info)
+      val led = JamControl.onOffLight(info)
+      JamOnOffButton(id, button, led)
     }
 
-    val up: JamOnOffButton = button(1)
-    val down: JamOnOffButton = button(3)
-    val left: JamOnOffButton = button(4)
-    val right: JamOnOffButton = button(2)
+    val up: JamOnOffButton = b(1)
+    val down: JamOnOffButton = b(3)
+    val left: JamOnOffButton = b(4)
+    val right: JamOnOffButton = b(2)
   }
 
   /* Main section */
 
-  val sceneButtons: Vector[JamRgbButton] = (1 to 8).map { idx =>
-    val btn = ext.xmlMap.button(s"BtnScene${idx}")
-    val btnLed = ext.xmlMap.led(s"BtnScene${idx}IDX")
-    surface.JamRgbButton(
-      infoB = btn,
-      // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
-      infoL = btnLed.copy(channel = btn.channel)
-    )
-  }.toVector.forindex(_.button.setIndexInGroup(_))
+  val sceneButtons: Seq[JamRgbButton] = (1 to 8).map { idx =>
+    val id = s"BtnScene${idx}"
+    val btnInfo = ext.xmlMap.button(id)
+    // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
+    val btnLedInfo = ext.xmlMap.led(s"BtnScene${idx}IDX").copy(channel = btnInfo.channel)
 
-  val matrix: Vector[Vector[JamRgbButton]] = (1 to 8).map { row =>
+    val button = JamControl.button(btnInfo)
+    val led    = JamControl.rgbLight(btnLedInfo)
+
+    button.setIndexInGroup(idx)
+
+    JamRgbButton(id, button, led)
+  }
+
+  // matrix is indexed as row x col instead of col x row - weird but useful
+  val matrix: Seq[Seq[JamRgbButton]] = (1 to 8).map { row =>
     ('A' to 'H').map { col =>
-      val btnInfo = ext.xmlMap.button(s"Btn$col$row", ext.xmlMap.matrixElems)
+      val id = s"Btn$col$row"
+      val btnInfo = ext.xmlMap.button(id, ext.xmlMap.matrixElems)
       val ledInfo = ext.xmlMap.led(s"Btn$col${row}IDX", ext.xmlMap.matrixElems)
-      surface.JamRgbButton(btnInfo, ledInfo)
-    }.toVector
-  }.toVector
 
-  val groupButtons: Vector[JamRgbButton] = ('A' to 'H').map { idx =>
-    val btn = ext.xmlMap.button(s"BtnGroup${idx}")
-    val btnLed = ext.xmlMap.led(s"BtnGroup${idx}IDX")
-    surface.JamRgbButton(
-      infoB = btn,
-      // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
-      infoL = btnLed.copy(channel = btn.channel)
-    )
-  }.toVector.forindex(_.button.setIndexInGroup(_))
+      val button = JamControl.button(btnInfo)
+      val led = JamControl.rgbLight(ledInfo)
+
+      JamRgbButton(id, button, led)
+    }
+  }
+
+  val groupButtons: Seq[JamRgbButton] = ('A' to 'H').map { idx =>
+    val id = s"BtnGroup${idx}"
+    val btnInfo = ext.xmlMap.button(id)
+    // mapping says channel 0 for IDX led, but it works when it's 1 (same as button)
+    val ledInfo = ext.xmlMap.led(s"BtnGroup${idx}IDX").copy(channel = btnInfo.channel)
+
+    val button = JamControl.button(btnInfo)
+    val led = JamControl.rgbLight(ledInfo)
+
+    button.setIndexInGroup(idx)
+
+    JamRgbButton(id, button, led)
+  }
 
   // Touchstrips
-  val stripBank = StripBank()(ext)
+  val stripBank = new StripBank()(ext)
 
   // Main level meters are special
   object levelMeter {
@@ -159,9 +184,11 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
-        Modifiers.Shift.button.pressedAction.invoke()
+        // ext.events.eval(Mod.Shift.st.press.value)
+        Mod.Shift.btn.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        Modifiers.Shift.button.releasedAction.invoke()
+        // ext.events.eval(Mod.Shift.st.release.value)
+        Mod.Shift.btn.releasedAction.invoke()
       case ReturnFromHostCommand =>
         ext.host.println("return from host")
         ext.hw.invalidateHardwareOutputState()
@@ -169,4 +196,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       case x => "Unhandled sysex from controller: " + ext.host.println(x)
     }
   }
+
+  // import Combo.JC
+  val ShiftDup = JC(duplicate, Mod.Shift)
+  val ShiftSolo = JC(solo, Mod.Shift)
 }

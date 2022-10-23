@@ -50,16 +50,17 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 ## Global
 
+* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
+* **SONG**: **SuperScene** mode (see below)
+* **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
 * **SHIFT+DUPLICATE (DOUBLE)**: Double the content of the currently selected clip (not the clip itself).
-* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
 * **SHIFT-PAD (top row)**: The buttons in the top row of clip matrix change to their alternate functions, as labeled.
 * **SHIFT-PAD (second row)**: Additional functions and settings
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
-* **SONG**: **SuperScene** mode (see below)
-* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 * **NOTE REPEAT**: Fill mode
+* **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 
 ## Transport
 
@@ -90,6 +91,7 @@ from the track, for additional fun and profit (like Maschine).
   * **ARROW UP**: If we're currently in a group, exit out of it. Arrow button is lit and flashing when this is possible.
   * **ARROW LEFT**: Scroll bank left so that current track all the way to the right (to position 8 on Jam)
   * **ARROW RIGHT**: Scroll bank right so that current track all the way to the left (to position 1 on Jam)
+  * **another TRACK**: Scroll by that much in that direction. Conceptually this is almost the same as dragging on a touchscreen.
   * **SOLO**: Solo/unsolo this track
   * **MUTE**: Mute/unmute this track
   * **REC**: Arm track for recording
@@ -113,6 +115,8 @@ When inside a group, the SCENE buttons launch the group scenes, not the main one
   While **SELECT** is pressed the currently selected clip is WHITE.
 * **CLEAR+(PAD)**: Delete the clip
 * **DUPLICATE**: To duplicate a clip keep the duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip with content); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
+
+MonsterJam will attempt to retroactively launch the clip "on time" even if you are a little late triggering it, meaning you don't have to always "cue" it up in advance and let your musician reflexes take over. Note that this only works as well as Bitwig's own "continue" play mode allows, i.e. there must be another clip playing on that track. See **Launch tolerance** setting.
 
 ## Page navigation
 
@@ -164,24 +168,132 @@ across your devices, e.g. parameter 1 -> filter cutoff, parameter 2 -> compresso
 To activate: press **LEFT+RIGHT** in regular Control mode (not User Control, **MACRO** not lit).
 
 To select a parameter: use **TRACK(1-8)** buttons. The currently selected parameter is lit in white. Note that selectors
-are self-gating: if you press and hold a track button, operate any touchstrip or just wait long enough, it will return
+are auto-gating: if you press and hold a track button, operate any touchstrip or just wait long enough, it will return
 to the previously selected parameter when track button is released. This is useful for momentary adjustments.
 
 To select a device and a page: whichever device was selected last on a track will be the device controlled in Slice mode.
 Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
 
+# Step Sequencer (WIP)
+
+* **STEP**: Toggle sequencer mode
+
+Step sequencer settings are stored per track and saved with the project. Most steq sequencer submodes are auto-gating.
+
+## Default layout
+
+* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white.
+* **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
+* **DPAD** arrows up/down: scroll notes up or down by pages
+* **KNOB**: scroll notes up or down by one
+* **GRID**: activate grid selector
+* **SHIFT+SOLO**: activate pattern length selector
+* **NOTE**: activate Note/Velocity mode
+* **TUNE**: adjust step parameters with sliders (see **Parameter adjustments**)
+* **PERFORM (hold)**: change current MIDI channel via the lower right pad matrix quadrant (WIP)
+
+### Scene buttons 
+
+Display/select current patter page.
+
+The number of pattern pages depends on both the step size and the current grid layout, there will be as many pages as necessary to access the entire length of the pattern (though only the first 8 are directly accessible).
+
+### Pad matrix
+
+* Press empty step (dark button) to create a step
+* Press an existing step to clear
+* Press and hold step to select it for editing (long press will not delete it)
+
+If a note spans more than one step, consecutive steps are lit in dim white.
+
+#### Entering legato notes
+
+Press and hold a pad to either select or create a step. Click another pad on the left to change note length in steps.
+
+Extending a note all the way to the next step makes it legato.
+
+## Grid mode and pattern pages
+
+The step sequencer matrix is a windowed view of a clip, showing up to 64 steps at once.
+
+*Step size* determines how many steps are in a clip (depends on clip length).
+
+* **GRID**: activate grid selector to change grid configuration
+* **SCENE**: set how many rows are given to each note
+  * 1: 1 note per 8 rows
+  * 2: 2 notes per 8 rows (4 rows per note)
+  * 4: 4 notes per 8 rows (2 rows per note)
+  * 8: 8 notes per 8 rows (1 row per note)
+* **KNOB**: change step size
+
+## Note/Velocity submode (WIP)
+
+* **NOTE**: activate note/velocity selectors
+* **NOTE (hold)**: display note page selectors (scene buttons)
+* **NOTE+scene**: select a note page (each page is 16 notes)
+
+When NOTE is on, the lower half of the pad matrix changes function and is solidly lit with the color of the clip. The mode itself is split in two:
+* Left half: velocity selector
+* Right half (numbered pads): note selector
+
+### Velocity selector
+
+Coarse velocity adjustment in 16 steps (1 step = 8 velocity steps, out of 128). Currently selected velocity step is white.
+
+Velocity selector works with two different velocity values:
+* Default velocity: newly entered note steps will use this
+* Velocity of a specific note step: hold one or more note steps, then you can see/edit its velocity via the selector. If multiple steps are held, it's the last pressed step that takes precedence, and adjustments are made to all of them simultaneously.
+
+### Note selector (WIP)
+
+Focus step editor on one of the 16 notes (bright white). Currently playing notes will flash. More TODO.
+
+## Parameter adjustments (WIP)
+
+Press **TUNE** to access various note step parameters via sliders. (WIP: have to manually press one of LEVEL/AUX/CONTROL to reactivate after deactivating TUNE)
+
+To edit parameter of one or more steps, hold them. When multiple steps are held, last pressed step takes precedence.
+
+Fine adjustments with SHIFT are available.
+
+Sliders:
+
+1. Note velocity
+1. Note release velocity
+1. Note velocity spread
+1. Note start offset (between the start of this step and the next one, in 128 increments)
+1. Note duration
+1. Pan
+1. Timbre
+1. Pressure
+
+## Clip creation/selection behavior
+
+Here "selected" means selected in the app.
+
+When activating Step Sequencer:
+* If the current active track has no existing clip, a new clip is created in the currently selected slot, or first slot if none are selected
+* Either the selected clip or the first existing clip on a track is shown
+
 # Modes and notes
 
-## Self-gating modes
+## Auto-gating modes
 
-A quick press on a mode button turns it on, but hold the button and 
-make mode edits (or just wait long enough) and it returns to the previous mode when released - very handy for quick navigation
-and performance.
+An important UX behavior used in majority of modes in MonsterJam.
+
+* A quick press on a mode button toggles the mode 
+* Long press turns mode off upon release (the mode becomes momentary)
+* Long press *with usage* (operate any of the mode's controls while holding the mode button) turns mode off upon release regardless of press duration
+
+You can quickly drop into a mode, do something and drop back out with no additional keypresses. Very handy for quick navigation and performance.
+
+Some specific modes use an inverted variant of this behavior (long press leaves mode on).
 
 Some modes that are like this:
-* Solo, Mute, and TEMPO
+* SOLO, MUTE, TEMPO
 * User control pages
 * Control slice selectors
+* etc. — if you think it should be auto-gating it probably is, and if not then let me know.
 
 ## Launch grid quantization
 
@@ -201,16 +313,14 @@ If a device has a remote control page called `MonsterFX`, MonsterJam will treat 
 * The page will be omitted from pages available to **CONTROL** mode
 * When a strip is touched, a corresponding control on this page will be set to 1, otherwise 0
 
-Usage example:
-* Make a preset page of buttons called `MonsterFX` in a container to enable/disable FX devices, or do anything else.
-
-It's a bit of a hack until a better way is found.
+### Intended usage
+Make a remote page called `MonsterFX` and fill it with buttons (macro knobs work too, but buttons make the most sense). The most straightforward use case is modulator buttons modulating device on/off controls or dry/wet mixes, or even those controls mapped to the page directly. A more elaborate example may be a Grid instrument with slew limiters, envelopes and latches, there is no limit to where your fantasy may take you.
 
 ## SuperScene
 
 SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperScenes are available per project.
 
-* **SONG** toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
+* **SONG** (short press) toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
 * Empty **SCENE(1-8)** creates new SuperScene from playing clips
 * Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Currently selected scene is **white**.
 * **CLEAR+SCENE(1-8)** deletes the SuperScene (clips and their playing states are unaffected)
@@ -226,6 +336,8 @@ If a group track containing SuperScene clips in its inner tracks was folded,
 SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
 
 ## Device Selector
+
+Note: there is currently a bug in the API that will cause Device Selector display to freak out when adding new devices. In the meantime, scroll the track bank back and forth to clear.
 
 Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
 
@@ -309,13 +421,8 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * _0 dB_: slider maximum is 0 dB for all tracks
   * _-10 dB_: slider maximum is -10 dB for all tracks
   * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
-* **Enable track tracker**: use extreme cleverness to follow the tracks as layout changes.
-  * Why you want this:
-    * SuperScenes will work correctly even if tracks have changed positions
-    * Scroll window will maintain its position when folding/unfolding tracks
-  * Why you may not want this: track tracker introduces tiny variations in track colors (specifically the alpha channel).
-    * This modifies the project even if you didn't do anything, so it will ask you to save
-    * Track color selectors will not display the color as selected
+* **Launch Q: Launch tolerance**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
+* **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
 
@@ -324,3 +431,29 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 (Open Studio I/O Panel and look under Maschine Jam)
 
 * Hide disabled: tracks — disabled tracks are skipped
+
+# Changelog
+
+## 8.0
+
+### New features
+
+* Step sequencer (WIP)
+* Lenient launch: launching clips on time or even a little late still applies correct quantization
+* Natural track scrolling: instantly scroll by an arbitrary number of tracks (less than 8) by pressing a track button while holding another
+* Refactored Track Tracker no longer causes extraneous project modifications
+* Setting to toggle console output
+* API 17
+* Completely refactored mode layers and button handlers
+
+
+### Fixes
+
+* Now compiles on Windows
+* Fixed NPE while loading optional mappings on Windows
+* Page matrix scrolling could result in errors
+* SuperScenes did not work in newer Bitwig versions
+* UserControl page navigation was broken
+* Improved documentation
+* Added stdout output for easier debugging
+* Scala 3

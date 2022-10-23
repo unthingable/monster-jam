@@ -11,7 +11,7 @@ User documentation, including installation instructions, can be found [here](doc
 
 ## Overview
 
-This is intended as a replacement for Bitwig's bundled Maschine JAM extension. Requires Bitwig API 15+.
+This is intended as a replacement for Bitwig's bundled Maschine JAM extension. Requires Bitwig API 17+.
 
 ## Compiling
 

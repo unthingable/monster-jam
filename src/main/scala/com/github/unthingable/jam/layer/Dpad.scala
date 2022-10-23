@@ -1,9 +1,11 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.{BooleanValue, HardwareActionBindable, Scrollable}
-import com.github.unthingable.jam.surface.JamOnOffButton
-import com.github.unthingable.jam.{Binding, HB, Jam, SimpleModeLayer, SupBooleanB}
 import com.github.unthingable.JamSettings.DpadScroll
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB}
+import com.github.unthingable.jam.surface.JamOnOffButton
+import com.github.unthingable.jam.Jam
 
 trait Dpad { this: Jam =>
   lazy val dpad = new SimpleModeLayer("dpad") {
@@ -18,21 +20,19 @@ trait Dpad { this: Jam =>
       e.markInterested()
     }
 
-    def scroll(forward: Boolean, target: Scrollable): HardwareActionBindable = {
-      ext.host.createAction(() =>
-        (j.Modifiers.Shift.isPressed() ^ (ext.preferences.shiftDpad.get() == DpadScroll.RegularOne), forward) match {
-          case (false, true)  => target.scrollPageForwards()
-          case (false, false) => target.scrollPageBackwards()
-          case (true, true)   => target.scrollForwards()
-          case (true, false)  => target.scrollBackwards()
-        }, () => s"scroll_$forward")
-    }
+    def scroll(forward: Boolean, target: Scrollable): () => Unit =
+      () => (j.Mod.Shift.st.isPressed ^ (ext.preferences.shiftDpad.get() == DpadScroll.`single/page`), forward) match {
+        case (false, true)  => target.scrollPageForwards()
+        case (false, false) => target.scrollPageBackwards()
+        case (true, true)   => target.scrollForwards()
+        case (true, false)  => target.scrollBackwards()
+      }
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
-      HB(j.dpad.left.pressedAction, "page left", scroll(false, trackBank)),
-      HB(j.dpad.right.pressedAction, "page right", scroll(true, trackBank)),
-      HB(j.dpad.up.pressedAction, "page up", scroll(false, sceneBank)),
-      HB(j.dpad.down.pressedAction, "page down", scroll(true, sceneBank)),
+      EB(j.dpad.left.st.press, "page left", scroll(false, trackBank)),
+      EB(j.dpad.right.st.press, "page right", scroll(true, trackBank)),
+      EB(j.dpad.up.st.press, "page up", scroll(false, sceneBank)),
+      EB(j.dpad.down.st.press, "page down", scroll(true, sceneBank)),
     ) ++ actionMap.map { case (b: JamOnOffButton, e: BooleanValue) =>
       SupBooleanB(b.light.isOn, e)
     }

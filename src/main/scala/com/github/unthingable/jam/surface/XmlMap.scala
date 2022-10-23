@@ -9,6 +9,7 @@ import java.io.File
 import scala.io.Source
 import scala.util.Try
 import scala.xml.{Elem, Node, NodeSeq, XML}
+import com.github.unthingable.Util
 
 sealed trait MidiEvent { val value: Int }
 case class CC(value: Int) extends MidiEvent
@@ -57,7 +58,11 @@ object XmlMap {
         throw new IllegalArgumentException("Unknown/unsupported platform")
     }
 
-    val foundFiles: Option[File] = (new File(extDir)).listFiles((_, name) => name.endsWith(".ncmj")).headOption
+    val dir = new File(extDir)
+    Util.println(s"Loading optional .ncmj extensions from: $dir")
+    val foundFiles: Option[File] = 
+      Option(dir.listFiles((_, name) => name.endsWith(".ncmj")))
+      .map(_.headOption).flatten
 
     val source = Vector(
       // bring your own

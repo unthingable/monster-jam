@@ -3,14 +3,16 @@ package com.github.unthingable.jam
 import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.jam.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
+import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
+import com.bitwig.`extension`.callback.IndexedBooleanValueChangedCallback
+import com.github.unthingable.framework.binding.GlobalEvent
 
 class Jam(implicit val ext: MonsterJamExt)
-  extends BindingDSL
-  with Aux with TransportL with Level with Dpad with TrackL
-  with ClipMatrix with Shift with Control with MacroL with SceneL {
+  extends BindingDSL, Aux, TransportL, Level, Dpad, TrackL, ClipMatrix, Shift, Control, MacroL, SceneL, StepSequencer {
 
   implicit val j: JamSurface = new JamSurface()
 
@@ -26,17 +28,23 @@ class Jam(implicit val ext: MonsterJamExt)
   lazy val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
 
-  lazy val superBank: TrackBank = ext.host.createMainTrackBank(256, 8, 256)
+  // val superBank: TrackBank = ext.host.createMasterTrack(256).createMainTrackBank(256, 8, 256, true)
+  val superBank: TrackBank = ext.host.createTrackBank(256, 8, 256, true)
   superBank.itemCount().markInterested()
+  // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
 
-  ext.preferences.smartTracker.markInterested()
-  implicit val tracker: TrackTracker = {
-    if (ext.preferences.smartTracker.get())
-      new SmartTracker(superBank)
-    else
-      new DumbTracker(superBank)
+  val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
+  def selectedObserver(track: Int): IndexedBooleanValueChangedCallback = (idx: Int, selected: Boolean) =>
+    if (selected)
+      ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
+
+  (0 until 256).foreach { i =>
+    val t = superBank.getItemAt(i)
+    t.clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
   }
+
+  given tracker: TrackTracker = UnsafeTracker(superBank)
 
   lazy val sceneBank  : SceneBank   = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
@@ -59,27 +67,33 @@ class Jam(implicit val ext: MonsterJamExt)
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
-  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer)
+  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer, stepSequencer.tune)
 
   // Final assembly of all mode layers
   val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))
   val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
-  new ModeDGraph(
-    init = Vector(levelCycle, sceneLayer, clipMatrix),
+  val graph = new ModeDGraph(
+    init = Vector(levelCycle, sceneCycle, clipMatrix),
     dpad -> top,
     play -> top,
     position -> Coexist(tempoLayer),
-    sceneLayer -> top,
-    bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, globalShift, shiftPages),
+    sceneCycle -> top,
+    bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
     bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup -> Exclusive(solo, mute),
-    bottom -> Coexist(clipMatrix, pageMatrix),
+    bottom -> Coexist(clipMatrix, pageMatrix, stepSequencer),
     bottom -> stripGroup,
     bottom -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup -> Exclusive(EIGHT.map(trackGate): _*),
     masterButton -> top,
     bottom -> Coexist(unmanaged),
   )
+
+  // val newGraph = ModeCommander(
+  //   clipMatrix,
+  //   sceneLayer,
+  //   levelCycle,
+  // )
 }

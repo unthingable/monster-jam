@@ -2,9 +2,11 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util.Timed
-import com.github.unthingable.jam.surface.JamColor.JAMColorBase
+import com.github.unthingable.framework.mode.{GateMode, IntActivatedLayer, ModeButtonLayer}
+import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB}
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Binding, GateMode, HB, IntActivatedLayer, Jam, ModeButtonLayer, SupColorStateB}
+import com.github.unthingable.jam.Jam
 
 import java.time.Instant
 
@@ -14,15 +16,15 @@ trait MacroL { this: Jam =>
     var bumpedSubMode: Option[Int]               = None
     var controlToggleSub: Option[Int] = None // more dirty hacks
 
-    override def activate(): Unit = {
-      super.activate()
+    override def onActivate(): Unit = {
+      super.onActivate()
       // dirty hack to show user controls
-      if (j.control.isPressed()) {
+      if (j.control.btn.isPressed().get) {
         // CONTROL is already active, just need to toggle
         if (!controlLayer.isUserSelected) {
           controlToggleSub = controlLayer.selected
           controlLayer.selectUser()
-        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select)
+        } else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
       }
       else {
         bumpedStrip = stripGroup.layers.find(_.isOn)
@@ -32,16 +34,16 @@ trait MacroL { this: Jam =>
           bumpedSubMode = controlLayer.selected
           controlLayer.selectUser()
         }
-        if (!controlLayer.isOn) controlLayer.activateAction.invoke()
+        if (!controlLayer.isOn) ext.events.eval("macroL activate")(controlLayer.activateEvent*)
       }
     }
 
-    override def deactivate(): Unit = {
-      bumpedStrip.foreach(_.activateAction.invoke())
-      bumpedSubMode.foreach(controlLayer.select)
+    override def onDeactivate(): Unit = {
+      bumpedStrip.map(_.activateEvent).foreach(ext.events.eval("macroL deactivate")(_*))
+      bumpedSubMode.foreach(controlLayer.select(_))
       bumpedStrip = None
       bumpedSubMode = None
-      super.deactivate()
+      super.onDeactivate()
     }
 
     override val modeBindings: Seq[Binding[_, _, _]] =
@@ -53,6 +55,7 @@ trait MacroL { this: Jam =>
         val isSelected = ext.cursorTrack.createEqualsValue(track)
         isSelected.markInterested()
         track.isGroup.markInterested()
+        track.color().markInterested()
 
         var lastPress: Option[Timed[Track]] = None
 
@@ -71,11 +74,11 @@ trait MacroL { this: Jam =>
         Vector(
           SupColorStateB(btn.light, () =>
             if (isSelected.get())
-              JamColorState(JAMColorBase.WHITE, 3)
+              JamColorState(JamColorBase.WHITE, 3)
             else
               JamColorState(track.color().get(), 0)),
-          HB(btn.pressedAction, "direct select track", () => select(track)),
-          HB(btn.releasedAction, "direct select release", () => ()),
+          EB(btn.st.press, "direct select track", () => select(track)),
+          EB(btn.st.release, "direct select release", () => ()),
         )
       }
   }
