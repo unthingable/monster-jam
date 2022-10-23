@@ -190,6 +190,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       val selectedSteps                 = mutable.HashMap.empty[Int, Int]
 
     clip.setStepSize(ts.stepSize)
+    fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
     // clip.scrollToKey(12 * 3)
     setGrid(StepMode.One)
 
@@ -211,7 +212,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     def incStepSize(inc: Short): Unit =
       setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
+      // should probably to this in onStepState
       clip.setStepSize(ts.stepSize)
+      fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
       // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
     inline def scrollY(offset: Int) =
@@ -240,6 +243,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     inline def setStepPage(page: Int) =
       setState(ts.copy(stepScrollOffset = ts.stepPageSize * page))
       clip.scrollToStep(ts.stepScrollOffset)
+      fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
 
     inline def stepAt(x: Int, y: Int): NoteStep =
       clip.getStep(ts.channel, x, y)
@@ -610,7 +614,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       override def onActivate(): Unit =
         super.onActivate()
         select(0)
-        fineClip.setStepSize(ts.stepSize / fineRes)
       override val subModes: Vector[ModeLayer] = Vector(sliders)
     }
 
