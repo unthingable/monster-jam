@@ -161,7 +161,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       Util.println(s"received $e")
       // if (isOn)
       // selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
-      localState.selectedSteps.update(e.globalTrack, e.globalClip)
+      localState.selectedClips.update(e.globalTrack, e.globalClip)
     )
 
     Vector(
@@ -187,7 +187,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     object localState:
       var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
-      val selectedSteps                 = mutable.HashMap.empty[Int, Int]
+      val selectedClips                 = mutable.HashMap.empty[Int, Int]
 
     clip.setStepSize(ts.stepSize)
     fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
@@ -443,10 +443,18 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
         inline def velNote(vel: Int) = s"Step: velocity $vel"
 
+        def getVelocity: Int =
+          localState.stepState.get.steps.lastOption
+            .map(s => (s.step.velocity() * 128).toInt)
+            .getOrElse(ts.velocity)
+
         def setVelocity(vel: Int) =
           ext.host.showPopupNotification(velNote(vel))
-          setState(ts.copy(velocity = vel))
-          selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
+          val steps = localState.stepState.get.steps
+          if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
+          else
+            setState(ts.copy(velocity = vel))
+            selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
 
         def notePress(note: Int): Unit =
           scrollY(note)
@@ -463,7 +471,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           Vector(
             SupColorB(
               btn.light,
-              () => if (ts.velocity / velScale == idx) Color.whiteColor() else clipColor
+              () => if (getVelocity / velScale == idx) Color.whiteColor() else clipColor
             ),
             EB(btn.st.press, velNote(vel), () => setVelocity(vel))
           )
@@ -495,7 +503,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         override def modeBindings: Seq[Binding[?, ?, ?]] =
           j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
             Vector(
-              EB(btn.st.press, "", () => ()),
+              EB(btn.st.press, "", () => scrollY(idx * 16)),
               SupColorStateB(btn.light, () => JamColorState(JamColorBase.CYAN, 3))
             )
           )
@@ -523,18 +531,18 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           gateMode = GateMode.Auto
         ) {
 
-      case class FineStep(step: NoteStep, fineStep: NoteStep):
-        def offset: Int = fineStep.x % fineRes
+      case class FineStep(step: NoteStep):
+        def offset: Int = step.x % fineRes
         def moveFineBy(clip: Clip, dx: Int): Unit =
           // ensure no crossings
-          if (fineStep.x / 128 == (fineStep.x + dx) / 128)
-            clip.moveStep(ts.channel, fineStep.x, fineStep.y, dx, 0)
+          if (step.x / 128 == (step.x + dx) / 128)
+            clip.moveStep(ts.channel, step.x, step.y, dx, 0)
 
       def toFine(step: NoteStep): Option[FineStep] =
         (0 until fineRes).view
           .map(i => fineClip.getStep(ts.channel, step.x * fineRes + i, step.y))
           .find(_.state() == NSState.NoteOn)
-          .map(s => FineStep(step, s))
+          .map(s => FineStep(s))
 
       import GetSetProxy.given
       val P = GetSetProxy[NoteStep, Double](0)
@@ -545,7 +553,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         P(_.releaseVelocity(), (s, v, _) => s.setReleaseVelocity(v)),
         P(_.velocitySpread(), (s, v, _) => s.setVelocitySpread(v)),
         // note start
-        P(toFine(_).map(_.offset).getOrElse(0) / 128.0, (s, _, d) => toFine(s).foreach(_.moveFineBy(fineClip, (d * 128).toInt))),
+        P(
+          toFine(_).map(_.offset).getOrElse(0) / 128.0,
+          (s, _, d) => toFine(s).foreach(_.moveFineBy(fineClip, (d * 128).toInt))
+        ),
         P(_.duration(), (s, v, _) => s.setDuration(v)),
         P(_.pan(), (s, v, _) => s.setPan(v)),
         P(_.timbre(), (s, v, _) => s.setTimbre(v)),
@@ -669,7 +680,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         findClip() match
           case None =>
             val t = selectedClipTrack.position().get()
-            val c = localState.selectedSteps.getOrElse(t, 0)
+            val c = localState.selectedClips.getOrElse(t, 0)
             selectedClipTrack.createNewLauncherClip(c)
             trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
           case Some(foundClip) =>
