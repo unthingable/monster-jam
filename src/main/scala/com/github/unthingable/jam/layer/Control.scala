@@ -79,7 +79,12 @@ trait Control { this: Jam with MacroL =>
       def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
       override val subModes: Vector[ModeLayer] = (
-        new SliderBankMode("strips remote", page.c.getParameter, JamParameter.Regular.apply, Seq.fill(8)(BarMode.DUAL)) {
+        new SliderBankMode(
+          "strips remote",
+          page.c.getParameter,
+          JamParameter.Regular.apply,
+          Seq.fill(8)(BarMode.DUAL)
+        ) {
 
           j.stripBank.strips.forindex {
             case (strip, idx) =>
@@ -93,7 +98,9 @@ trait Control { this: Jam with MacroL =>
               )
               val param = sliderParams(idx)
               param.p.modulatedValue().markInterested()
-              param.p.modulatedValue().addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
+              param.p
+                .modulatedValue()
+                .addValueObserver(v => if (isOn) strip.update((v * 127).toInt))
           }
 
           override def onActivate(): Unit = {
@@ -122,7 +129,8 @@ trait Control { this: Jam with MacroL =>
             new SliderBankMode(
               s"strips slice $idx",
               obj = i => trackBank.getItemAt(i).createCursorDevice(),
-              param = p => JamParameter.Regular(p.createCursorRemoteControlsPage(8).getParameter(idx)),
+              param =
+                p => JamParameter.Regular(p.createCursorRemoteControlsPage(8).getParameter(idx)),
               barMode = Seq.fill(8)(BarMode.DUAL),
               stripColor = Some(_ => Util.rainbow(idx))
             ) {
@@ -223,7 +231,6 @@ trait Control { this: Jam with MacroL =>
           JamParameter.UserControl.apply,
           barMode = Seq.fill(8)(BarMode.SINGLE),
         ) {
-          // override val paramKnowsValue: Boolean = false
 
           val superBindings = super.modeBindings // cache for dirty check
           // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")
@@ -248,8 +255,6 @@ trait Control { this: Jam with MacroL =>
                   if (
                     isOlderThan(Duration.ofMillis(500))
                     || hasDirtyBindings(superBindings*)
-                      // .trace(x => s"group release: dirty: ${x.map(_.name).mkString(",")}")
-                      // .nonEmpty
                   ) {
                     currentUserPage = previousUserPage
                     selectUser()

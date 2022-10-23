@@ -16,8 +16,6 @@ class EventBus[BaseE] {
   private val valueSubs = mutable.HashMap.empty[BaseE, mutable.HashSet[Reactor[_]]]
   private val classSubs = mutable.HashMap.empty[Class[_], mutable.HashSet[Reactor[_]]]
 
-  // private val Subs = mutable.HashMap.empty[Class[? <: BaseE], mutable.HashSet[Reactor[_]]]
-
   /* Janky actor with a queue, no mind paid to concurrency.
      Assuming the extention is single-threaded this should be fine.
    */

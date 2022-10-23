@@ -54,16 +54,10 @@ trait HasButtonState:
   def st: ButtonStateSupplier
 
 sealed trait HasHwButton extends HasButton[HardwareButton] 
-  // extends Button:
-// sealed trait HwButton extends Button[_]
-  // def btn: HardwareButton
 trait HasFakeButton extends HasButton[FakeButton]
 
 
 sealed trait HasLight[L <: HardwareLight] { val light: L }
-// trait ButtonLight[L <: HardwareLight] extends Light[L]
-// trait OnOffButton extends ButtonLight[OnOffHardwareLight]
-// trait RgbButton extends ButtonLight[MultiStateHardwareLight]
 type HasOnOffLight = HasLight[OnOffHardwareLight]
 type HasRgbLight = HasLight[MultiStateHardwareLight]
 

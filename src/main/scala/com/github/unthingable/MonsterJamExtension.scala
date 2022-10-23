@@ -7,7 +7,6 @@ import com.github.unthingable.JamSettings
 import com.github.unthingable.framework.EventBus
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.framework.binding.{Binder, Event}
-import com.github.unthingable.framework.mode.ModeCommander
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 

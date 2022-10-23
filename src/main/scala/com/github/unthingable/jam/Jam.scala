@@ -4,7 +4,7 @@ import com.bitwig.extension.controller.api._
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
-import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, ModeCommander, SimpleModeLayer}
+import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
@@ -34,7 +34,6 @@ class Jam(implicit val ext: MonsterJamExt)
   // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
 
-  // lazy val selectedClipTrack: CursorTrack = ext.host.createCursorTrack("clip track", "clip track", 0, 256, false)
   val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
   def selectedObserver(track: Int): IndexedBooleanValueChangedCallback = (idx: Int, selected: Boolean) =>
     if (selected)
@@ -45,14 +44,7 @@ class Jam(implicit val ext: MonsterJamExt)
     t.clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
   }
 
-  // ext.preferences.smartTracker.markInterested()
   given tracker: TrackTracker = UnsafeTracker(superBank)
-  // {
-  //   if (ext.preferences.smartTracker.get())
-  //     UnsafeTracker(superBank)
-  //   else
-  //     DumbTracker(superBank)
-  // }
 
   lazy val sceneBank  : SceneBank   = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)

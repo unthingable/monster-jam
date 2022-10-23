@@ -302,6 +302,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         (for (col <- EIGHT; row <- EIGHT) yield {
           // val (stepNum, x, y) = stepView(row, col)
           def xy: (Int, Int) = m2clip(row, col)
+          def state = clip.getStep(ts.channel, xy._1, xy._2).state()
           // def cachedClip = steps(channel)(xy._1)(xy._2)
           Vector(
             SupColorStateB(
@@ -311,10 +312,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                 if (
                   ext.transport.isPlaying
                     .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
-                ) // not right yet
+                )
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
-                  clip.getStep(0, xy._1, xy._2).state() match {
+                  state match {
                     case NSState.NoteOn      => JamColorState(clipColor, 1)
                     case NSState.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
                     case NSState.Empty       => JamColorState.empty
