@@ -328,7 +328,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
                   clip.getStep(ts.channel, xy._1, xy._2).state() match {
-                    case NSState.NoteOn      => JamColorState(clipColor, 2)
+                    case NSState.NoteOn      => JamColorState(clipColor, 3)
                     case NSState.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
                     case NSState.Empty       => bgColor
                   }
