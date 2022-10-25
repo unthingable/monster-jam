@@ -39,12 +39,12 @@ trait TransportL extends BindingDSL { this: Jam =>
       val t         = ext.transport
       (isPlaying.get(), j.Mod.Shift.btn.isPressed) match {
         // just play
-        case (true, false) => t.play()
+        case (true, false) => t.stop()
         // restart (and stop)
         case (true, true) => t.restart()
         // resume
-        case (false, false) => t.continuePlayback()
-        case (false, true)  => restart(false)
+        case (false, false) => t.play()
+        case (false, true)  => t.continuePlayback() // restart(false)
       }
     }
 
