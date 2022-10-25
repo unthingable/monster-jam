@@ -4,26 +4,48 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.HB.action
-import com.github.unthingable.framework.binding.{BindingBehavior => BB, EB, HB, SupBooleanB, SupColorStateB, SupColorB}
+import com.github.unthingable.framework.binding.{
+  BindingBehavior => BB,
+  EB,
+  HB,
+  SupBooleanB,
+  SupColorB,
+  SupColorStateB
+}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.framework.binding.BindingDSL
 
 trait TransportL extends BindingDSL { this: Jam =>
-  lazy val position = SimpleModeLayer("position",
-    Vector(HB(j.encoder.turn, "position turn", ext.host.createRelativeHardwareControlStepTarget(
-      ext.transport.fastForwardAction(),
-      ext.transport.rewindAction()))))
+  lazy val position = SimpleModeLayer(
+    "position",
+    Vector(
+      HB(
+        j.encoder.turn,
+        "position turn",
+        ext.host.createRelativeHardwareControlStepTarget(
+          ext.transport.fastForwardAction(),
+          ext.transport.rewindAction()
+        )
+      )
+    )
+  )
 
-  lazy val tempoLayer = ModeButtonLayer("tempo",
+  lazy val tempoLayer = ModeButtonLayer(
+    "tempo",
     j.tempo,
     Vector(
-      HB(j.encoder.turn, "tempo turn", stepTarget(
-        () => ext.transport.increaseTempo(1,
-          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1)),
-        () => ext.transport.increaseTempo(-1,
-          647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1))))))
+      HB(
+        j.encoder.turn,
+        "tempo turn",
+        stepTarget(
+          () => ext.transport.increaseTempo(1, 647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1)),
+          () => ext.transport.increaseTempo(-1, 647 * (if (j.Mod.Shift.btn.isPressed) 20 else 1))
+        )
+      )
+    )
+  )
 
   lazy val play = new SimpleModeLayer("play") {
     ext.transport.isPlaying.markInterested()
@@ -51,42 +73,62 @@ trait TransportL extends BindingDSL { this: Jam =>
     def restart(go: Boolean): Unit = {
       val h = ext.host
       ext.transport.stop()
-      h.scheduleTask(() => {
-        ext.transport.stop()
-        h.scheduleTask(() => {
+      h.scheduleTask(
+        () => {
           ext.transport.stop()
-          if (go) h.scheduleTask(() => ext.transport.play(), 10)
-        }, 10)
-      }, 10)
+          h.scheduleTask(
+            () => {
+              ext.transport.stop()
+              if (go) h.scheduleTask(() => ext.transport.play(), 10)
+            },
+            10
+          )
+        },
+        10
+      )
     }
 
     override val modeBindings = Vector(
       // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
       EB(j.play.st.press, "", () => playPress(), BB(tracked = false)),
       SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
-      EB(j.noteRepeat.st.press, "note repeat pressed", () => ext.transport.isFillModeActive.set(true), BB(tracked = false)),
-      EB(j.noteRepeat.st.release, "note repeat released", () => ext.transport.isFillModeActive.set(false), BB(tracked = false)),
+      EB(
+        j.noteRepeat.st.press,
+        "note repeat pressed",
+        () => ext.transport.isFillModeActive.set(true),
+        BB(tracked = false)
+      ),
+      EB(
+        j.noteRepeat.st.release,
+        "note repeat released",
+        () => ext.transport.isFillModeActive.set(false),
+        BB(tracked = false)
+      ),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
       EB(j.record.st.press, "record pressed", () => ext.transport.record()),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
-
-      EB(j.auto.st.press, "auto pressed", () =>
-        if (ext.transport.isAutomationOverrideActive.get())
-          ext.transport.resetAutomationOverrides()
-        else
-          ext.transport.isArrangerAutomationWriteEnabled.toggle()
+      EB(
+        j.auto.st.press,
+        "auto pressed",
+        () =>
+          if (ext.transport.isAutomationOverrideActive.get())
+            ext.transport.resetAutomationOverrides()
+          else
+            ext.transport.isArrangerAutomationWriteEnabled.toggle()
       ),
-      SupBooleanB(j.auto.light.isOn, () =>
-        if (ext.transport.isAutomationOverrideActive.get())
-          j.Mod.blink
-        else
-          ext.transport.isArrangerAutomationWriteEnabled.get()
+      SupBooleanB(
+        j.auto.light.isOn,
+        () =>
+          if (ext.transport.isAutomationOverrideActive.get())
+            j.Mod.blink
+          else
+            ext.transport.isArrangerAutomationWriteEnabled.get()
       )
     )
   }
 
   lazy val shiftTransport = new ModeButtonLayer("shiftTransport", j.Mod.Shift, GateMode.Gate) {
-    val loop   : SettableBooleanValue = ext.transport.isArrangerLoopEnabled
+    val loop: SettableBooleanValue    = ext.transport.isArrangerLoopEnabled
     val overdub: SettableBooleanValue = ext.transport.isClipLauncherOverdubEnabled
     val metro                         = ext.transport.isMetronomeEnabled
     val auto                          = ext.transport.isClipLauncherAutomationWriteEnabled
@@ -109,33 +151,41 @@ trait TransportL extends BindingDSL { this: Jam =>
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
     ).flatten ++ Vector(
-      EB(j.tempo.st.press, "tap tempo", () => ext.transport.tapTempo(),
+      EB(
+        j.tempo.st.press,
+        "tap tempo",
+        () => ext.transport.tapTempo(),
         // not exclusive so that tap tempo doesn't mess with tempo layer
-        BB(tracked = false, exclusive = false))
+        BB(tracked = false, exclusive = false)
+      )
     )
   }
 
-  lazy val globalQuant = new ModeButtonLayer("globalQuant",
-    modeButton = j.grid,
-    gateMode = GateMode.Gate
-  ) {
-    val quant = ext.transport.defaultLaunchQuantization()
-    quant.markInterested()
-    val enumValues = Vector("8", "4", "2", "1", "1/2", "1/4", "1/8", "1/16")
-    override val modeBindings = j.sceneButtons.indices.flatMap { idx =>
-      val sceneButton = j.sceneButtons(idx)
+  lazy val globalQuant =
+    new ModeButtonLayer("globalQuant", modeButton = j.grid, gateMode = GateMode.Gate) {
+      val quant = ext.transport.defaultLaunchQuantization()
+      quant.markInterested()
+      val enumValues = Vector("8", "4", "2", "1", "1/2", "1/4", "1/8", "1/16")
+      override val modeBindings = j.sceneButtons.indices.flatMap { idx =>
+        val sceneButton = j.sceneButtons(idx)
 
-      Vector(
-        SupColorB(sceneButton.light, () =>
-          if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()),
-        EB(sceneButton.st.press, "global quant grid", () => {
-          if (quant.get == enumValues(idx))
-            quant.set("none")
-          else
-            quant.set(enumValues(idx))
-        }))
+        Vector(
+          SupColorB(
+            sceneButton.light,
+            () => if (quant.get() == enumValues(idx)) Color.whiteColor() else Color.blackColor()
+          ),
+          EB(
+            sceneButton.st.press,
+            "global quant grid",
+            () =>
+              if (quant.get == enumValues(idx))
+                quant.set("none")
+              else
+                quant.set(enumValues(idx))
+          )
+        )
+      }
     }
-  }
 
   def buttonGroupChannelMode(
     name: String,
@@ -143,28 +193,36 @@ trait TransportL extends BindingDSL { this: Jam =>
     group: Seq[JamRgbButton],
     prop: Channel => SettableBooleanValue,
     color: Int // Jam's color index
-  ): ModeButtonLayer = ModeButtonLayer(name, modeButton, group.indices.flatMap { idx =>
-    val track       = trackBank.getItemAt(idx)
-    val propValue   = prop(track)
-    val existsValue = track.exists()
-    val gButton     = group(idx)
+  ): ModeButtonLayer = ModeButtonLayer(
+    name,
+    modeButton,
+    group.indices.flatMap { idx =>
+      val track       = trackBank.getItemAt(idx)
+      val propValue   = prop(track)
+      val existsValue = track.exists()
+      val gButton     = group(idx)
 
-    propValue.markInterested()
-    existsValue.markInterested()
+      propValue.markInterested()
+      existsValue.markInterested()
 
-    Vector(
-      EB(gButton.st.press, s"group $idx pressed: $name", () => propValue.toggle()),
-      SupColorStateB(gButton.light, () => {
-        (existsValue.get(), propValue.get()) match {
-          case (false, _) => JamColorState.empty
-          case (_, false) => JamColorState(color, 0)
-          case (_, true)  => JamColorState(color, 3)
-        }
-      }, JamColorState.empty)
-    )
-  }
+      Vector(
+        EB(gButton.st.press, s"group $idx pressed: $name", () => propValue.toggle()),
+        SupColorStateB(
+          gButton.light,
+          () =>
+            (existsValue.get(), propValue.get()) match {
+              case (false, _) => JamColorState.empty
+              case (_, false) => JamColorState(color, 0)
+              case (_, true)  => JamColorState(color, 3)
+            },
+          JamColorState.empty
+        )
+      )
+    }
   )
 
-  lazy val solo = buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
-  lazy val mute = buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
+  lazy val solo =
+    buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
+  lazy val mute =
+    buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
 }
