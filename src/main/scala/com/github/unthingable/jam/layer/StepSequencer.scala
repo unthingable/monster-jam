@@ -234,7 +234,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     enum UpDown:
       case Up, Down
 
-    inline def canScroll(dir: UpDown): Boolean =
+    inline def canScrollX(dir: UpDown): Boolean =
       clip.exists.get() && (inline dir match
         case UpDown.Up   => ts.keyScrollOffsetGuarded + ts.stepViewPort.height < 127
         case UpDown.Down => ts.keyScrollOffsetGuarded + (8 - ts.stepViewPort.height) > 0
@@ -302,7 +302,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         (for (col <- EIGHT; row <- EIGHT) yield {
           // val (stepNum, x, y) = stepView(row, col)
           def xy: (Int, Int) = m2clip(row, col)
-          def state = clip.getStep(ts.channel, xy._1, xy._2).state()
+          def bgColor = 
+            if xy._2 % 2 != 0 then JamColorState(JamColorBase.next(JamColorState.toColorIndex(clipColor)), 0)
+            else JamColorState.empty
           // def cachedClip = steps(channel)(xy._1)(xy._2)
           Vector(
             SupColorStateB(
@@ -315,10 +317,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                 )
                   JamColorState(JamColorBase.WHITE, 1)
                 else {
-                  state match {
-                    case NSState.NoteOn      => JamColorState(clipColor, 1)
+                  clip.getStep(ts.channel, xy._1, xy._2).state() match {
+                    case NSState.NoteOn      => JamColorState(clipColor, 2)
                     case NSState.NoteSustain => JamColorState(JamColorBase.WHITE, 0)
-                    case NSState.Empty       => JamColorState.empty
+                    case NSState.Empty       => bgColor
                   }
                 }
             ),
@@ -517,8 +519,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         EB(j.dpad.down.st.press, "scroll page down", () => scrollY(UpDown.Down)),
         EB(j.dpad.left.st.press, "", Noop),
         EB(j.dpad.right.st.press, "", Noop),
-        SupBooleanB(j.dpad.up.light.isOn(), () => canScroll(UpDown.Up)),
-        SupBooleanB(j.dpad.down.light.isOn(), () => canScroll(UpDown.Down)),
+        SupBooleanB(j.dpad.up.light.isOn(), () => canScrollX(UpDown.Up)),
+        SupBooleanB(j.dpad.down.light.isOn(), () => canScrollX(UpDown.Down)),
         SupBooleanB(j.dpad.left.light.isOn(), () => false),
         SupBooleanB(j.dpad.right.light.isOn(), () => false),
       )
