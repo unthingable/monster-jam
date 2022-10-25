@@ -13,6 +13,9 @@ object JamSettings {
   enum DpadScroll:
     case `single/page`, `page/single`
 
+  enum ShiftPlay:
+    case Restart, `Pause/Resume`
+
   trait EnumSetting[E] {
     def setting: SettableEnumValue
     def set(v: E): Unit

@@ -16,6 +16,8 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.framework.binding.BindingDSL
+import java.time.Instant
+import com.github.unthingable.JamSettings
 
 trait TransportL extends BindingDSL { this: Jam =>
   lazy val position = SimpleModeLayer(
@@ -54,20 +56,23 @@ trait TransportL extends BindingDSL { this: Jam =>
     ext.transport.isAutomationOverrideActive.markInterested()
     ext.transport.isArrangerAutomationWriteEnabled.markInterested()
 
-    val playPressAction: HardwareActionBindable = action(s"$id play pressed", () => playPress())
+    inline def shiftResume = ext.preferences.shiftPlay.get() == JamSettings.ShiftPlay.`Pause/Resume`
+
+    var playPressed: Option[Instant] = None
 
     def playPress(): Unit = {
-      val isPlaying = ext.transport.isPlaying
-      val t         = ext.transport
+      val now              = Instant.now
+      lazy val isDoubleTap = playPressed.exists(_.isAfter(now.minusMillis(200)))
+      val isPlaying        = ext.transport.isPlaying
+      val t                = ext.transport
       (isPlaying.get(), j.Mod.Shift.btn.isPressed) match {
-        // just play
-        case (true, false) => t.stop()
-        // restart (and stop)
-        case (true, true) => t.restart()
-        // resume
-        case (false, false) => t.play()
-        case (false, true)  => t.continuePlayback() // restart(false)
+        case (true, _) if isDoubleTap => restart(true)
+        case (true, true)             => if shiftResume then t.stop() else restart(true)
+        case (true, false)            => t.stop()
+        case (false, false)           => t.play()
+        case (false, true)            => if shiftResume then t.continuePlayback() else restart(true)
       }
+      playPressed = Some(now)
     }
 
     def restart(go: Boolean): Unit = {
@@ -76,16 +81,16 @@ trait TransportL extends BindingDSL { this: Jam =>
       h.scheduleTask(
         () => {
           ext.transport.stop()
-          h.scheduleTask(
-            () => {
-              ext.transport.stop()
-              if (go) h.scheduleTask(() => ext.transport.play(), 10)
-            },
-            10
-          )
+          // h.scheduleTask(
+          //   () => {
+          //     ext.transport.stop()
+          if (go) h.scheduleTask(() => ext.transport.play(), 10)
         },
-        10
+        30
       )
+      // },
+      // 10
+      // )
     }
 
     override val modeBindings = Vector(

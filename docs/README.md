@@ -66,7 +66,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 * **PLAY**: Start/Stop playback
 * **REC**: Toggle recording
-* **SHIFT+PLAY** (RESTART): Rewind play position (stop if playing)
+* **SHIFT+PLAY** Restart or pause/continue (see **Settings**)
 * **SHIFT+RECORD**: Toggle launcher overdub
 * **SHIFT+PAGE LEFT**: Toggle the metronome
 * **SHIFT+PAGE RIGHT**: Toggle transport loop
@@ -122,7 +122,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
 
 * The arrow keys scroll the grid by blocks of 8 tracks/scenes. Keys will light up if there is content to scroll to.
 * **SHIFT+...** in regular mode: hold shift and then
-  * Arrow keys: scroll by 1 track/scene (SHIFT function is flippable in preferences)
+  * Arrow keys: scroll by 1 track/scene (SHIFT function is flippable in settings)
   * **SCENE(1-8)**: directly select from the first 8 pages of scenes
   * **TRACK(1-8)**: directly select from the first 8 pages of tracks (if enabled in settings)
   * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
@@ -138,7 +138,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
 * **LEVEL**: Toggles between Volume and Panorama editing of 8 tracks. 
   If Volume is active and playback is started the VU of the tracks is displayed as well. 
   All strips are lit in their tracks' color.
-  * Note: maximum slider range can be limited to values other than +6 dB, see **Preferences**.
+  * Note: maximum slider range can be limited to values other than +6 dB, see **Settings**.
 * **AUX**: Edit send levels for a specific send for all tracks. Strips are lit in corresponding Effect track colors.
 * **AUX+TRACK(A-H)**: Hold **AUX** down to select from the first 8 Effect tracks. Track buttons are lit in corresponding 
   Effect track colors, currently selected send is in WHITE.
@@ -409,7 +409,7 @@ User controls are accessible in two ways:
 
 The 64 controls are grouped in 8 pages. To select a page use the track buttons, currently selected page is brightly lit.
 
-# Preferences
+# Settings
 
 ## Global
 
@@ -422,6 +422,7 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * _0 dB_: slider maximum is 0 dB for all tracks
   * _-10 dB_: slider maximum is -10 dB for all tracks
   * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
+* **SHIFT+PLAY**: Toggle between restart and pause/continue
 * **Launch Q: Launch tolerance**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
 * **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
 
