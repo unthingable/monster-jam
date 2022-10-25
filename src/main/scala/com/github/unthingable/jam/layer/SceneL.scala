@@ -17,57 +17,71 @@ import com.bitwig.`extension`.controller.api.Track
 
 trait SceneL { this: Jam =>
 
-
   lazy val sceneSub: ModeLayer = new SimpleModeLayer("sceneSub") {
     override val modeBindings: Seq[Binding[_, _, _]] = j.sceneButtons.indices.flatMap { i =>
-      val btn  : JamRgbButton = j.sceneButtons(i)
-      val scene: Scene        = sceneBank.getScene(i)
+      val btn: JamRgbButton = j.sceneButtons(i)
+      val scene: Scene      = sceneBank.getScene(i)
       scene.color.markInterested()
       scene.exists.markInterested()
       scene.clipCount().markInterested()
 
       Vector(
-        SupColorStateB(btn.light, () => JamColorState(
-          if (scene.clipCount().get() > 0)
-            JamColorState.toColorIndex(scene.color().get())
-          else
-            JamColorBase.OFF,
-          1)),
-        EB(btn.st.press, s"scene $i press", () => handlePress(scene)))
+        SupColorStateB(
+          btn.light,
+          () =>
+            JamColorState(
+              if (scene.clipCount().get() > 0)
+                JamColorState.toColorIndex(scene.color().get())
+              else
+                JamColorBase.OFF,
+              1
+            )
+        ),
+        EB(btn.st.press, s"scene $i press", () => handlePress(scene))
+      )
     }
 
-    private def handlePress(scene: Scene): Unit = {
+    private def handlePress(scene: Scene): Unit =
       if (GlobalMode.Clear.isOn) scene.deleteObject()
       else if (GlobalMode.Duplicate.isOn) scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
-           else {
+      else {
         superSceneSub.lastScene = None
         scene.launch()
       }
-    }
   }
 
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util {
-    val maxTracks              = superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
-    val maxScenes              = superBank.sceneBank().getSizeOfBank
-    val bufferSize             = ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
+    val maxTracks =
+      superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
+    val maxScenes = superBank.sceneBank().getSizeOfBank
+    val bufferSize =
+      ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
     var pageIndex              = 0
     var lastScene: Option[Int] = None
 
-    val sceneStore: SettableStringValue = ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
+    val sceneStore: SettableStringValue =
+      ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
     sceneStore.asInstanceOf[Setting].hide()
 
-    val superScenes: mutable.ArraySeq[Map[TrackId, Int]] = mutable.ArraySeq.from(fromSettings(sceneStore.get()))
+    val superScenes: mutable.ArraySeq[Map[TrackId, Int]] =
+      mutable.ArraySeq.from(fromSettings(sceneStore.get()))
 
     private def fromSettings(s: String): Iterable[Map[TrackId, Int]] =
-      Util.deserialize[superScenes.type](s)
+      Util
+        .deserialize[superScenes.type](s)
         .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-        .left.map { e => Util.println(s"Failed to deserialize superscenes: ${e}"); e }
+        .left
+        .map { e =>
+          Util.println(s"Failed to deserialize superscenes: ${e}"); e
+        }
         .getOrElse(Vector.fill(maxTracks)(Map.empty))
 
     ext.application.projectName().markInterested()
-    ext.application.projectName().addValueObserver(_ => {
-      fromSettings(sceneStore.get()).forindex { case (m, idx) => superScenes.update(idx, m) }
-    })
+    ext.application
+      .projectName()
+      .addValueObserver { _ =>
+        fromSettings(sceneStore.get()).forindex { case (m, idx) => superScenes.update(idx, m) }
+      }
 
     (0 until maxTracks).foreach { t =>
       val clips = superBank.getItemAt(t).clipLauncherSlotBank()
@@ -77,17 +91,18 @@ trait SceneL { this: Jam =>
 
     case class ClipTarget(trackId: TrackId, clip: Int)
 
-    def scan(): Seq[ClipTarget] = (0 until maxTracks.min(superBank.itemCount().get)).flatMap { tIdx =>
-      val scenes = superBank.getItemAt(tIdx).clipLauncherSlotBank()
-      val posMap: Map[Int, TrackId] = tracker.idMap.map(_.swap).toMap
-      (0 until maxScenes.min(scenes.itemCount().get())).flatMap { sIdx =>
-        val clip = scenes.getItemAt(sIdx)
+    def scan(): Seq[ClipTarget] = (0 until maxTracks.min(superBank.itemCount().get)).flatMap {
+      tIdx =>
+        val scenes                    = superBank.getItemAt(tIdx).clipLauncherSlotBank()
+        val posMap: Map[Int, TrackId] = tracker.idMap.map(_.swap).toMap
+        (0 until maxScenes.min(scenes.itemCount().get())).flatMap { sIdx =>
+          val clip = scenes.getItemAt(sIdx)
 
-        if (clip.isPlaying.get())
-          posMap.get(tIdx).map(ClipTarget(_, sIdx))
-        else
-          None
-      }
+          if (clip.isPlaying.get())
+            posMap.get(tIdx).map(ClipTarget(_, sIdx))
+          else
+            None
+        }
     }
 
     def recall(sceneIdx: Int): Unit = {
@@ -98,7 +113,7 @@ trait SceneL { this: Jam =>
           case Some(clip) =>
             // If a scene has a clip for a track id, attempt to launch it
             track.clipLauncherSlotBank().launch(clip)
-          case None       =>
+          case None =>
             // Otherwise attempt to stop
             track.stop()
         }
@@ -106,16 +121,16 @@ trait SceneL { this: Jam =>
       lastScene = Some(sceneIdx)
     }
 
-    def pressed(sceneIdx: Int): Unit = {
+    def pressed(sceneIdx: Int): Unit =
       if (GlobalMode.Clear.isOn) superScenes.update(sceneIdx, Map.empty)
       else if (superScenes(sceneIdx).isEmpty) {
         superScenes.update(sceneIdx, scan().map(ct => ct.trackId -> ct.clip).toMap)
         val data = Util.serialize(superScenes)
-        Util.println(s"saving superScenes: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer")
+        Util.println(
+          s"saving superScenes: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
+        )
         sceneStore.set(data)
-      } else
-          recall(sceneIdx)
-    }
+      } else recall(sceneIdx)
 
     def page(idx: Int): mutable.Seq[Map[TrackId, Int]] = superScenes.slice(idx * 8, (idx + 1) * 8)
 
@@ -123,14 +138,23 @@ trait SceneL { this: Jam =>
       def pageOffset = pageIndex * 8
 
       Vector(
-        EB(j.sceneButtons(idx).st.press, s"super scene $idx pressed", () => pressed(pageOffset + idx)),
-        SupColorStateB(j.sceneButtons(idx).light, () =>
-          JamColorState(
-            if (superScenes(pageOffset + idx).isEmpty)
-              JamColorBase.OFF
-            else if (lastScene.contains(pageOffset + idx)) JamColorBase.WHITE
-                 else (((pageOffset + idx) % 16) + 1) * 4,
-            if (lastScene.contains(pageOffset + idx)) 2 else 0), JamColorState.empty),
+        EB(
+          j.sceneButtons(idx).st.press,
+          s"super scene $idx pressed",
+          () => pressed(pageOffset + idx)
+        ),
+        SupColorStateB(
+          j.sceneButtons(idx).light,
+          () =>
+            JamColorState(
+              if (superScenes(pageOffset + idx).isEmpty)
+                JamColorBase.OFF
+              else if (lastScene.contains(pageOffset + idx)) JamColorBase.WHITE
+              else (((pageOffset + idx) % 16) + 1) * 4,
+              if (lastScene.contains(pageOffset + idx)) 2 else 0
+            ),
+          JamColorState.empty
+        ),
       )
     }
   }
@@ -151,20 +175,32 @@ trait SceneL { this: Jam =>
         val btn: JamRgbButton = j.matrix(row)(col)
 
         def hasContent = trackLen >= col && sceneLen >= row
-        def ourPage = Seq(scenePos, scenePos+7).map(_/8).contains(row) && Seq(trackPos, trackPos+7).map(_/8).contains(col)
+        def ourPage = Seq(scenePos, scenePos + 7).map(_ / 8).contains(row) && Seq(
+          trackPos,
+          trackPos + 7
+        ).map(_ / 8).contains(col)
 
         Vector(
-          SupColorStateB(btn.light, () =>
-            if (hasContent)
-              if (ourPage)
-                JamColorState(JamColorBase.WHITE, 2)
-              else
-                JamColorState(JamColorBase.WARM_YELLOW, 0)
-            else JamColorState.empty
-            , JamColorState.empty),
-          EB(btn.st.press, "shift-scroll page $idx", () => {
-            trackBank.scrollPosition().set(col * 8)
-            sceneBank.scrollPosition().set(row * 8)}))
+          SupColorStateB(
+            btn.light,
+            () =>
+              if (hasContent)
+                if (ourPage)
+                  JamColorState(JamColorBase.WHITE, 2)
+                else
+                  JamColorState(JamColorBase.WARM_YELLOW, 0)
+              else JamColorState.empty,
+            JamColorState.empty
+          ),
+          EB(
+            btn.st.press,
+            "shift-scroll page $idx",
+            () => {
+              trackBank.scrollPosition().set(col * 8)
+              sceneBank.scrollPosition().set(row * 8)
+            }
+          )
+        )
       }).flatten
   }
 
@@ -179,16 +215,24 @@ trait SceneL { this: Jam =>
 
     def press(): Unit = {
       pressedAt = Some(Instant.now())
-      ext.host.scheduleTask(() => if (j.song.btn.isPressed().get) ext.events.eval("sceneL press")(pageMatrix.activateEvent*), 80)
+      ext.host.scheduleTask(
+        () =>
+          if (j.song.btn.isPressed().get)
+            ext.events.eval("sceneL press")(pageMatrix.activateEvent*),
+        80
+      )
     }
 
     def release(): Unit = {
       if (pageMatrix.isOn)
         ext.events.eval("sceneL release")(pageMatrix.deactivateEvent*)
 
-      if (pressedAt.exists(instant =>
-        instant.plusMillis(400).isAfter(Instant.now())
-        || pageMatrix.modeBindings.hasOperatedAfter(instant)))
+      if (
+        pressedAt.exists(instant =>
+          instant.plusMillis(400).isAfter(Instant.now())
+            || pageMatrix.modeBindings.hasOperatedAfter(instant)
+        )
+      )
         cycle()
 
       pressedAt = None
