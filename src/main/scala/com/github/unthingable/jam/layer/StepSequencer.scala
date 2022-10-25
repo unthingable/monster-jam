@@ -178,6 +178,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       clip.color,
       clip.canScrollKeysDown,
       clip.canScrollKeysUp,
+      clip.canScrollStepsBackwards,
+      clip.canScrollStepsForwards,
       selectedClipTrack.color,
       selectedClipTrack.position,
       selectedClipTrack.name,
@@ -217,33 +219,41 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
       // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
-    inline def scrollY(offset: Int) =
-      setState(ts.copy(keyScrollOffset = ts.guardY(offset)))
+    inline def scrollYTo(offset: Int) =
+      setState(ts.copy(keyScrollOffset = ts.guardY(ts.keyScrollOffsetGuarded + offset)))
 
-    inline def scrollY(dir: UpDown, size: => Int): Unit =
-      scrollYinc(size * (inline dir match
+    inline def scrollYBy(dir: UpDown, size: => Int): Unit =
+      scrollYTo(size * (inline dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
       ))
 
-    inline def scrollY(dir: UpDown): Unit = scrollY(dir, ts.keyPageSize)
-
-    inline def scrollYinc(inc: Int) =
-      scrollY(ts.keyScrollOffsetGuarded + inc)
+    inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
 
     enum UpDown:
       case Up, Down
 
-    inline def canScrollX(dir: UpDown): Boolean =
+    inline def canScrollY(dir: UpDown): Boolean =
       clip.exists.get() && (inline dir match
         case UpDown.Up   => ts.keyScrollOffsetGuarded + ts.stepViewPort.height < 127
         case UpDown.Down => ts.keyScrollOffsetGuarded + (8 - ts.stepViewPort.height) > 0
       )
 
     inline def setStepPage(page: Int) =
-      setState(ts.copy(stepScrollOffset = ts.stepPageSize * page))
+        scrollXTo(ts.stepPageSize * page)
+
+    def scrollXTo(offset: Int) = 
+      setState(ts.copy(stepScrollOffset = offset))
       clip.scrollToStep(ts.stepScrollOffset)
       fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
+    
+    def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
+
+    inline def scrollXBy(dir: UpDown, size: => Int): Unit = 
+      scrollXTo(size * (inline dir match
+        case UpDown.Up   => 1
+        case UpDown.Down => -1
+      ))      
 
     inline def stepAt(x: Int, y: Int): NoteStep =
       clip.getStep(ts.channel, x, y)
@@ -352,6 +362,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       }
     )
 
+    inline def scrollEnc(dir: UpDown): Unit =
+      if (j.encoder.push.isPressed().get())
+        scrollXBy(dir, 1)
+      else
+        scrollYBy(dir, 1)
+
     lazy val stepEnc = SimpleModeLayer(
       "stepEnc",
       Vector(
@@ -359,8 +375,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           j.encoder.turn,
           "note scroll",
           stepTarget(
-            () => scrollY(UpDown.Up, 1),
-            () => scrollY(UpDown.Down, 1)
+            () => scrollEnc(UpDown.Down),
+            () => scrollEnc(UpDown.Up)
           )
         )
       )
@@ -460,7 +476,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             selectedClipTrack.playNote(ts.keyScrollOffsetGuarded, vel)
 
         def notePress(note: Int): Unit =
-          scrollY(note)
+          scrollYTo(note)
           selectedClipTrack.startNote(note, ts.velocity)
 
         def noteRelease(note: Int): Unit =
@@ -506,7 +522,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         override def modeBindings: Seq[Binding[?, ?, ?]] =
           j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
             Vector(
-              EB(btn.st.press, "", () => scrollY(idx * 16)),
+              EB(btn.st.press, "", () => scrollYTo(idx * 16)),
               SupColorStateB(btn.light, () => JamColorState(JamColorBase.CYAN, 3))
             )
           )
@@ -515,14 +531,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
       Vector(
-        EB(j.dpad.up.st.press, "scroll page up", () => scrollY(UpDown.Up)),
-        EB(j.dpad.down.st.press, "scroll page down", () => scrollY(UpDown.Down)),
-        EB(j.dpad.left.st.press, "", Noop),
-        EB(j.dpad.right.st.press, "", Noop),
-        SupBooleanB(j.dpad.up.light.isOn(), () => canScrollX(UpDown.Up)),
-        SupBooleanB(j.dpad.down.light.isOn(), () => canScrollX(UpDown.Down)),
-        SupBooleanB(j.dpad.left.light.isOn(), () => false),
-        SupBooleanB(j.dpad.right.light.isOn(), () => false),
+        EB(j.dpad.up.st.press, "scroll page up", () => scrollYPage(UpDown.Up)),
+        EB(j.dpad.down.st.press, "scroll page down", () => scrollYPage(UpDown.Down)),
+        EB(j.dpad.left.st.press, "scroll step left", () => scrollXBy(-1)),
+        EB(j.dpad.right.st.press, "scroll step right", () => scrollXBy(1)),
+        SupBooleanB(j.dpad.up.light.isOn, () => canScrollY(UpDown.Up)),
+        SupBooleanB(j.dpad.down.light.isOn, () => canScrollY(UpDown.Down)),
+        SupBooleanB(j.dpad.left.light.isOn, clip.canScrollStepsBackwards()),
+        SupBooleanB(j.dpad.right.light.isOn, clip.canScrollStepsForwards()),
       )
     )
 

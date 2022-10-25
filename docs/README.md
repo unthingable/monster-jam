@@ -184,8 +184,9 @@ Step sequencer settings are stored per track and saved with the project. Most st
 
 * **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white.
 * **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
-* **DPAD** arrows up/down: scroll notes up or down by pages
+* **DPAD** arrows up/down: scroll notes up or down by pages, left/right: by one step
 * **KNOB**: scroll notes up or down by one
+* **KNOB (push turn)**: scroll steps left/right
 * **GRID**: activate grid selector
 * **SHIFT+SOLO**: activate pattern length selector
 * **NOTE**: activate Note/Velocity mode
