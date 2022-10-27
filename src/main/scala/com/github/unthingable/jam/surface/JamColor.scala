@@ -24,11 +24,8 @@ object JamColor {
     val FUCHSIA = 64 //16
     val WHITE = 68 //17
 
-    inline def next(c: Int): Int =
-      ((c / 4) % 15 + 1) * 4 
-
-    inline def prev(c: Int): Int =
-      ((c / 4 - 2) % 15 + 1) * 4 
+    inline def next(c: Int, inc: Int): Int =
+      ((c / 4 + (inc - 1)) % 15 + 1) * 4 
   }
 }
 

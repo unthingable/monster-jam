@@ -240,20 +240,20 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
 
     inline def setStepPage(page: Int) =
-        scrollXTo(ts.stepPageSize * page)
+      scrollXTo(ts.stepPageSize * page)
 
-    def scrollXTo(offset: Int) = 
+    def scrollXTo(offset: Int) =
       setState(ts.copy(stepScrollOffset = offset))
       clip.scrollToStep(ts.stepScrollOffset)
       fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
-    
+
     def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
-    inline def scrollXBy(dir: UpDown, size: => Int): Unit = 
+    inline def scrollXBy(dir: UpDown, size: => Int): Unit =
       scrollXTo(size * (inline dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
-      ))      
+      ))
 
     inline def stepAt(x: Int, y: Int): NoteStep =
       clip.getStep(ts.channel, x, y)
@@ -312,8 +312,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         (for (col <- EIGHT; row <- EIGHT) yield {
           // val (stepNum, x, y) = stepView(row, col)
           def xy: (Int, Int) = m2clip(row, col)
-          def bgColor = 
-            if xy._2 % 2 != 0 then JamColorState(JamColorBase.next(JamColorState.toColorIndex(clipColor)), 0)
+          def bgColor =
+            if ext.preferences.altNoteRow.get() && xy._2 % 2 != 0 then
+              JamColorState(JamColorBase.next(JamColorState.toColorIndex(clipColor), 2), 0)
             else JamColorState.empty
           // def cachedClip = steps(channel)(xy._1)(xy._2)
           Vector(
