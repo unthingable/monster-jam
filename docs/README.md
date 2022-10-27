@@ -51,7 +51,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 ## Global
 
 * **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
-* **SONG**: **SuperScene** mode (see below)
+* **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view)
 * **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.

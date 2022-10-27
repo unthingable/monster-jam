@@ -205,7 +205,7 @@ trait SceneL { this: Jam =>
   }
 
   // a hybrid: both a cycle layer for scene buttons and a controller for page matrix
-  lazy val sceneCycle = new ModeCycleLayer("sceneCycle") {
+  object sceneCycle extends ModeCycleLayer("sceneCycle") {
     override val subModes: Vector[ModeLayer] = Vector(
       sceneSub,
       superSceneSub
@@ -240,8 +240,9 @@ trait SceneL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] = Vector(
       SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
-      EB(j.song.st.press, "sceneCycle pressed", () => press()),
-      EB(j.song.st.release, "sceneCycle released", () => release()),
+      // taken over by experimental home mode
+      // EB(j.song.st.press, "sceneCycle pressed", () => press()),
+      EB(j.song.st.release, "sceneCycle released", () => if pressedAt.nonEmpty then release()),
     )
   }
 }
