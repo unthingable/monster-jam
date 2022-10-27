@@ -5,14 +5,25 @@ import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.binding.{BindingBehavior as BB, BindingDSL, EB}
 import com.github.unthingable.jam.surface._
 import com.github.unthingable.jam.layer._
 import com.bitwig.`extension`.callback.IndexedBooleanValueChangedCallback
 import com.github.unthingable.framework.binding.GlobalEvent
 
 class Jam(implicit val ext: MonsterJamExt)
-  extends BindingDSL, Aux, TransportL, Level, Dpad, TrackL, ClipMatrix, Shift, Control, MacroL, SceneL, StepSequencer {
+    extends BindingDSL,
+      Aux,
+      TransportL,
+      Level,
+      Dpad,
+      TrackL,
+      ClipMatrix,
+      Shift,
+      Control,
+      MacroL,
+      SceneL,
+      StepSequencer {
 
   implicit val j: JamSurface = new JamSurface()
 
@@ -20,9 +31,12 @@ class Jam(implicit val ext: MonsterJamExt)
 
   object GlobalMode {
     // These only set their isOn flags and nothing else
-    val Clear    : ModeButtonLayer = ModeButtonLayer("CLEAR", j.clear, modeBindings = Seq.empty, GateMode.Gate)
-    val Duplicate: ModeButtonLayer = ModeButtonLayer("DUPLICATE", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
-    val Select   : ModeButtonLayer = ModeButtonLayer("SELECT", j.select, modeBindings = Seq.empty, GateMode.Gate)
+    val Clear: ModeButtonLayer =
+      ModeButtonLayer("CLEAR", j.clear, modeBindings = Seq.empty, GateMode.Gate)
+    val Duplicate: ModeButtonLayer =
+      ModeButtonLayer("DUPLICATE", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
+    val Select: ModeButtonLayer =
+      ModeButtonLayer("SELECT", j.select, modeBindings = Seq.empty, GateMode.Gate)
   }
 
   lazy val trackBank = ext.trackBank
@@ -35,9 +49,10 @@ class Jam(implicit val ext: MonsterJamExt)
   superBank.scrollPosition().markInterested()
 
   val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
-  def selectedObserver(track: Int): IndexedBooleanValueChangedCallback = (idx: Int, selected: Boolean) =>
-    if (selected)
-      ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
+  def selectedObserver(track: Int): IndexedBooleanValueChangedCallback =
+    (idx: Int, selected: Boolean) =>
+      if (selected)
+        ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
 
   (0 until 256).foreach { i =>
     val t = superBank.getItemAt(i)
@@ -46,7 +61,7 @@ class Jam(implicit val ext: MonsterJamExt)
 
   given tracker: TrackTracker = UnsafeTracker(superBank)
 
-  lazy val sceneBank  : SceneBank   = trackBank.sceneBank()
+  lazy val sceneBank: SceneBank     = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
 
   sceneBank.canScrollForwards.markInterested()
@@ -56,7 +71,7 @@ class Jam(implicit val ext: MonsterJamExt)
   trackBank.cursorIndex().markInterested()
 
   ext.docPrefs.hideDisabled.addValueObserver { v =>
-    val skip = (v != ShowHide.Show)
+    val skip = v != ShowHide.Show
     trackBank.setSkipDisabledItems(skip)
     superBank.setSkipDisabledItems(skip)
   }
@@ -74,21 +89,47 @@ class Jam(implicit val ext: MonsterJamExt)
   val bottom    = SimpleModeLayer("_|_", modeBindings = Vector.empty)
   val unmanaged = SimpleModeLayer("_x_", modeBindings = Vector.empty)
 
+  // experimental
+  lazy val home: SimpleModeLayer = new SimpleModeLayer("home"):
+    private var noRelease: Boolean = false
+    override val modeBindings = Vector(
+      EB(
+        j.song.st.press,
+        "song press (restore home)",
+        () =>
+          val (noClip :: noScene :: _) = Seq(clipMatrix, sceneCycle).map(graph.isOcculted) : @unchecked
+          Util.println(s"restore home clip/scene: $noClip $noScene")
+          if noClip || noScene then
+            graph.reactivate(sceneCycle)
+            noRelease = true
+          else
+            sceneCycle.press()
+            noRelease = false
+          if (noClip)
+            graph.reactivate(clipMatrix)
+        ,
+        BB(
+          managed = false, 
+          // exclusive = false
+          )
+      ),
+    )
+
   val graph = new ModeDGraph(
-    init = Vector(levelCycle, sceneCycle, clipMatrix),
-    dpad -> top,
-    play -> top,
-    position -> Coexist(tempoLayer),
-    sceneCycle -> top,
-    bottom -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
-    bottom -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
-    trackGroup -> Exclusive(solo, mute),
-    bottom -> Coexist(clipMatrix, pageMatrix, stepSequencer),
-    bottom -> stripGroup,
-    bottom -> Coexist(auxGate, deviceSelector, macroLayer),
-    trackGroup -> Exclusive(EIGHT.map(trackGate): _*),
+    init = Vector(levelCycle, sceneCycle, clipMatrix, home),
+    dpad         -> top,
+    play         -> top,
+    position     -> Coexist(tempoLayer),
+    sceneCycle   -> top,
+    bottom       -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
+    bottom       -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
+    trackGroup   -> Exclusive(solo, mute),
+    bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer),
+    bottom       -> stripGroup,
+    bottom       -> Coexist(auxGate, deviceSelector, macroLayer),
+    trackGroup   -> Exclusive(EIGHT.map(trackGate): _*),
     masterButton -> top,
-    bottom -> Coexist(unmanaged),
+    bottom       -> Coexist(unmanaged),
   )
 
   // val newGraph = ModeCommander(

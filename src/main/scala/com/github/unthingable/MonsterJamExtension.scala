@@ -9,12 +9,15 @@ import com.github.unthingable.jam.Jam
 import com.github.unthingable.framework.binding.{Binder, Event}
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
+import java.util.EnumSet
 
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
+  altNoteRow: SettableBooleanValue,
   shiftGroup: SettableBooleanValue,
   shiftDpad: EnumSetting[JamSettings.DpadScroll],
   limitLevel: EnumSetting[JamSettings.LimitLevels],
+  shiftPlay: EnumSetting[JamSettings.ShiftPlay],
   launchTolerance: SettableRangedValue,
   debugOutput: SettableBooleanValue,
 )
@@ -79,11 +82,13 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.getDocumentState,
       host.createApplication(),
       MonsterPref(
-        preferences.getBooleanSetting("Show pretty shift commands in matrix", "Options", true),
-        preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Options", true),
-        EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Options", JamSettings.DpadScroll.`page/single`),
-        EnumSetting(preferences, "Limit level sliders", "Options", JamSettings.LimitLevels.None),
-        preferences.getNumberSetting("Launch tolerance", "Launch Q", 0, 1, 0.1, "beats", 0),
+        preferences.getBooleanSetting("Show pretty shift commands in matrix", "Display", true),
+        preferences.getBooleanSetting("Alternating note row colors", "Display: step sequencer", true),
+        preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Behavior", true),
+        EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Behavior", JamSettings.DpadScroll.`page/single`),
+        EnumSetting(preferences, "Limit level sliders", "Behavior", JamSettings.LimitLevels.None),
+        EnumSetting(preferences, "SHIFT+PLAY", "Behavior", JamSettings.ShiftPlay.`Pause/Resume`),
+        preferences.getNumberSetting("Launch Q forgiveness", "Behaviour", 0, 1, 0.1, "beats", 0.5),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(

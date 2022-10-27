@@ -14,6 +14,8 @@ object Graph {
 
   case class ModeNode(layer: ModeLayer) {
     protected[Graph] var parent: Option[ModeNode]                    = None
+    protected[Graph] var subParent: Option[ModeNode]                 = None
+    protected[Graph] var subAncestor: Option[ModeNode]               = None
     protected[Graph] val children: mutable.HashSet[ModeNode]         = mutable.HashSet.empty
     protected[Graph] val nodeBindings: mutable.Set[Binding[_, _, _]] = mutable.LinkedHashSet.empty
     protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode]   = mutable.HashSet.empty
@@ -94,13 +96,15 @@ object Graph {
 
     layerMap.foreach(indexSubs.tupled)
 
-    def indexSubs(layer: ModeLayer, node: ModeNode): Unit =
+    private def indexSubs(layer: ModeLayer, node: ModeNode): Unit =
       layer match
         case mml: MultiModeLayer =>
           mml.subModes.foreach { l =>
             Util.println(s"adding submode ${l.id}")
             val sub: ModeNode = indexLayer(l)
-            sub.parent = Some(node)
+            sub.parent    = Some(node)
+            sub.subParent = Some(node)
+            sub.subAncestor = node.subAncestor.orElse(Some(node))
             indexSubs(l, sub)
           }
         case _ => ()
@@ -130,8 +134,8 @@ object Graph {
         case None    => activateb.foreach(_.bind()) // they're unmanaged for orphan nodes
     }
 
-    val entryNodes: Seq[ModeNode] = layerMap.values.filter(_.parent.isEmpty).toSeq
-    val exitNodes: Seq[ModeNode]  = layerMap.values.filter(_.children.isEmpty).toSeq
+    private val entryNodes: Seq[ModeNode] = layerMap.values.filter(_.parent.isEmpty).toSeq
+    private val exitNodes: Seq[ModeNode]  = layerMap.values.filter(_.children.isEmpty).toSeq
 
     ext.host.scheduleTask(
       () => {
@@ -152,6 +156,20 @@ object Graph {
       layerMap.getOrElseUpdate(l, ModeNode(l))
     }
 
+    def isOcculted(l: ModeLayer): Boolean =
+      layerMap.get(l).exists(_.bumpingMe.nonEmpty)
+      
+    def reactivate(l: ModeLayer): Unit =
+      layerMap
+        .get(l)
+        .map(node =>
+          node.bumpingMe.map(n => n.subAncestor.getOrElse(n)).toSet.foreach(deactivate(s"reactivating ${l.id}"))
+          activate(s"reactivating ${l.id}")(node)
+        )
+
+    def maybeReactivate(layers: ModeLayer*): Unit =
+      layers.foreach(l => if isOcculted(l) then reactivate(l))
+      
     protected def activate(reason: String)(node: ModeNode): Unit = {
       Util.println(s"activating node ${node.layer.id}: $reason")
 
@@ -198,7 +216,7 @@ object Graph {
           )
           // .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
-          
+
       val bumpNodes: Iterable[ModeNode] = bumpBindings
         .flatMap(_.bumped.map(_._2))
         // FIXME hack: can't bump own submodes
@@ -220,6 +238,7 @@ object Graph {
 
       node.nodeBindings.foreach(ext.binder.bind(_, node))
 
+      node.bumpingMe.clear()
       node.layer.onActivate()
 
       Util.println(s"-- activated ${node.layer.id} ---")
