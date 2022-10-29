@@ -484,7 +484,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           selectedClipTrack.stopNote(note, ts.velocity)
 
         val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
-          val btn             = j.matrix(row + 4)(col)
+          val btn             = j.matrix(7 - row)(col)
           inline val velScale = 8
           val idx             = row * 4 + col
           val vel             = idx * velScale + (velScale - 1)
