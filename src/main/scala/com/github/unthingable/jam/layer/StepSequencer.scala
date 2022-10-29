@@ -673,8 +673,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
-        EB(j.ShiftSolo.press, "shift-solo pressed", () => patLength.activateEvent),
-        EB(j.ShiftSolo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
+        EB(j.Combo.Shift.solo.press, "shift-solo pressed", () => patLength.activateEvent),
+        EB(j.Combo.Shift.solo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
       ) ++ JCB.empty(j.song)
 
     override val loadBindings: Seq[Binding[_, _, _]] = Vector(

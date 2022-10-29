@@ -116,7 +116,7 @@ class Jam(implicit val ext: MonsterJamExt)
     )
 
   val graph = new ModeDGraph(
-    init = Vector(levelCycle, sceneCycle, clipMatrix, home),
+    init = Vector(levelCycle, sceneCycle, clipMatrix, home, shiftTempo),
     dpad         -> top,
     play         -> top,
     position     -> Coexist(tempoLayer),

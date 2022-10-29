@@ -203,6 +203,14 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   }
 
   // import Combo.JC
-  val ShiftDup   = JC(duplicate, Mod.Shift)
-  val ShiftSolo  = JC(solo, Mod.Shift)
+  val j = this
+  object Combo:
+    object Shift:
+      val duplicate = JC(j.duplicate, Mod.Shift)
+      val play      = JC(j.play, Mod.Shift)
+      val record    = JC(j.record, Mod.Shift)
+      val right     = JC(j.right, Mod.Shift)
+      val left      = JC(j.left, Mod.Shift)
+      val tempo     = JC(j.tempo, Mod.Shift)
+      val solo      = JC(j.solo, Mod.Shift)
 }

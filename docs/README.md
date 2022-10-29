@@ -443,6 +443,7 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Step sequencer (WIP)
 * Lenient launch: launching clips on time or even a little late still applies correct quantization
 * Natural track scrolling: instantly scroll by an arbitrary number of tracks (less than 8) by pressing a track button while holding another
+* New PLAY button behavior
 * Refactored Track Tracker no longer causes extraneous project modifications
 * Setting to toggle console output
 * API 17
@@ -456,6 +457,7 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Page matrix scrolling could result in errors
 * SuperScenes did not work in newer Bitwig versions
 * UserControl page navigation was broken
+* Tap tempo (shift-tempo) would activate tempo mode
 * Improved documentation
 * Added stdout output for easier debugging
 * Scala 3

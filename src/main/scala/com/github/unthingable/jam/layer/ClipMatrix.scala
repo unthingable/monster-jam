@@ -67,7 +67,7 @@ trait ClipMatrix { this: Jam =>
         () => source = None,
         BB(tracked = false, managed = false)
       ),
-      EB(j.ShiftDup.press, "dup clips: duplicate content", () => cursorClip.duplicateContent)
+      EB(j.Combo.Shift.duplicate.press, "dup clips: duplicate content", () => cursorClip.duplicateContent)
     )
 
     // for duplication
