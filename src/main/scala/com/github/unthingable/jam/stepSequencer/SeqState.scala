@@ -43,6 +43,9 @@ case class SeqState(
   // how many notes are visible in the viewport
   lazy val keyPageSize: Int = (stepMode.keyRows / (8 / stepViewPort.height)).max(1)
 
+  inline def isNoteVisible(note: Int): Boolean =
+    note <= keyScrollOffset && note > keyScrollOffset - keyPageSize
+
   // how many steps are visible in the viewport (per note)
   inline def stepPageSize: Int = stepViewPort.size / keyPageSize
 

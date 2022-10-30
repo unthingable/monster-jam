@@ -61,15 +61,17 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
 ) { this: ModeLayer =>
-  var ts                 = SeqState.empty // track state
+  private var _ts                 = SeqState.empty // track state
   private val stateCache = mutable.HashMap.empty[TrackId, SeqState]
-
+  
   private val bufferSize = 1024 * 1024
   private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
   stateStore.asInstanceOf[Setting].hide()
-
+  
   ext.application.projectName().addValueObserver(_ => restoreState())
 
+  def ts = _ts
+  
   def storeState(): Unit =
     val data = Util.serialize(stateCache.toSeq)
     // Util.println(
@@ -92,8 +94,8 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
       )
 
   def setState(st: SeqState) =
-    val old = ts
-    ts = st
+    val old = _ts
+    _ts = st
     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
     storeState()
     echoStateDiff(old, st)
@@ -104,7 +106,7 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
       .map(stateCache.getOrElseUpdate(_, SeqState.empty))
       .getOrElse(SeqState.empty)
     echoStateDiff(ts, st)
-    ts = st
+    _ts = st
     // storeState()
 
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
@@ -219,11 +221,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
       // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
-    inline def scrollYTo(offset: Int) =
-      setState(ts.copy(keyScrollOffset = ts.guardY(ts.keyScrollOffsetGuarded + offset)))
+    inline def scrollYTo(y: Int) = 
+      setState(ts.copy(keyScrollOffset = ts.guardY(y)))
+
+    inline def scrollYBy(offset: Int) =
+      scrollYTo(ts.keyScrollOffsetGuarded + offset)
 
     inline def scrollYBy(dir: UpDown, size: => Int): Unit =
-      scrollYTo(size * (inline dir match
+      scrollYBy(size * (inline dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
       ))
@@ -257,6 +262,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     inline def stepAt(x: Int, y: Int): NoteStep =
       clip.getStep(ts.channel, x, y)
+
+    // FIXME scan the visible count of steps for the first available step
+    def findStep(): NoteStep =
+      ???
 
     def stepPress(x: Int, y: Int): Unit =
       inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
@@ -469,7 +478,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             .getOrElse(ts.velocity)
 
         def setVelocity(vel: Int) =
-          ext.host.showPopupNotification(velNote(vel))
+          ext.host.showPopupNotification(velNote(vel)) // TODO consolidate
           val steps = localState.stepState.get.steps
           if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
           else
@@ -496,16 +505,19 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             EB(btn.st.press, velNote(vel), () => setVelocity(vel))
           )
 
-        private val tmpPageOffset = 32
+        inline def pageOffset = ts.keyScrollOffset / 16
+
         val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
           val btn     = j.matrix(row + 4)(col + 4)
-          val noteIdx = tmpPageOffset + (3 - row) * 4 + col
+          def noteIdx = pageOffset * 16 + (3 - row) * 4 + col
           Vector(
             SupColorStateB(
               btn.light,
               () =>
                 if (noteIdx == ts.keyScrollOffsetGuarded)
                   JamColorState(Color.whiteColor(), 3)
+                else if (ts.isNoteVisible(noteIdx))
+                  JamColorState(Color.whiteColor(), 1)
                 else
                   JamColorState(
                     clipColor,
@@ -520,11 +532,16 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     lazy val notePages =
       new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
+        inline def pageOffset = ts.keyScrollOffset / 16
+        inline def pageOffset2 = (ts.keyScrollOffset - ts.keyPageSize) / 16
         override def modeBindings: Seq[Binding[?, ?, ?]] =
           j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
             Vector(
               EB(btn.st.press, "", () => scrollYTo(idx * 16)),
-              SupColorStateB(btn.light, () => JamColorState(JamColorBase.CYAN, 3))
+              SupColorStateB(btn.light, () => (pageOffset == idx, pageOffset2 == idx) match
+                case (true, _) => JamColorState(JamColorBase.WHITE, 2)
+                case (false, true) => JamColorState(JamColorBase.WHITE, 0)
+                case _ => JamColorState(JamColorBase.CYAN, 2))
             )
           )
       }
