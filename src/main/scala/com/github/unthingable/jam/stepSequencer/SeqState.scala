@@ -69,3 +69,9 @@ object SeqState:
     noteVelVisible = false,
     expMode = ExpMode.Exp,
   )
+
+  enum NoteName:
+    case C, `C#`, D, `D#`, E, F, `F#`, G, `G#`, A, `A#`, B
+  
+  def toNoteName(note: Int): String =
+    s"${NoteName.values(note % 12)}${note / 12 - 2}"

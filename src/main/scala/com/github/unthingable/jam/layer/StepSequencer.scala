@@ -109,13 +109,24 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
     _ts = st
     // storeState()
 
+  def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
+    f(a) == f(b)
+
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     // can't show multiple notifications at once, oh well
+    val c = comparator(oldSt, newSt) andThen (_.unary_!)
+    val n = ext.host.showPopupNotification
     if (isOn)
-      if (oldSt.stepString != newSt.stepString)
-        ext.host.showPopupNotification(s"Step size: ${newSt.stepString}")
-      if ((oldSt.keyPageSize, oldSt.stepPageSize) != (newSt.keyPageSize, newSt.stepPageSize))
-        ext.host.showPopupNotification(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
+      if c(_.keyScrollOffset) || c(_.keyPageSize) then
+        import SeqState.*
+        val notes = (
+          if newSt.keyPageSize > 1 then Seq(newSt.keyScrollOffset + 1 - newSt.keyPageSize)
+          else Seq()) :+ newSt.keyScrollOffset
+        n(s"Notes: ${notes.map(toNoteName).mkString(" - ")}")
+      if c(_.stepString) then
+        n(s"Step size: ${newSt.stepString}")
+      if c(_.keyPageSize) || c(_.stepPageSize) then
+        n(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
 trait StepSequencer extends BindingDSL { this: Jam =>
