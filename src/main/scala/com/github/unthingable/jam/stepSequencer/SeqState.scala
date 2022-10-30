@@ -43,6 +43,9 @@ case class SeqState(
   // how many notes are visible in the viewport
   lazy val keyPageSize: Int = (stepMode.keyRows / (8 / stepViewPort.height)).max(1)
 
+  inline def isNoteVisible(note: Int): Boolean =
+    note <= keyScrollOffset && note > keyScrollOffset - keyPageSize
+
   // how many steps are visible in the viewport (per note)
   inline def stepPageSize: Int = stepViewPort.size / keyPageSize
 
@@ -66,3 +69,9 @@ object SeqState:
     noteVelVisible = false,
     expMode = ExpMode.Exp,
   )
+
+  enum NoteName:
+    case C, `C#`, D, `D#`, E, F, `F#`, G, `G#`, A, `A#`, B
+  
+  def toNoteName(note: Int): String =
+    s"${NoteName.values(note % 12)}${note / 12 - 2}"

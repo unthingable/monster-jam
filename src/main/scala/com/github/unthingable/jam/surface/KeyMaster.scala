@@ -72,6 +72,9 @@ object KeyMaster {
       } else None
 
     private def onRelease(): Option[ComboEvent] =
+      // this would happen if a modifier was used as a mode button
+      if keysOn <= 0 then Util.println(s"WARNING JC $id binding activated externally")
+
       val newState = keysOn - 1
       keysOn = newState
       if (newState > 0 && newState <= mods.size && quasiOn) // one less than all the buttons
@@ -92,7 +95,7 @@ object KeyMaster {
       .collect { case x: JC => x }
       .flatMap(x => x.lookup(buttonId).map((x, _)))
       .unzip // only combos involving this button
-    val comboEvents = jcs
+    val comboEvents: Iterable[ComboEvent] = jcs
       .flatMap(jc =>
         ev match
           case RawButtonEvent.Press   => jc.onPress(buttonId)

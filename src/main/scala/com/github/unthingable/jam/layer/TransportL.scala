@@ -155,16 +155,16 @@ trait TransportL extends BindingDSL { this: Jam =>
       b(j.record, "record", overdub),
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
-    ).flatten ++ Vector(
+    ).flatten
+  }
+
+  lazy val shiftTempo = SimpleModeLayer("shiftTempo", Vector(
       EB(
-        j.tempo.st.press,
+        j.Combo.Shift.tempo.press,
         "tap tempo",
         () => ext.transport.tapTempo(),
-        // not exclusive so that tap tempo doesn't mess with tempo layer
-        BB(tracked = false, exclusive = false)
       )
-    )
-  }
+    ))
 
   lazy val globalQuant =
     new ModeButtonLayer("globalQuant", modeButton = j.grid, gateMode = GateMode.Gate) {

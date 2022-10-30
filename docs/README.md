@@ -247,7 +247,21 @@ Velocity selector works with two different velocity values:
 
 ### Note selector (WIP)
 
-Focus step editor on one of the 16 notes (bright white). Currently playing notes will flash. More TODO.
+Play notes and focus step editor.
+
+The 128 notes are divided in 8 pages of 16 notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Maschine), which one depends on which page the topmost visible note falls into.
+
+Pressing a pad:
+* Plays the note
+* Scrolls the step editor to that note (so that it's at the top row)
+
+The button corresponding to the topmost visible note is bright white. If more notes are visible in the step view, their buttons will be dim white. Note that because the step grid is laid out top-down vertically (high notes on top, low on bottom, matching the clip view in the app) and the note buttons are left-right and down-up (as labeled on the Jam), this can look backwards. If this hurts your brain too much and you know of a better way, let me know.
+
+Currently playing notes will flash, letting you see activity outside of the visible step grid.
+
+**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano (if your brain isn't hurting yet, this is opposite of how scenes work with clips). Current page is bright white. Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, with next page button in dim white. Pressing a button always scrolls top note row to the top of the page.
+
+Use note/page selectors together with knob scrolling for maximum nagivation.
 
 ## Parameter adjustments (WIP)
 
@@ -443,6 +457,7 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Step sequencer (WIP)
 * Lenient launch: launching clips on time or even a little late still applies correct quantization
 * Natural track scrolling: instantly scroll by an arbitrary number of tracks (less than 8) by pressing a track button while holding another
+* New PLAY button behavior
 * Refactored Track Tracker no longer causes extraneous project modifications
 * Setting to toggle console output
 * API 17
@@ -456,6 +471,7 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Page matrix scrolling could result in errors
 * SuperScenes did not work in newer Bitwig versions
 * UserControl page navigation was broken
+* Tap tempo (shift-tempo) would activate tempo mode
 * Improved documentation
 * Added stdout output for easier debugging
 * Scala 3
