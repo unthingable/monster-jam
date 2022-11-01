@@ -213,4 +213,5 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       val left      = JC(j.left, Mod.Shift)
       val tempo     = JC(j.tempo, Mod.Shift)
       val solo      = JC(j.solo, Mod.Shift)
+      val notes     = JC(j.notes, Mod.Shift)
 }

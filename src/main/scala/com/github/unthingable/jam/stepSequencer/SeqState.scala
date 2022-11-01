@@ -63,7 +63,7 @@ object SeqState:
     channel = 0,
     velocity = 100,
     stepSizeIdx = 5,
-    stepMode = StepMode.One,
+    stepMode = StepMode.Four,
     stepScrollOffset = 0,
     keyScrollOffset = 12 * 3, // C1
     noteVelVisible = false,
