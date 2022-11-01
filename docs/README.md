@@ -204,6 +204,7 @@ The number of pattern pages depends on both the step size and the current grid l
 * Press empty step (dark button) to create a step
 * Press an existing step to clear
 * Press and hold step to select it for editing (long press will not delete it)
+* **SHIFT+NOTES** to toggle alternating note row colors
 
 If a note spans more than one step, consecutive steps are lit in dim white.
 
