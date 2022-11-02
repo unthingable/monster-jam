@@ -235,10 +235,17 @@ trait HasSubModes:
   def subModesToDeactivate: Vector[ModeLayer]
 
 // duplicates ModeGraph functionality, some day will need a rewrite
-trait MultiModeLayer(using ext: MonsterJamExt) extends ModeLayer, HasSubModes {
+trait MultiModeLayer(using ext: MonsterJamExt) extends ModeLayer, HasSubModes:
   override def subModesToActivate: Vector[ModeLayer]   = subModes.filter(_.isOn)
   override def subModesToDeactivate: Vector[ModeLayer] = subModes.filter(_.isOn)
-}
+
+object MultiModeLayer:
+  def apply(_id: String, _subModes: Iterable[ModeLayer])(using MonsterJamExt): MultiModeLayer = new MultiModeLayer:
+    override def id: String = _id
+
+    override def modeBindings: Seq[Binding[?, ?, ?]] = Seq.empty
+
+    override val subModes: Vector[ModeLayer] = _subModes.toVector
 
 abstract class ModeCycleLayer(
   override val id: String,
