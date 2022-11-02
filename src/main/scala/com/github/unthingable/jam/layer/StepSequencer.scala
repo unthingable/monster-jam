@@ -271,7 +271,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
     inline def scrollXBy(dir: UpDown, size: => Int): Unit =
-      scrollXTo(size * (inline dir match
+      scrollXBy(size * (inline dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
       ))
