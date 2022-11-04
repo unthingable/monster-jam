@@ -358,8 +358,14 @@ class SliderBankMode[Proxy, P <: JamParameter](
           })
           .foreach(c => j.stripBank.setColor(idx, c))
 
-        // FIXME
-        j.stripBank.setActive(idx, value = exists(proxy), flush = false)
+        j.stripBank.setActive(
+          idx,
+          value = sliderParams(idx) match
+            case UserControl(p) => true
+            case _              => exists(proxy)
+          ,
+          flush = false
+        )
     }
 
     j.stripBank.flushColors()
