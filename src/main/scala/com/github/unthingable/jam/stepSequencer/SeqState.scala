@@ -1,6 +1,7 @@
 package com.github.unthingable.jam.stepSequencer
 
 import com.github.unthingable.framework.quant
+import com.github.unthingable.jam.stepSequencer.scales.*
 import com.bitwig.extension.controller.api.NoteStep
 import java.time.Instant
 
@@ -36,6 +37,8 @@ case class SeqState(
   keyScrollOffset: Int, // TOP of viewport
   noteVelVisible: Boolean,
   expMode: ExpMode,
+  scale: Scale,
+  scaleRoot: Int
 ) extends Serializable:
 
   lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
@@ -49,7 +52,7 @@ case class SeqState(
   // how many steps are visible in the viewport (per note)
   inline def stepPageSize: Int = stepViewPort.size / keyPageSize
 
-  inline def guardY(y: Int): Int = y.max(keyPageSize - 1.toInt).min(127)
+  inline def guardY(y: Int): Int = y.max(keyPageSize - 1.toInt).min(scale.fullScale.last)
 
   // resizing viewport can make offsets invalid
   lazy val keyScrollOffsetGuarded = guardY(keyScrollOffset)
@@ -68,6 +71,8 @@ object SeqState:
     keyScrollOffset = 12 * 3, // C1
     noteVelVisible = false,
     expMode = ExpMode.Exp,
+    scale = scales.last(0), // chromatic
+    scaleRoot = 0,
   )
 
   enum NoteName:

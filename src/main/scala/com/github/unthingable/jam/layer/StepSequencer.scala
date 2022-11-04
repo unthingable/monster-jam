@@ -218,7 +218,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       val offset = row * 8 + col // matrix grid scanned
       val result = (
         offset % ts.stepPageSize,
-        ts.keyScrollOffsetGuarded - (offset / ts.stepPageSize)
+        ts.scale.fullScale(ts.keyScrollOffsetGuarded - (offset / ts.stepPageSize))
       )
       result
 
@@ -237,7 +237,11 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       setState(ts.copy(keyScrollOffset = ts.guardY(y)))
 
     inline def scrollYBy(offset: Int) =
-      scrollYTo(ts.keyScrollOffsetGuarded + offset)
+      scrollYTo(
+        ts.scale.fullScale(
+          (ts.keyScrollOffsetGuarded + offset).min(ts.scale.fullScale.length).max(0)
+        )
+      )
 
     inline def scrollYBy(dir: UpDown, size: => Int): Unit =
       scrollYBy(size * (inline dir match
@@ -267,7 +271,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
     inline def scrollXBy(dir: UpDown, size: => Int): Unit =
-      scrollXTo(size * (inline dir match
+      scrollXBy(size * (inline dir match
         case UpDown.Up   => 1
         case UpDown.Down => -1
       ))
@@ -450,19 +454,28 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       ext.host.showPopupNotification(s"Step sequencer: MIDI channel ${ch + 1}")
       setState(ts.copy(channel = ch))
 
-    lazy val chanSelect = ModeButtonLayer(
+    lazy val chanSelect = new ModeButtonLayer(
       "chanSelect",
       j.perform,
-      (for (row <- 0 until 4; col <- 0 until 4) yield
-        val btn  = j.matrix(row + 4)(col + 4)
-        val chan = (3 - row) * 4 + col
-        Vector(
-          SupColorB(btn.light, () => if (chan == ts.channel) Color.whiteColor else clipColor),
-          EB(btn.st.press, s"select channel $chan", () => setChannel(chan))
-        )
-      ).flatten,
       GateMode.Gate
-    )
+    ) {
+      val chanBindings: Seq[Binding[?, ?, ?]] =
+        (for (row <- 0 until 4; col <- 0 until 4) yield
+          val btn  = j.matrix(row + 4)(col + 4)
+          val chan = (3 - row) * 4 + col
+          Vector(
+            SupColorB(btn.light, () => if (chan == ts.channel) Color.whiteColor else clipColor),
+            EB(btn.st.press, s"select channel $chan", () => setChannel(chan))
+          )
+        ).flatten
+
+      // val rootBindings = 
+      //   (for (row <- 0 to 1; col <- EIGHT) yield
+      //     val btn = j.matrix(row)(col)
+
+
+      override def modeBindings = chanBindings
+    }
 
     lazy val velAndNote =
       new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
@@ -676,20 +689,30 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       override val subModes: Vector[ModeLayer] = Vector(sliders)
     }
 
-    lazy val stepMain = SimpleModeLayer("stepMain", Vector(
-      EB(j.Combo.Shift.notes.press, "", () => ext.preferences.altNoteRow.toggle())
-    ))
-    
+    lazy val stepMain = SimpleModeLayer(
+      "stepMain",
+      Vector(
+        EB(j.Combo.Shift.notes.press, "", () => ext.preferences.altNoteRow.toggle())
+      )
+    )
+
+    lazy val stepRegular = MultiModeLayer(
+      "stepRegular",
+      Vector(
+        stepMatrix,
+        stepEnc,
+        velAndNote,
+        notePages,
+      )
+    )
+
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
-      stepMatrix,
       stepPages,
-      stepEnc,
+      stepRegular,
       patLength,
       gridSelect,
       chanSelect,
-      velAndNote,
-      notePages,
       dpadStep,
       tune,
     )
@@ -702,7 +725,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           tune.setCurrentSteps(curr)
 
     override def subModesToActivate =
-      (Vector(stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ subModes.filter(_.isOn)).distinct
+      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ subModes.filter(
+        _.isOn
+      )).distinct
 
     override val modeBindings: Seq[Binding[_, _, _]] =
       Vector(
