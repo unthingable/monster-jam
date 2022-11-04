@@ -328,15 +328,8 @@ class SliderBankMode[Proxy, P <: JamParameter](
 
   private def sync(idx: Int, flush: Boolean = true): Unit =
     sliderOps(idx).pull()
-    // j.stripBank.setValue(idx)((paramValueOrCache(idx) * 127 / paramRange(idx)._2).toInt, flush)
-    ()
 
   override def onActivate(): Unit = {
-
-    // ext.host.println(barMode.toString)
-    // ext.host.println(sliderParams.map(_.name().get()).mkString(","))
-    // ext.host.println(sliderParams.map(_.value().get()).mkString(","))
-
     j.stripBank.barMode = barMode
 
     j.stripBank.strips.forindex {
@@ -360,7 +353,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
 
         j.stripBank.setActive(
           idx,
-          value = sliderParams(idx) match
+          value = sliderParams(idx) match // UserControls are too special, can't infer existence from proxy alone
             case UserControl(p) => true
             case _              => exists(proxy)
           ,
@@ -411,6 +404,7 @@ object SliderBankMode {
   given Exists[ObjectProxy] with
     def apply(p: ObjectProxy) = p.exists().get()
 
+  // Optional proxies are useful for skipping sliders
   given Exists[Option[_]] with
     def apply(p: Option[_]) = p.isDefined
 }
