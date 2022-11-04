@@ -1,14 +1,7 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
-import com.bitwig.extension.controller.api.{
-  Channel,
-  Device,
-  ObjectProxy,
-  Parameter,
-  RemoteControl,
-  Send
-}
+import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
 import com.bitwig.extension.controller.api.HardwareSlider
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, HB}
@@ -26,6 +19,7 @@ import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.Ref
 import com.github.unthingable.framework.RefSubSelective
 import com.github.unthingable.framework.binding.Bindable
+import com.github.unthingable.jam.JamParameter.*
 
 case class PRange(min: Double, max: Double):
   val size = max - min
@@ -168,7 +162,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   val obj: Int => Proxy,
   val param: Proxy => P,
   barMode: => Seq[BarMode],
-  val stripColor: Option[Int => Int] = None,
+  stripColor: Option[Int => Int] = None,
 )(using
   ext: MonsterJamExt,
   j: JamSurface,
@@ -183,6 +177,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   def paramRange(idx: Int): PRange = PRange(0.0, 1.0)
 
   Util.println(s"$id sliderOps")
+
   val sliderOps: Vector[SliderOp] = j.stripBank.strips.zipWithIndex.map { (strip, idx) =>
     SliderOp(
       idx,
@@ -262,33 +257,28 @@ class SliderBankMode[Proxy, P <: JamParameter](
       paramState.update(idx, state)
     }
 
-    proxy
-      .safeCast[ObjectProxy]
-      .orElse(proxy.safeCast[Parameter])
-      .map(p =>
-        p.exists().addValueObserver(v => 
-          if (isOn) 
-            j.stripBank.setActive(idx, v)
-            sliderOps(idx).pull())
-        Util.println(s"have proxy $idx")
-      )
-      .getOrElse(j.stripBank.setActive(idx, false))
+    // if it's a regular parameter, set up an existential listener
+    sliderParams(idx) match
+      case Regular(p) =>
+        p.exists()
+          .addValueObserver(v =>
+            if (isOn)
+              j.stripBank.setActive(idx, v)
+              sliderOps(idx).pull()
+          )
+      case _ => ()
 
     proxy match {
       case channel: Channel =>
         channel.color().markInterested()
         channel
           .color()
-          .addValueObserver((r, g, b) =>
-            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b))
-          )
+          .addValueObserver((r, g, b) => if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case send: Send =>
         send.sendChannelColor().markInterested()
         send
           .sendChannelColor()
-          .addValueObserver((r, g, b) =>
-            if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b))
-          )
+          .addValueObserver((r, g, b) => if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case _: RemoteControl =>
       case _: Parameter     => ()
       case _: Device        => ()
