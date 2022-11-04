@@ -100,7 +100,7 @@ trait ClipMatrix { this: Jam =>
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         () // clip.select() -- see above
       else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
-      else if (ext.transport.playPosition().get() > 0)
+      else
         launchOptions(clip) match
           case None => clip.launch()
           case Some((quant, mode)) =>
