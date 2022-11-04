@@ -210,7 +210,7 @@ If a note spans more than one step, consecutive steps are lit in dim white.
 
 #### Entering legato notes
 
-Press and hold a pad to either select or create a step. Click another pad on the left to change note length in steps.
+Press and hold a pad to either select or create a step. Click another pad on the right to change note length in steps.
 
 Extending a note all the way to the next step makes it legato.
 
@@ -224,8 +224,8 @@ The step sequencer matrix is a windowed view of a clip, showing up to 64 steps a
 * **SCENE**: set how many rows are given to each note
   * 1: 1 note per 8 rows
   * 2: 2 notes per 8 rows (4 rows per note)
-  * 4: 4 notes per 8 rows (2 rows per note)
-  * 8: 8 notes per 8 rows (1 row per note)
+  * 3: 4 notes per 8 rows (2 rows per note)
+  * 4: 8 notes per 8 rows (1 row per note)
 * **KNOB**: change step size
 
 ## Note/Velocity submode (WIP)
