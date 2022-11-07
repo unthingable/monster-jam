@@ -24,6 +24,9 @@ trait ClipMatrix { this: Jam =>
     ext.transport.playPosition().markInterested()
     ext.transport.defaultLaunchQuantization().markInterested()
     ext.preferences.launchTolerance.markInterested()
+    ext.transport.timeSignature().numerator().markInterested()
+    ext.transport.timeSignature().denominator().markInterested()
+    ext.transport.tempo().markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
@@ -110,22 +113,22 @@ trait ClipMatrix { this: Jam =>
     /* If we're a little late starting the clip, that's ok */
     private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
       val launchTolerance: Double = ext.preferences.launchTolerance.get()
-      val clipQString: String     = cursorClip.launchQuantization().get()
+      val clipQString: String     = cursorClip.launchQuantization().get()      
       val qString: String =
         if (clipQString == "default") ext.transport.defaultLaunchQuantization().get()
         else clipQString
-      val stepSize: Option[Double] = quant.stepMap.get(qString)
-      if (launchTolerance == 0 || qString == "none" || stepSize.exists(_ < 1))
+      Util.println(s"tempo: ${ext.transport.tempo().get()}")
+      if (launchTolerance == 0 || qString == "none")
         None
       else
-        stepSize match
+        quant.gridDistanceWithNow(qString) match
           case None =>
             Util.println(s"Unparseable quant: $qString")
             None
-          case Some(qSize) =>
-            val beat = ext.transport.playPosition().get()
+          case Some((prev, now, next)) =>
             // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
-            if (beat % (qSize * 4) < launchTolerance) // * 4 because this is bars
+            Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
+            if (prev < launchTolerance || next < 0.2)
               Some(clipQString, "continue_immediately")
             else
               None
