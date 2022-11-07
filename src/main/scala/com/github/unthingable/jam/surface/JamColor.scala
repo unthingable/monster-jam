@@ -29,15 +29,17 @@ object JamColor {
   }
 }
 
-case class JamColorState(color: Int, brightness: Int) extends InternalHardwareLightState {
+case class JamColorState(color: Int | Color, brightness: Int) extends InternalHardwareLightState {
   override def getVisualState: HardwareLightVisualState = null
-  val value: Int = if (brightness >= 0) color + brightness else 0
+  private val _color: Int = color match
+    case c: Int   => c
+    case c: Color => JamColorState.toColorIndex(c)
+  
+  val value: Int = if (brightness >= 0) _color + brightness else 0
 }
 
 object JamColorState {
   val empty: JamColorState = JamColorState(0, 0)
-
-  inline def apply(color: Color, brightness: Int): JamColorState = JamColorState(toColorIndex(color), brightness)
 
   def toColorIndex(color: Color): Int =
     NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
