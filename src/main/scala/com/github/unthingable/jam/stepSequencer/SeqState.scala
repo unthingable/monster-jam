@@ -87,7 +87,7 @@ object state:
     // how many notes are visible in the viewport
     lazy val keyPageSize: Int = (stepMode.keyRows / (8 / stepViewPort.height)).max(1)
 
-    private inline def _isNoteVisible(note: Int): Boolean =
+    private def _isNoteVisible(note: Int): Boolean =
       note < keyScrollOffset + keyPageSize && note >= keyScrollOffset
 
     @targetName("isRealNoteVisible")
