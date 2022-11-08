@@ -109,6 +109,7 @@ trait ClipMatrix { this: Jam =>
           case Some((quant, mode)) =>
             Util.println(s"lenient launch $quant $mode")
             clip.launchWithOptions(quant, mode)
+        Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
 
     /* If we're a little late starting the clip, that's ok */
     private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
@@ -128,7 +129,7 @@ trait ClipMatrix { this: Jam =>
           case Some((prev, now, next)) =>
             // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
             Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
-            if (prev < launchTolerance || next < 0.2)
+            if (prev < launchTolerance || next < 0.25)
               Some(clipQString, "continue_immediately")
             else
               None
