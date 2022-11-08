@@ -531,7 +531,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
           inline def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
           inline def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
-          inline def realNote      = ts.scale.fullScale(scaledNote)
+          def realNote      = ts.scale.fullScale(scaledNote)
 
           Vector(
             SupColorStateB(
