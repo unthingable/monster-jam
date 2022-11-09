@@ -17,15 +17,22 @@ object state:
   ): // notes in intervals from root, always 8 except chromatic
     lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
     lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
+    lazy val inverseMap: Map[RealNote, ScaledNote]   = fullScaleMap.map(_.swap)
 
     inline def isInScale(inline note: RealNote): Boolean =
       intervals.contains((root + note) % 12)
 
-    // inline def nextInScale(inline note: Int): Option[Int] =
-    //   (note until 128).view.find(isInScale(_))
+    inline def nextInScale(inline note: RealNote): Option[RealNote] =
+      (note until 128).view.find(isInScale(_))
 
-    // inline def prevInScale(inline note: Int): Option[Int] =
-    //   (note.to(0, -1)).view.find(isInScale(_))
+    inline def prevInScale(inline note: RealNote): Option[RealNote] =
+      (note.to(0, -1)).view.find(isInScale(_))
+    
+    inline def notesRemainingUp(note: RealNote): Option[Int] =
+      nextInScale(note).flatMap(inverseMap.get).map(fullScale.size - 1 - _)
+
+    inline def notesRemainingDown(note: RealNote): Option[Int] =
+      prevInScale(note).flatMap(inverseMap.get)
 
   val scales: Vector[RealNote => Scale] = Vector(
     "Natural Minor"             -> "101101011010",
@@ -101,6 +108,10 @@ object state:
 
     // bound y by allowable range given the current window and scale
     inline def guardY(y: RealNote): RealNote = y.max(0).min(scale.fullScale.last.value - keyPageSize - 1)
+
+    inline def fromScale(y: ScaledNote): RealNote = scale.fullScale(y.max(0).min(scale.fullScale.size - 1))
+
+    inline def toScale(y: RealNote): ScaledNote = scale.inverseMap(y.max(0).min(127))
 
     // resizing viewport can make offsets invalid
     lazy val keyScrollOffsetGuarded = guardY(keyScrollOffset)

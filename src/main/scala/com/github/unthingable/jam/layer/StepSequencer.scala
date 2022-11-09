@@ -124,7 +124,7 @@ trait TrackedState(selectedClipTrack: CursorTrack)(using
         val notes =
           newSt.keyScrollOffset +: (
             if newSt.keyPageSize > 1 then
-              Seq(newSt.scale.fullScale(newSt.keyScrollOffset.value + 1 + newSt.keyPageSize))
+              Seq(newSt.fromScale((newSt.keyScrollOffset.value + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote]))
             else Seq()
           )
         notify(s"Notes: ${notes.map(toNoteName).mkString(" - ")}")
@@ -233,15 +233,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
       // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
-    inline def scrollYTo(y: RealNote) =
-      setState(ts.copy(keyScrollOffset = ts.guardY(y)))
+    inline def scrollYTo(y: ScaledNote) =
+      setState(ts.copy(keyScrollOffset = ts.guardY(ts.fromScale(y))))
 
-    inline def scrollYBy(offset: Int) = // offset in real notes
+    inline def scrollYBy(offset: Int) = // offset in scaled notes
       scrollYTo(
-        // try without guarding first
-        ts.scale.fullScale(
-          ts.keyScrollOffsetGuarded.value + offset
-        )
+        ts.toScale((ts.keyScrollOffsetGuarded.value + offset).asInstanceOf[RealNote])
       )
 
     inline def scrollYBy(dir: UpDown, size: => Int): Unit =
@@ -257,8 +254,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     inline def canScrollY(dir: UpDown): Boolean =
       clip.exists.get() && (inline dir match
-        case UpDown.Up   => ts.keyScrollOffsetGuarded.value + ts.stepViewPort.height < 127
-        case UpDown.Down => ts.keyScrollOffsetGuarded.value + (8 - ts.stepViewPort.height) > 0
+        case UpDown.Down => ts.scale.notesRemainingUp(ts.keyScrollOffsetGuarded).exists(_ > ts.stepViewPort.height)
+        case UpDown.Up   => ts.scale.notesRemainingDown(ts.keyScrollOffsetGuarded).exists(_ > 0)
       )
 
     inline def setStepPage(page: Int) =
@@ -387,7 +384,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       if (j.encoder.push.isPressed().get())
         scrollXBy(dir, 1)
       else
-        scrollYBy(dir, 1)
+        scrollYBy(dir, -1)
 
     lazy val stepEnc = SimpleModeLayer(
       "stepEnc",
@@ -504,9 +501,9 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             setState(ts.copy(velocity = vel))
             selectedClipTrack.playNote(ts.keyScrollOffsetGuarded.value, vel)
 
-        def notePress(note: RealNote): Unit =
+        def notePress(note: ScaledNote): Unit =
           scrollYTo(note)
-          selectedClipTrack.startNote(note.value, ts.velocity)
+          selectedClipTrack.startNote(ts.fromScale(note).value, ts.velocity)
 
         def noteRelease(note: RealNote): Unit =
           selectedClipTrack.stopNote(note.value, ts.velocity)
@@ -531,7 +528,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
           inline def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
           inline def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
-          def realNote      = ts.scale.fullScale(scaledNote)
+          def realNote             = ts.fromScale(scaledNote)
 
           Vector(
             SupColorStateB(
@@ -547,7 +544,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
                     if (selectedClipTrack.playingNotes().isNotePlaying(realNote.value)) 3 else 0
                   )
             ),
-            EB(btn.st.press, "set note", () => notePress(realNote)),
+            EB(btn.st.press, "set note", () => notePress(scaledNote)),
             EB(btn.st.release, "release note", () => noteRelease(realNote)),
           )
         override val modeBindings = velBindings.flatten ++ noteBindings.flatten
@@ -561,7 +558,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
             val offsetIdx = idx
             Vector(
-              EB(btn.st.press, "", () => scrollYTo((idx * 16 - 4).asInstanceOf[RealNote])),
+              EB(btn.st.press, "", () => scrollYTo((idx * 16 - 4).asInstanceOf[ScaledNote])),
               SupColorStateB(
                 btn.light,
                 () =>
