@@ -68,15 +68,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     3 -> StepMode.Eight
   )
 
-  object stepSequencer extends ModeCycleLayer("STEP") with ListeningLayer with TrackedState(selectedClipTrack) {
-    val gridHeight               = 128
-    val gridWidth                = 64
-    val fineRes                  = 128
-    val clip: PinnableCursorClip = selectedClipTrack.createLauncherCursorClip(gridWidth, gridHeight)
-    val fineClip                 = selectedClipTrack.createLauncherCursorClip(gridWidth * fineRes, gridHeight)
-    val secondClip               = selectedClipTrack.createLauncherCursorClip(1, 1)
-    val devices: DeviceBank      = selectedClipTrack.createDeviceBank(1)
-    lazy val colorManager        = ColorManager(clipColor)
+  object stepSequencer extends ModeCycleLayer("STEP"), ListeningLayer, TrackedState(selectedClipTrack), StepCap {
 
     // a mirror of the bitwig clip, channel / x / y
     val steps =
@@ -138,75 +130,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
-    /* Translate from matrix grid (row, col) to clip grid (x, y) */
-    inline def m2clip(row: Int, col: Int): (Int, Int) =
-      // no need to account for viewport as long as starts at 0,0
-      val offset = row * 8 + col // matrix grid scanned
-      val result = (
-        offset % ts.stepPageSize,
-        ts.scale.fullScale(ts.keyScrollOffsetGuarded.value + (offset / ts.stepPageSize)).value
-      )
-      result
-
-    def setGrid(mode: StepMode): Unit =
-      setState(ts.copy(stepMode = mode))
-      // ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
-
-    def incStepSize(inc: Short): Unit =
-      setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
-      // should probably to this in onStepState
-      clip.setStepSize(ts.stepSize)
-      fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
-      // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
-
-    inline def scrollYTo(y: ScaledNote) =
-      setState(ts.copy(keyScrollOffset = ts.guardY(ts.fromScale(y))))
-
-    inline def scrollYBy(offset: Int) = // offset in scaled notes
-      scrollYTo(
-        ts.toScale((ts.keyScrollOffsetGuarded.value + offset).asInstanceOf[RealNote])
-      )
-
-    inline def scrollYBy(dir: UpDown, size: => Int): Unit =
-      scrollYBy(size * (inline dir match
-        case UpDown.Up   => 1
-        case UpDown.Down => -1
-      ))
-
-    inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
-
-    enum UpDown:
-      case Up, Down
-
-    inline def canScrollY(dir: UpDown): Boolean =
-      clip.exists.get() && (inline dir match
-        case UpDown.Down => ts.scale.notesRemainingUp(ts.keyScrollOffsetGuarded).exists(_ > ts.stepViewPort.height)
-        case UpDown.Up   => ts.scale.notesRemainingDown(ts.keyScrollOffsetGuarded).exists(_ > 0)
-      )
-
-    inline def setStepPage(page: Int) =
-      scrollXTo(ts.stepPageSize * page)
-
-    def scrollXTo(offset: Int) =
-      setState(ts.copy(stepScrollOffset = offset))
-      clip.scrollToStep(ts.stepScrollOffset)
-      fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
-
-    def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
-
-    inline def scrollXBy(dir: UpDown, size: => Int): Unit =
-      scrollXBy(size * (inline dir match
-        case UpDown.Up   => 1
-        case UpDown.Down => -1
-      ))
-
-    inline def stepAt(x: Int, y: Int): NoteStep =
-      clip.getStep(ts.channel, x, y)
-
-    // FIXME scan the visible count of steps for the first available step
-    def findStep(): NoteStep =
-      ???
-
     def stepPress(x: Int, y: Int): Unit =
       inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
 
@@ -246,10 +169,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         case st => st.copy(steps = st.steps.filter(_._1 != Point(X, Y)))
       localState.stepState.set(newState)
       // Util.println(stepState.toString())
-
-    def clipColor: Color =
-      if clip.exists().get then clip.color().get
-      else selectedClipTrack.color().get
 
     lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
       // override def onActivate(): Unit =
