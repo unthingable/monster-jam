@@ -85,8 +85,8 @@ object state:
     keyScrollOffset: RealNote, // BOTTOM of viewport
     noteVelVisible: Boolean,
     expMode: ExpMode,
-    scale: Scale,
-    scaleRoot: RealNote
+    scaleIdx: Int,
+    scaleRoot: RealNote // starts at 0
   ) extends Serializable:
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
@@ -97,6 +97,8 @@ object state:
     private def _isNoteVisible(note: Int): Boolean =
       note < keyScrollOffset + keyPageSize && note >= keyScrollOffset
 
+    lazy val scale = scales(scaleIdx)(scaleRoot)
+
     @targetName("isRealNoteVisible")
     inline def isNoteVisible(note: RealNote): Boolean = _isNoteVisible(note)
 
@@ -104,7 +106,7 @@ object state:
     inline def isNoteVisible(note: ScaledNote): Boolean = _isNoteVisible(scale.fullScale(note))
 
     // how many steps are visible in the viewport (per note)
-    inline def stepPageSize: Int = stepViewPort.size / keyPageSize
+    lazy val stepPageSize: Int = stepViewPort.size / keyPageSize
 
     // bound y by allowable range given the current window and scale
     inline def guardY(y: RealNote): RealNote = y.max(0).min(scale.fullScale.last.value - keyPageSize - 1)
@@ -130,7 +132,7 @@ object state:
       keyScrollOffset = 12 * 3, // C1
       noteVelVisible = false,
       expMode = ExpMode.Exp,
-      scale = scales.last(0.asInstanceOf[RealNote]), // chromatic
+      scaleIdx = scales.length - 1, // chromatic
       scaleRoot = 0,
     )
 
@@ -139,3 +141,6 @@ object state:
 
     def toNoteName(note: RealNote): String =
       s"${NoteName.values(note % 12)}${note / 12 - 2}"
+
+    def toNoteNameNoOct(note: RealNote): String =
+      NoteName.values(note % 12).toString

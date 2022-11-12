@@ -31,6 +31,7 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.stepSequencer.*
 import com.github.unthingable.jam.stepSequencer.state.*
+import com.github.unthingable.jam.stepSequencer.mode.*
 import com.github.unthingable.jam.SliderOp
 import com.github.unthingable.jam.SliderBankMode
 import com.github.unthingable.jam.JamParameter
@@ -68,7 +69,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     3 -> StepMode.Eight
   )
 
-  object stepSequencer extends ModeCycleLayer("STEP"), ListeningLayer, TrackedState(selectedClipTrack), StepCap {
+  // Large submodes live in separate files, small ones live here
+  trait StepModes extends TrackedState, ModeLayer, StepMatrix, VelNote, NoteParam
+
+  object stepSequencer extends ModeCycleLayer("STEP"), ListeningLayer, TrackedState(selectedClipTrack), StepCap, StepModes {
 
     // a mirror of the bitwig clip, channel / x / y
     val steps =
@@ -120,84 +124,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
 
-    object localState:
-      var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
-      val selectedClips                 = mutable.HashMap.empty[Int, Int]
-
     clip.setStepSize(ts.stepSize)
     clip.scrollToStep(ts.stepScrollOffset)
     fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
-    def stepPress(x: Int, y: Int): Unit =
-      inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
-
-      val newState: StepState =
-        val step  = stepAt(x, y)
-        val pstep = PointStep(Point(x, y), step, Instant.now())
-        localState.stepState.get match
-          case StepState(Nil, _) =>
-            if (step.state == NSState.Empty)
-              clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
-              StepState(List(PointStep(Point(x, y), stepAt(x, y), Instant.now())), true)
-            else StepState(List(pstep), false)
-          case st @ StepState(p @ PointStep(Point(x0, y0), _, _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
-            val step0: NoteStep = stepAt(x0, y0)
-            val newDuration     = ts.stepSize * (x - x0 + 1)
-            if (step0.duration() == newDuration)
-              step0.setDuration(ts.stepSize)
-            else
-              step0.setDuration(newDuration)
-            st.copy(noRelease = true)
-          case st @ StepState(steps, noRelease) if hasStep =>
-            StepState(steps :+ pstep, noRelease)
-          case st => st
-      localState.stepState.set(newState)
-      // Util.println(stepState.toString())
-
-    def stepRelease(X: Int, Y: Int): Unit =
-      val newState = localState.stepState.get match
-        case StepState(PointStep(Point(X, Y), _, pressed) :: Nil, noRelease) =>
-          if (!noRelease && !pressed.isBefore(Instant.now().minusMillis(200)))
-            val step = stepAt(X, Y)
-            step.state match
-              case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
-              case NSState.Empty | NSState.NoteSustain =>
-                clip.setStep(ts.channel, X, Y, ts.velocity, ts.stepSize)
-          StepState(List.empty, false)
-        case st => st.copy(steps = st.steps.filter(_._1 != Point(X, Y)))
-      localState.stepState.set(newState)
-      // Util.println(stepState.toString())
-
-    lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
-      // override def onActivate(): Unit =
-      //   super.onActivate()
-      // state.stepState.set(StepState(List.empty, false))
-
-      override val modeBindings: Seq[Binding[_, _, _]] =
-        (for (col <- EIGHT; row <- EIGHT) yield {
-          // val (stepNum, x, y) = stepView(row, col)
-          def xy: (Int, Int) = m2clip(row, col)
-          // def cachedClip = steps(channel)(xy._1)(xy._2)
-          Vector(
-            SupColorStateB(
-              j.matrix(row)(col).light,
-              () =>
-                // chasing light
-                if (
-                  ext.transport.isPlaying
-                    .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
-                )
-                  colorManager.stepPad.playing
-                else
-                  colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
-            ),
-            EB(j.matrix(row)(col).st.press, "", () => stepPress.tupled(xy)),
-            EB(j.matrix(row)(col).st.release, "", () => stepRelease.tupled(xy))
-          )
-        }).flatten
-    }
 
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
@@ -311,110 +243,47 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           )
         ).flatten
 
-      // val rootBindings =
-      //   (for (row <- 0 to 1; col <- EIGHT) yield
-      //     val btn = j.matrix(row)(col)
+      // note buttons
+      val noteMatrix = Vector(
+        Vector(0,2,4,0,7,9,11,0),
+        Vector(1,3,5,6,8,10,12,0),
+      )
 
-      override def modeBindings = chanBindings
+      val rootBindings =
+        (for (row <- 0 to 1; col <- EIGHT) yield
+          val btn = j.matrix(row)(col)
+          val noteIdx = (noteMatrix(row)(col) - 1).asInstanceOf[RealNote]
+          if noteIdx == -1.asInstanceOf[RealNote] then
+            Vector(
+              SupColorStateB(btn.light, () => JamColorState.empty),
+              EB(btn.st.press, "", () => ())
+            )
+          else
+            Vector(
+              SupColorStateB(btn.light, () => JamColorState(
+                if ts.scaleRoot == noteIdx then JamColorBase.BLUE else JamColorBase.CYAN,
+                2
+              )),
+              EB(btn.st.press, "", () => setState(ts.copy(scaleRoot = noteIdx)))
+            )
+        ).flatten
+
+      val scaleBindings =
+        (for (row <- 2 to 3; col <- EIGHT) yield
+          val btn = j.matrix(row)(col)
+          val scaleIdx = (row - 2) * 8 + col
+          Vector(
+            SupColorStateB(btn.light, () => JamColorState(
+              JamColorBase.FUCHSIA,
+              if ts.scaleIdx == scaleIdx then 3 else 1
+            )),
+            EB(btn.st.press, "", () => setState(ts.copy(scaleIdx = scaleIdx)))
+          )
+        ).flatten
+        
+      override def modeBindings = chanBindings ++ rootBindings ++ scaleBindings
     }
 
-    lazy val velAndNote =
-      new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
-        selectedClipTrack.playingNotes().markInterested()
-        override def onActivate(): Unit =
-          super.onActivate()
-          setState(ts.copy(noteVelVisible = true))
-          // state.stepViewPort.set(ViewPort(0, 0, 4, 8))
-
-        override def onDeactivate(): Unit =
-          super.onDeactivate()
-          setState(ts.copy(noteVelVisible = false))
-          // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
-
-        inline def velNote(vel: Int) = s"Step: velocity $vel"
-
-        def getVelocity: Int =
-          localState.stepState.get.steps.lastOption
-            .map(s => (s.step.velocity() * 128).toInt)
-            .getOrElse(ts.velocity)
-
-        def setVelocity(vel: Int) =
-          ext.host.showPopupNotification(velNote(vel)) // TODO consolidate
-          val steps = localState.stepState.get.steps
-          if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
-          else
-            setState(ts.copy(velocity = vel))
-            selectedClipTrack.playNote(ts.keyScrollOffsetGuarded.value, vel)
-
-        def notePress(note: ScaledNote): Unit =
-          scrollYTo(note)
-          selectedClipTrack.startNote(ts.fromScale(note).value, ts.velocity)
-
-        def noteRelease(note: RealNote): Unit =
-          selectedClipTrack.stopNote(note.value, ts.velocity)
-
-        val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
-          val btn             = j.matrix(7 - row)(col)
-          inline val velScale = 8
-          val idx             = row * 4 + col
-          val vel             = idx * velScale + (velScale - 1)
-          Vector(
-            SupColorB(
-              btn.light,
-              () => if (getVelocity / velScale == idx) Color.whiteColor() else clipColor
-            ),
-            EB(btn.st.press, velNote(vel), () => setVelocity(vel))
-          )
-
-        inline def pageOffset = ts.keyScrollOffset.value / 16
-
-        val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
-          val btn = j.matrix(row + 4)(col + 4)
-
-          inline def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
-          inline def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
-          def realNote             = ts.fromScale(scaledNote)
-
-          Vector(
-            SupColorStateB(
-              btn.light,
-              () =>
-                if (realNote == ts.keyScrollOffsetGuarded)
-                  JamColorState(Color.whiteColor(), 3)
-                else if (ts.isNoteVisible(scaledNote))
-                  JamColorState(Color.whiteColor(), 1)
-                else
-                  JamColorState(
-                    colorManager.stepPad.noteColor(scaledNoteIdx),
-                    if (selectedClipTrack.playingNotes().isNotePlaying(realNote.value)) 3 else 0
-                  )
-            ),
-            EB(btn.st.press, "set note", () => notePress(scaledNote)),
-            EB(btn.st.release, "release note", () => noteRelease(realNote)),
-          )
-        override val modeBindings = velBindings.flatten ++ noteBindings.flatten
-      }
-
-    lazy val notePages =
-      new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
-        inline def pageOffset  = (ts.keyScrollOffset.value + 4) / 16
-        inline def pageOffset2 = (ts.keyScrollOffset.value + 4 + ts.keyPageSize) / 16
-        override def modeBindings: Seq[Binding[?, ?, ?]] =
-          j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
-            val offsetIdx = idx
-            Vector(
-              EB(btn.st.press, "", () => scrollYTo((idx * 16 - 4).asInstanceOf[ScaledNote])),
-              SupColorStateB(
-                btn.light,
-                () =>
-                  (pageOffset == offsetIdx, pageOffset2 == offsetIdx) match
-                    case (true, _)     => JamColorState(JamColorBase.WHITE, 2)
-                    case (false, true) => JamColorState(JamColorBase.WHITE, 0)
-                    case _             => JamColorState(JamColorBase.CYAN, 2)
-              )
-            )
-          )
-      }
 
     lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
@@ -430,110 +299,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       )
     )
 
-    object tune
-        extends ModeButtonCycleLayer(
-          "step TUNE",
-          j.tune,
-          CycleMode.Select,
-          gateMode = GateMode.Auto
-        ) {
-
-      case class FineStep(step: NoteStep):
-        def offset: Int = step.x % fineRes
-        def moveFineBy(clip: Clip, dx: Int): Unit =
-          // ensure no crossings
-          if (step.x / 128 == (step.x + dx) / 128)
-            clip.moveStep(ts.channel, step.x, step.y, dx, 0)
-
-      def toFine(step: NoteStep): Option[FineStep] =
-        (0 until fineRes).view
-          .map(i => fineClip.getStep(ts.channel, step.x * fineRes + i, step.y))
-          .find(_.state() == NSState.NoteOn)
-          .map(s => FineStep(s))
-
-      import GetSetProxy.given
-      val P = GetSetProxy[NoteStep, Double](0)
-
-      val proxies: Vector[Option[GetSetProxy[NoteStep, Double]]] = Vector(
-        // -- expressions
-        P(_.velocity(), (s, v, _) => s.setVelocity(v)),
-        P(_.releaseVelocity(), (s, v, _) => s.setReleaseVelocity(v)),
-        P(_.velocitySpread(), (s, v, _) => s.setVelocitySpread(v)),
-        // note start
-        P(
-          toFine(_).map(_.offset).getOrElse(0) / 128.0,
-          (s, _, d) => toFine(s).foreach(_.moveFineBy(fineClip, (d * 128).toInt))
-        ),
-        P(_.duration(), (s, v, _) => s.setDuration(v)),
-        P(_.pan(), (s, v, _) => s.setPan(v)),
-        P(_.timbre(), (s, v, _) => s.setTimbre(v)),
-        P(_.pressure(), (s, v, _) => s.setPressure(v)),
-        // -- operators
-        P(_.chance(), (s, v, _) => s.setChance(v)),
-        // P(_.occurrence().ordinal() / NoteOccurrence.values().length.toDouble, (s, v) => s.setOccurrence(NoteOccurrence.values.apply((v * 10).toInt))),
-        // P(_.isRecurrenceEnabled(), (s, v) => s.setChance(v)),
-        // P(_.recurrenceLength() / 9.0, (s, v) =>
-        //   val rec = (v * 9).toInt
-        //   if (rec == 0)
-        //     s.setIsRecurrenceEnabled(false)
-        //   else
-        //     s.setIsRecurrenceEnabled(true)
-        //     s.setRecurrence
-        //   ),
-        (), // occurence
-        (), // recurrence
-        (), // recurrence
-        P(_.repeatCount(), (s, v, _) => s.setChance(v)),
-      ).map {
-        case p: GetSetProxy[NoteStep, Double] @unchecked => Some(p)
-        case _: Unit                                     => None
-      }
-
-      val realProxies = proxies.flatten
-      val expProxies  = proxies.slice(0, 8)
-      val opProxies   = proxies.slice(8, 16)
-      def proxiesForState = ts.expMode match
-        case ExpMode.Exp      => expProxies
-        case ExpMode.Operator => opProxies
-
-      def mask = proxiesForState.map(_.isDefined)
-
-      def setCurrentSteps(): Unit =
-        setCurrentSteps(localState.stepState.get.steps.view.map(_.step))
-
-      def setCurrentSteps(steps: Iterable[NoteStep]): Unit =
-        if (steps.nonEmpty)
-          Util.println(s"setting active $mask")
-          realProxies.foreach(_.setTarget(steps))
-          j.stripBank.setActive(mask)
-          proxiesForState
-            .zip(sliders.sliderOps)
-            .foreach((p, s) => p.foreach(realp => s.set(realp.get, SliderOp.Source.Internal)))
-        else
-          realProxies.foreach(_.clearTarget())
-          Util.println("setting inactive")
-          sliders.sliderOps.foreach(_.set(0, SliderOp.Source.Internal))
-          j.stripBank.setActive(_ => false)
-
-      val callbacks: Vector[Option[Double => Unit]] =
-        proxies.map(_.map(_.set))
-
-      val sliders = new SliderBankMode(
-        "note exp",
-        callbacks,
-        _.map(JamParameter.Internal.apply).getOrElse(JamParameter.Empty),
-        Seq.fill(8)(BarMode.SINGLE),
-        stripColor = Some(Util.rainbow)
-      ):
-        override def onActivate(): Unit =
-          super.onActivate()
-          setCurrentSteps()
-
-      override def onActivate(): Unit =
-        super.onActivate()
-        select(0)
-      override val subModes: Vector[ModeLayer] = Vector(sliders)
-    }
 
     lazy val stepMain = SimpleModeLayer(
       "stepMain",

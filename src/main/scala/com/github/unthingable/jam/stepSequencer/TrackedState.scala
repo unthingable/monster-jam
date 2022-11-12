@@ -18,6 +18,7 @@ import com.github.unthingable.jam.TrackId
 import com.github.unthingable.jam.stepSequencer.state.*
 
 import scala.collection.mutable
+import com.github.unthingable.framework.Watched
 
 trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
@@ -75,7 +76,7 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
     f(a) == f(b)
 
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
-    import SeqState.toNoteName
+    import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
     val stateDiff = comparator(oldSt, newSt) andThen (_.unary_!)
     val notify    = ext.host.showPopupNotification
@@ -89,13 +90,13 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
           )
         notify(s"Notes: ${notes.map(toNoteName).mkString(" - ")}")
       if stateDiff(_.scale) || stateDiff(_.scaleRoot) then
-        notify(s"Scale: ${toNoteName(newSt.scaleRoot)} ${newSt.scale.name}")
+        notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
       if stateDiff(_.stepString) then notify(s"Step size: ${newSt.stepString}")
       if stateDiff(_.keyPageSize) || stateDiff(_.stepPageSize) then
         notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
-trait StepCap(using MonsterJamExt, TrackTracker) { self: TrackedState & ModeLayer =>
+trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
   val gridHeight               = 128
   val gridWidth                = 64
   val fineRes                  = 128
@@ -106,7 +107,12 @@ trait StepCap(using MonsterJamExt, TrackTracker) { self: TrackedState & ModeLaye
   val devices: DeviceBank = selectedClipTrack.createDeviceBank(1)
   lazy val colorManager   = ColorManager(clipColor)
 
-
+  object localState:
+    var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
+    val selectedClips                 = mutable.HashMap.empty[Int, Int]
+  
+  def onStepState(from: StepState, to: StepState): Unit
+  
   def clipColor: Color =
     if clip.exists().get then clip.color().get
     else selectedClipTrack.color().get
