@@ -109,16 +109,17 @@ trait ClipMatrix { this: Jam =>
           case Some((quant, mode)) =>
             Util.println(s"lenient launch $quant $mode")
             clip.launchWithOptions(quant, mode)
-        Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
+        // Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
 
     /* If we're a little late starting the clip, that's ok */
     private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
       val launchTolerance: Double = ext.preferences.launchTolerance.get()
+      val lookAhead: Double = ext.preferences.launchLookahead.get()
       val clipQString: String     = cursorClip.launchQuantization().get()      
       val qString: String =
         if (clipQString == "default") ext.transport.defaultLaunchQuantization().get()
         else clipQString
-      Util.println(s"tempo: ${ext.transport.tempo().get()}")
+      // Util.println(s"tempo: ${ext.transport.tempo().get()}")
       if (launchTolerance == 0 || qString == "none")
         None
       else
@@ -129,7 +130,7 @@ trait ClipMatrix { this: Jam =>
           case Some((prev, now, next)) =>
             // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
             Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
-            if (prev < launchTolerance || next < 0.25)
+            if prev < launchTolerance || (lookAhead > 0 && next < lookAhead) then
               Some(clipQString, "continue_immediately")
             else
               None

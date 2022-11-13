@@ -444,7 +444,8 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * _-10 dB_: slider maximum is -10 dB for all tracks
   * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
 * **SHIFT+PLAY**: Toggle between restart and pause/continue
-* **Launch Q: Launch tolerance**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
+* **Launch Q forgiveness**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
+* **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
 * **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).

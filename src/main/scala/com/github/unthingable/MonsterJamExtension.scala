@@ -19,6 +19,7 @@ case class MonsterPref(
   limitLevel: EnumSetting[JamSettings.LimitLevels],
   shiftPlay: EnumSetting[JamSettings.ShiftPlay],
   launchTolerance: SettableRangedValue,
+  launchLookahead: SettableRangedValue,
   debugOutput: SettableBooleanValue,
 )
 
@@ -89,6 +90,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
         EnumSetting(preferences, "Limit level sliders", "Behavior", JamSettings.LimitLevels.None),
         EnumSetting(preferences, "SHIFT+PLAY", "Behavior", JamSettings.ShiftPlay.`Pause/Resume`),
         preferences.getNumberSetting("Launch Q forgiveness", "Behaviour", 0, 1, 0.1, "beats", 0.5),
+        preferences.getNumberSetting("Launch Q lookahead", "Behaviour", 0, .5, 0.02, "beats", 0.1),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(
