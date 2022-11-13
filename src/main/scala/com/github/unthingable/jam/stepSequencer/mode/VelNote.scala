@@ -57,9 +57,9 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         val idx             = row * 4 + col
         val vel             = idx * velScale + (velScale - 1)
         Vector(
-          SupColorB(
+          SupColorStateB(
             btn.light,
-            () => if (getVelocity / velScale == idx) Color.whiteColor() else clipColor
+            () => JamColorState(if (getVelocity / velScale == idx) Color.whiteColor() else clipColor, 1)
           ),
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
