@@ -141,10 +141,10 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             btn.light,
             () =>
               if (hasContent)
-                if (i == ts.stepScrollOffset / ts.stepPageSize)
-                  colorManager.stepScene.selected
-                else if (clip.playingStep().get() / ts.stepPageSize == i)
+                if (ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i)
                   colorManager.stepScene.playing
+                else if (i == ts.stepScrollOffset / ts.stepPageSize)
+                  colorManager.stepScene.selected
                 else colorManager.stepScene.nonEmpty
               else colorManager.stepScene.empty
           ),

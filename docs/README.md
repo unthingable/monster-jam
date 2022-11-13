@@ -195,9 +195,15 @@ Step sequencer settings are stored per track and saved with the project. Most st
 
 ### Scene buttons 
 
-Display/select current patter page.
+Display/select current pattern page.
 
 The number of pattern pages depends on both the step size and the current grid layout, there will be as many pages as necessary to access the entire length of the pattern (though only the first 8 are directly accessible).
+
+Scene button color guide:
+* Playing: blinking white
+* Curently seleted: bright white
+* Non-empty: dim white
+* Empty: clip color
 
 ### Pad matrix
 

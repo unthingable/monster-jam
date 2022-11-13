@@ -6,15 +6,16 @@ import com.bitwig.extension.controller.api.NoteStep.State
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.jam.surface.JamSurface
 
 class ColorManager(clipColor: => Color)(using ext: MonsterJamExt) {
   import JamColorBase.*
   val C = JamColorState
   object stepScene:
-    val selected = C(WHITE, 2)
-    val playing  = C(WHITE, 0)
-    def nonEmpty = C(clipColor, 3)
-    def empty    = C(clipColor, 0)
+    def playing(using j: JamSurface) = C(WHITE, if j.Mod.blink3 then 3 else 0)
+    val selected                     = C(WHITE, 3)
+    val nonEmpty                     = C(WHITE, 0)
+    def empty                        = C(clipColor, 0)
 
   object stepPad:
     private val noteRowRainbow = Vector(BLUE, PLUM, VIOLET, PURPLE)
