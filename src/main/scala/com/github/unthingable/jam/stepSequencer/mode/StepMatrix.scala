@@ -18,6 +18,7 @@ import com.bitwig.extension.controller.api.NoteStep.State as NSState
 import com.bitwig.extension.controller.api.NoteStep
 
 import java.time.Instant
+import com.github.unthingable.jam.surface.JamColorState
 
 trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     def stepPress(x: Int, y: Int): Unit =
@@ -68,23 +69,26 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       override val modeBindings: Seq[Binding[_, _, _]] =
         (for (col <- EIGHT; row <- EIGHT) yield {
           // val (stepNum, x, y) = stepView(row, col)
-          def xy: (Int, Int) = m2clip(row, col)
+          def xy: Option[(Int, Int)] = m2clip(row, col)
           // def cachedClip = steps(channel)(xy._1)(xy._2)
           Vector(
             SupColorStateB(
               j.matrix(row)(col).light,
               () =>
                 // chasing light
-                if (
-                  ext.transport.isPlaying
-                    .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
-                )
-                  colorManager.stepPad.playing
-                else
-                  colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
+                xy match
+                  case Some(xy) =>
+                    if (
+                      ext.transport.isPlaying
+                        .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
+                    )
+                      colorManager.stepPad.playing
+                    else
+                      colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
+                  case _ => JamColorState.empty
             ),
-            EB(j.matrix(row)(col).st.press, "", () => stepPress.tupled(xy)),
-            EB(j.matrix(row)(col).st.release, "", () => stepRelease.tupled(xy))
+            EB(j.matrix(row)(col).st.press, "", () => xy.foreach(stepPress.tupled)),
+            EB(j.matrix(row)(col).st.release, "", () => xy.foreach(stepRelease.tupled))
           )
         }).flatten
     }

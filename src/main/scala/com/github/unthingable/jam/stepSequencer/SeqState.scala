@@ -60,9 +60,9 @@ object state:
     case Four  extends StepMode(4)
     case Eight extends StepMode(8)
 
-  case class ViewPort(row1: Int, col1: Int, row2: Int, col2: Int):
-    lazy val height = row2 - row1
-    lazy val width  = col2 - col1
+  case class ViewPort(rowTop: Int, colLeft: Int, rowBottom: Int, colRight: Int):
+    lazy val height = rowBottom - rowTop
+    lazy val width  = colRight - colLeft
     lazy val size   = height * width
 
   case class Point(x: Int, y: Int)
@@ -92,7 +92,7 @@ object state:
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
 
     // how many notes are visible in the viewport
-    lazy val keyPageSize: Int = (stepMode.keyRows / (8 / stepViewPort.height)).max(1)
+    lazy val keyPageSize: Int = (stepMode.keyRows / (stepViewPort.width / stepViewPort.height)).max(1)
 
     private def _isNoteVisible(note: Int): Boolean =
       note < keyScrollOffset + keyPageSize && note >= keyScrollOffset

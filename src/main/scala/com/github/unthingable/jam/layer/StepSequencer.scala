@@ -161,7 +161,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       if (j.encoder.push.isPressed().get())
         scrollXBy(dir, 1)
       else
-        scrollYBy(dir, -1)
+        scrollYBy(dir, 1)
 
     lazy val stepEnc = SimpleModeLayer(
       "stepEnc",

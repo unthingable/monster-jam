@@ -118,14 +118,18 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
     else selectedClipTrack.color().get
 
   /* Translate from matrix grid (row, col) to clip grid (x, y) */
-  inline def m2clip(row: Int, col: Int): (Int, Int) =
-    // no need to account for viewport as long as starts at 0,0
-    val offset = row * 8 + col // matrix grid scanned
-    val result = (
-      offset % ts.stepPageSize,
-      ts.scale.fullScale(ts.keyScrollOffsetGuarded.value + (offset / ts.stepPageSize)).value
-    )
-    result
+  inline def m2clip(row: Int, col: Int): Option[(Int, Int)] =
+    val port = ts.stepViewPort
+    if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then
+      None
+    else
+      val offset = (port.rowTop + port.height - row) * port.width + (col - port.colLeft)
+      // val offset = row * 8 + col // matrix grid scanned
+      val result = (
+        offset % ts.stepPageSize,
+        ts.scale.fullScale(ts.keyScrollOffsetGuarded.value + (offset / ts.stepPageSize)).value
+      )
+      Some(result)
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
