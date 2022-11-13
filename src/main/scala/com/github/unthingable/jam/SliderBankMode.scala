@@ -150,10 +150,10 @@ abstract class SliderOpBase(
   // )
 
   // scale param->slider
-  inline def p2s(v: Double): Int =
+  def p2s(v: Double): Int =
     (((v - _range.min) / _range.size).min(1).max(0) * 127).toInt
 
-  inline def s2p(v: Double): Double =
+  def s2p(v: Double): Double =
     v * _range.size + _range.min
 }
 
