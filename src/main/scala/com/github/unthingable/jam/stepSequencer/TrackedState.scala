@@ -32,6 +32,7 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
   stateStore.asInstanceOf[Setting].hide()
 
   ext.application.projectName().addValueObserver(_ => restoreState())
+  selectedClipTrack.position.addValueObserver(_ => updateState(selectedClipTrack))
 
   def ts = _ts
 
