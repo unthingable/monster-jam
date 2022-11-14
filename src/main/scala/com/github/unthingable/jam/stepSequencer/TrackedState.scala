@@ -162,8 +162,8 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
 
   inline def canScrollY(dir: UpDown): Boolean =
     clip.exists.get() && (inline dir match
-      case UpDown.Down => ts.scale.length - ts.keyScaledOffset.asInstanceOf[Int] > ts.stepViewPort.height
-      case UpDown.Up   => ts.keyScaledOffset.asInstanceOf[Int] > 0
+      case UpDown.Up   => ts.scale.length - ts.keyScaledOffset.asInstanceOf[Int] > ts.stepViewPort.height
+      case UpDown.Down => ts.keyScaledOffset.asInstanceOf[Int] > 0
     )
 
   inline def setStepPage(page: Int) =
