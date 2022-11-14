@@ -12,7 +12,7 @@ class ColorManager(clipColor: => Color)(using ext: MonsterJamExt) {
   import JamColorBase.*
   val C = JamColorState
   object stepScene:
-    def playing(using j: JamSurface) = C(WHITE, if j.Mod.blink3 then 3 else 0)
+    def playing(using j: JamSurface) = C(WHITE, if j.Mod.blinkTempo then 3 else 0)
     val selected                     = C(WHITE, 3)
     val nonEmpty                     = C(WHITE, 0)
     def empty                        = C(clipColor, 0)
