@@ -98,4 +98,7 @@ object Util extends Util {
       ois.close()
       obj.asInstanceOf[A]
     }.toEither
+  
+  def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
+    f(a) == f(b)
 }

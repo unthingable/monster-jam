@@ -51,6 +51,8 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .map { e =>
         Util.println(s"Failed to deserialize step states: ${e}"); e
       }
+      // in case it saved weird
+      // .map(_.map((x, st) => (x, validateState(st))))
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
@@ -58,7 +60,8 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
       )
 
   def setState(st: SeqState) =
-    val old = _ts
+    val old       = _ts
+    // val validated = validateState(st)
     _ts = st
     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
     storeState()
@@ -73,24 +76,23 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
     _ts = st
     // storeState()
 
-  def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
-    f(a) == f(b)
+  // def validateState(newSt: SeqState): SeqState
 
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
-    val stateDiff = comparator(oldSt, newSt) andThen (_.unary_!)
+    val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
     val notify    = ext.host.showPopupNotification
     if (isOn)
-      if stateDiff(_.keyScrollOffset) || stateDiff(_.keyPageSize) then
+      if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
-          newSt.keyScrollOffset +: (
+          newSt.keyScaledOffset +: (
             if newSt.keyPageSize > 1 then
-              Seq(newSt.fromScale((newSt.keyScrollOffset.value + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote]))
+              Seq((newSt.keyScaledOffset.asInstanceOf[Int] + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote])
             else Seq()
           )
-        notify(s"Notes: ${notes.map(toNoteName).mkString(" - ")}")
-      if stateDiff(_.scale) || stateDiff(_.scaleRoot) then
+        notify(s"Notes: ${notes.map(n => toNoteName(ts.fromScale(n))).mkString(" - ")}")
+      if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
         notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
       if stateDiff(_.stepString) then notify(s"Step size: ${newSt.stepString}")
       if stateDiff(_.keyPageSize) || stateDiff(_.stepPageSize) then
@@ -111,26 +113,24 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
   object localState:
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
-  
+
   def onStepState(from: StepState, to: StepState): Unit
-  
+
   def clipColor: Color =
     if clip.exists().get then clip.color().get
     else selectedClipTrack.color().get
 
   /* Translate from matrix grid (row, col) to clip grid (x, y) */
-  inline def m2clip(row: Int, col: Int): Option[(Int, Int)] =
+  def m2clip(row: Int, col: Int): Option[(Int, Int)] =
     val port = ts.stepViewPort
-    if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then
-      None
+    if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
       val offset = (port.rowTop + port.height - row) * port.width + (col - port.colLeft)
       // val offset = row * 8 + col // matrix grid scanned
-      val result = (
+      Some((
         offset % ts.stepPageSize,
-        ts.scale.fullScale(ts.keyScrollOffsetGuarded.value + (offset / ts.stepPageSize)).value
-      )
-      Some(result)
+        ts.fromScale((ts.keyScaledOffset.asInstanceOf[Int] + (offset / ts.stepPageSize)).asInstanceOf[ScaledNote]).value
+      ))
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
@@ -144,12 +144,10 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
     // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
   inline def scrollYTo(y: ScaledNote) =
-    setState(ts.copy(keyScrollOffset = ts.guardY(ts.fromScale(y))))
+    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
 
   inline def scrollYBy(offset: Int) = // offset in scaled notes
-    scrollYTo(
-      ts.toScale((ts.keyScrollOffsetGuarded.value + offset).asInstanceOf[RealNote])
-    )
+    scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
 
   inline def scrollYBy(dir: UpDown, size: => Int): Unit =
     scrollYBy(size * (inline dir match
@@ -164,8 +162,8 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
 
   inline def canScrollY(dir: UpDown): Boolean =
     clip.exists.get() && (inline dir match
-      case UpDown.Down => ts.scale.notesRemainingUp(ts.keyScrollOffsetGuarded).exists(_ > ts.stepViewPort.height)
-      case UpDown.Up   => ts.scale.notesRemainingDown(ts.keyScrollOffsetGuarded).exists(_ > 0)
+      case UpDown.Down => ts.scale.length - ts.keyScaledOffset.asInstanceOf[Int] > ts.stepViewPort.height
+      case UpDown.Up   => ts.keyScaledOffset.asInstanceOf[Int] > 0
     )
 
   inline def setStepPage(page: Int) =
@@ -190,4 +188,11 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
   // FIXME scan the visible count of steps for the first available step
   def findStep(): NoteStep =
     ???
+
+  // override def validateState(st: SeqState): SeqState =
+  //   if !st.scale.isInScale(st.keyScrollOffset) then
+  //     st.copy(keyScrollOffset =
+  //       st.scale.prevInScale(st.keyScrollOffset).orElse(st.scale.nextInScale(st.keyScrollOffset)).get
+  //     )
+  //   else st
 }

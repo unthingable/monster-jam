@@ -15,19 +15,23 @@ object state:
   case class Scale(name: String, intervals: Set[Interval])(
     root: RealNote
   ): // notes in intervals from root, always 8 except chromatic
-    lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
-    lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
-    lazy val inverseMap: Map[RealNote, ScaledNote]   = fullScaleMap.map(_.swap)
+    protected[state] lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
+    protected[state] lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
+    protected[state] lazy val inverseMap: Map[RealNote, ScaledNote]   = fullScaleMap.map(_.swap)
 
-    inline def isInScale(inline note: RealNote): Boolean =
+    lazy val isChromatic: Boolean = intervals.size == 12
+
+    lazy val length = fullScale.length
+
+    def isInScale(note: RealNote): Boolean =
       intervals.contains((root + note) % 12)
 
-    inline def nextInScale(inline note: RealNote): Option[RealNote] =
-      (note until 128).view.find(isInScale(_))
+    def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
+      (note + skip until 128).view.find(isInScale(_))
 
-    inline def prevInScale(inline note: RealNote): Option[RealNote] =
-      (note.to(0, -1)).view.find(isInScale(_))
-    
+    def prevInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
+      (note - skip).to(0, -1).view.find(isInScale(_))
+
     inline def notesRemainingUp(note: RealNote): Option[Int] =
       nextInScale(note).flatMap(inverseMap.get).map(fullScale.size - 1 - _)
 
@@ -82,7 +86,7 @@ object state:
     stepSizeIdx: Int,
     stepMode: StepMode,
     stepScrollOffset: Int,
-    keyScrollOffset: RealNote, // BOTTOM of viewport
+    keyScaledOffset: ScaledNote, // BOTTOM of viewport
     noteVelVisible: Boolean,
     expMode: ExpMode,
     scaleIdx: Int,
@@ -94,29 +98,31 @@ object state:
     // how many notes are visible in the viewport
     lazy val keyPageSize: Int = (stepMode.keyRows / (stepViewPort.width / stepViewPort.height)).max(1)
 
-    private def _isNoteVisible(note: Int): Boolean =
-      note < keyScrollOffset + keyPageSize && note >= keyScrollOffset
-
     lazy val scale = scales(scaleIdx)(scaleRoot)
 
+    private def _isNoteVisible(note: ScaledNote): Boolean =
+      note < keyScaledOffset + keyPageSize && note >= keyScaledOffset
+
     @targetName("isRealNoteVisible")
-    inline def isNoteVisible(note: RealNote): Boolean = _isNoteVisible(note)
+    inline def isNoteVisible(note: RealNote): Boolean = toScale(note).map(_isNoteVisible).getOrElse(false)
 
     @targetName("isScaledNoteVisible")
-    inline def isNoteVisible(note: ScaledNote): Boolean = _isNoteVisible(scale.fullScale(note))
+    inline def isNoteVisible(note: ScaledNote): Boolean = _isNoteVisible(note)
 
     // how many steps are visible in the viewport (per note)
     lazy val stepPageSize: Int = stepViewPort.size / keyPageSize
 
     // bound y by allowable range given the current window and scale
-    inline def guardY(y: RealNote): RealNote = y.max(0).min(scale.fullScale.last.value - keyPageSize - 1)
+    inline def guardYReal(y: RealNote): RealNote = y.max(0).min(127 - keyPageSize)
+
+    inline def guardYScaled(y: ScaledNote): ScaledNote = y.max(0).min(scale.fullScale.last.value - keyPageSize - 1)
 
     inline def fromScale(y: ScaledNote): RealNote = scale.fullScale(y.max(0).min(scale.fullScale.size - 1))
 
-    inline def toScale(y: RealNote): ScaledNote = scale.inverseMap(y.max(0).min(127))
+    inline def toScale(y: RealNote): Option[ScaledNote] = scale.inverseMap.get(y.max(0).min(127))
 
     // resizing viewport can make offsets invalid
-    lazy val keyScrollOffsetGuarded = guardY(keyScrollOffset)
+    lazy val keyScrollOffsetGuarded = guardYScaled(keyScaledOffset)
 
     lazy val stepSize: Double = quant.stepSize(stepSizeIdx)
 
@@ -129,7 +135,7 @@ object state:
       stepSizeIdx = 5,
       stepMode = StepMode.Four,
       stepScrollOffset = 0,
-      keyScrollOffset = 12 * 3, // C1
+      keyScaledOffset = 12 * 3, // C1
       noteVelVisible = false,
       expMode = ExpMode.Exp,
       scaleIdx = scales.length - 1, // chromatic

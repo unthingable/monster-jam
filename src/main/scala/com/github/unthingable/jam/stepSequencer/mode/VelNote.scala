@@ -14,6 +14,7 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.framework.binding.Binding
 
 import com.bitwig.extension.api.Color
+import com.github.unthingable.Util
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   lazy val velAndNote =
@@ -42,7 +43,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
         else
           setState(ts.copy(velocity = vel))
-          selectedClipTrack.playNote(ts.keyScrollOffsetGuarded.value, vel)
+          selectedClipTrack.playNote(ts.fromScale(ts.keyScaledOffset).value, vel)
 
       def notePress(note: ScaledNote): Unit =
         scrollYTo(note)
@@ -64,7 +65,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
 
-      inline def pageOffset = ts.keyScrollOffset.value / 16
+      inline def pageOffset = ts.keyScaledOffset.asInstanceOf[Int] / 16
 
       val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
@@ -93,22 +94,33 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
 
+  val pageOffsets = Vector(0, 4, 20, 36, 52, 68, 84, 100, 116, 132).map(_.asInstanceOf[ScaledNote]) // for chromatic
+  def notePageOffset(idx: Int): ScaledNote = if ts.scale.isChromatic then pageOffsets(idx) else (idx * 16).asInstanceOf[ScaledNote]
+  
   lazy val notePages =
     new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
-      inline def pageOffset  = (ts.keyScrollOffset.value + 4) / 16
-      inline def pageOffset2 = (ts.keyScrollOffset.value + 4 + ts.keyPageSize) / 16
+      inline def keyOffset: ScaledNote   = ts.keyScaledOffset
+      inline def hasContent(idx: Int) = 
+         val note = keyOffset.asInstanceOf[Int]
+         val pageOffset = notePageOffset(idx).asInstanceOf[Int]
+         // detect overlap
+         (note + 16 > pageOffset && note + 16 < pageOffset + 16) || (note < pageOffset + 16 && note > pageOffset)
+
       override def modeBindings: Seq[Binding[?, ?, ?]] =
         j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
-          val offsetIdx = idx
           Vector(
-            EB(btn.st.press, "", () => scrollYTo((idx * 16 - 4).asInstanceOf[ScaledNote])),
+            EB(
+              btn.st.press,
+              "",
+              () => scrollYTo((notePageOffset(idx)).asInstanceOf[ScaledNote])
+            ),
             SupColorStateB(
               btn.light,
               () =>
-                (pageOffset == offsetIdx, pageOffset2 == offsetIdx) match
-                  case (true, _)     => JamColorState(JamColorBase.WHITE, 2)
-                  case (false, true) => JamColorState(JamColorBase.WHITE, 0)
-                  case _             => JamColorState(JamColorBase.CYAN, 2)
+                (notePageOffset(idx) == keyOffset, hasContent(idx)) match
+                  case (true, _) => JamColorState(JamColorBase.WHITE, 2)
+                  case (_, true) => JamColorState(JamColorBase.WHITE, 0)
+                  case _         => JamColorState(JamColorBase.CYAN, 2)
             )
           )
         )

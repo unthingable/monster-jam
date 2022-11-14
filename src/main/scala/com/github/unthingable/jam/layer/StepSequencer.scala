@@ -328,12 +328,12 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       tune,
     )
 
-    def onStepState(from: StepState, to: StepState): Unit =
-      if (tune.isOn)
-        val prev = from.steps.map(_.step)
-        val curr = to.steps.map(_.step)
-        if (prev != curr)
-          tune.setCurrentSteps(curr)
+    override def onStepState(from: StepState, to: StepState): Unit =
+      val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
+      if tune.isOn && stateDiff(_.steps.map(_.step)) then
+        tune.setCurrentSteps(to.steps.map(_.step))
+      // if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
+      //   ???
 
     override def subModesToActivate =
       (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ subModes.filter(
@@ -385,6 +385,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 [ ] note pages
 - step-hold to select or create clips before entering sequencer
 - adjust mode (by holding aux? tune?)
+- reactivate velAndNote
 vel
 release vel
 vel spread
@@ -411,4 +412,5 @@ problems:
   deactivating STEP with TUNE should reactivate previous slider mode
     - multibutton cycle mode? or exclusive reactivator?
   dirty TUNE tracking
+  state does not restore cleanly (e.g. grid settings)
  */
