@@ -180,6 +180,8 @@ Same goes for remote control pages within a device. You can use Device Selector 
 
 Step sequencer settings are stored per track and saved with the project. Most steq sequencer submodes are auto-gating.
 
+Whenever a sequencer state changes, a relevant notification will pop up.
+
 ## Default layout
 
 * **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white.
@@ -193,6 +195,8 @@ Step sequencer settings are stored per track and saved with the project. Most st
 * **TUNE**: adjust step parameters with sliders (see **Parameter adjustments**)
 * **PERFORM (hold)**: change current MIDI channel via the lower right pad matrix quadrant (WIP)
 
+The button grid is bottom-focused. Note mode will push the grid up. When using note pages, the first note in the page will be the bottom-most visible note on the grid.
+
 ### Scene buttons 
 
 Display/select current pattern page.
@@ -201,7 +205,7 @@ The number of pattern pages depends on both the step size and the current grid l
 
 Scene button color guide:
 * Playing: blinking white
-* Curently seleted: bright white
+* Curently selected: bright white
 * Non-empty: dim white
 * Empty: clip color
 
@@ -256,19 +260,56 @@ Velocity selector works with two different velocity values:
 
 Play notes and focus step editor.
 
-The 128 notes are divided in 8 pages of 16 notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Maschine), which one depends on which page the topmost visible note falls into.
+The 128 notes are divided in 8 pages of 16 (or fewer) notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Maschine), which one depends on which page the bottommost visible note falls into.
 
 Pressing a pad:
 * Plays the note
 * Scrolls the step editor to that note (so that it's at the top row)
 
-The button corresponding to the topmost visible note is bright white. If more notes are visible in the step view, their buttons will be dim white. Note that because the step grid is laid out top-down vertically (high notes on top, low on bottom, matching the clip view in the app) and the note buttons are left-right and down-up (as labeled on the Jam), this can look backwards. If this hurts your brain too much and you know of a better way, let me know.
+The note selector button corresponding to the bottommost visible note is bright white. If more notes are visible in the step view, their buttons will be dim white. Note that because the step grid is laid out top-down vertically (high notes on top, low on bottom, matching the clip view in the app) and the note buttons are left-right and down-up (as labeled on the Jam), this can feel backwards.
 
 Currently playing notes will flash, letting you see activity outside of the visible step grid.
 
-**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano (if your brain isn't hurting yet, this is opposite of how scenes work with clips). Current page is bright white. Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, with next page button in dim white. Pressing a button always scrolls top note row to the top of the page.
+#### Note pages
+
+**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano (if your brain isn't hurting yet, this is opposite of how scenes work with clips). Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
+
+Seeing how the Drum Machine lays out its banks, in chromatic scale the first page is 4 notes while the rest are 16. This is a compromise where the page layout matches Drum Machines (but you cannot access the last page with Scene buttons because there are only 8 — can still scroll though). In non-chromatic mode all pages are 16 notes.
 
 Use note/page selectors together with knob scrolling for maximum nagivation.
+
+## Channel and Scale
+
+Hold **PERFORM** to access channel and scale selectors.
+
+### Channel selector
+
+16 buttons in bottom right quadrant change active channel for clip notes. Currently selected channel is white.
+
+### Scale selector (top 4 rows)
+
+Works more or less exactly like Novation Circuit. Unlike the Circuit, changing a scale will not re-transpose existing notes, notes not in current scale will simply not be visible.
+
+* Top 2 rows: select root note, current note is dark blue
+* Next 2 rows: select scale, current is bright pink
+
+The 16 scale buttons are laid out as follows, Chromatic scale is the default. Note that non-chromatic scales all have exactly 8 notes per octave.
+1. Natural Minor            
+1. Major                    
+1. Dorian                   
+1. Phrygian                 
+1. Mixolydian               
+1. Melodic Minor (ascending)
+1. Harmonic Minor           
+1. Bebop Dorian             
+1. Blues                    
+1. Minor Pentatonic         
+1. Hungarian Minor          
+1. Ukranian Dorian          
+1. Marva                    
+1. Todi                     
+1. Whole Tone               
+1. Chromatic                
 
 ## Parameter adjustments (WIP)
 
@@ -436,6 +477,8 @@ The 64 controls are grouped in 8 pages. To select a page use the track buttons, 
 
 * **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
+* **Step sequencer: Alternating row colors**: in step sequencer, each note row gets a different color
+* **Behavior: Step sequencer pattern follow**: active step sequencer pattern page will automatically follow playing position
 * **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
 * **DPAD scroll (regular/SHIFT)**: Flip **DPAD** function with and without **SHIFT**: arrows scroll by page/SHIFT-arrow by single row, or vice versa.
 * **Limit level sliders**: slider range when controlling track levels

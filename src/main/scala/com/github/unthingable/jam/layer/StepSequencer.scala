@@ -133,8 +133,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     // page follower
     clip.playingStep().addValueObserver(step =>
       if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
-        val currentPage = ts.stepScrollOffset / ts.stepPageSize
-        val playingPage = step / ts.stepPageSize
+        val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
+        val playingPage: Int = step / ts.stepPageSize
         if currentPage != playingPage then
           setStepPage(playingPage)
     )
@@ -420,5 +420,4 @@ problems:
   deactivating STEP with TUNE should reactivate previous slider mode
     - multibutton cycle mode? or exclusive reactivator?
   dirty TUNE tracking
-  state does not restore cleanly (e.g. grid settings)
  */
