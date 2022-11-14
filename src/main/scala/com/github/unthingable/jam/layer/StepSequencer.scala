@@ -130,6 +130,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
+    // page follower
+    clip.playingStep().addValueObserver(step =>
+      if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
+        val currentPage = ts.stepScrollOffset / ts.stepPageSize
+        val playingPage = step / ts.stepPageSize
+        if currentPage != playingPage then
+          setStepPage(playingPage)
+    )
 
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
