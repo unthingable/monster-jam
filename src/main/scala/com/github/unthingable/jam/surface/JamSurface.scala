@@ -39,6 +39,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     var blink: Boolean  = false // on 50% of the time
     var blink3: Boolean = false // on 75% of the time
+    def blinkTempo: Boolean = ext.transport.isPlaying().get() && (ext.transport.playPosition().get() * 2 + 0.1).toInt % 2 == 0
 
     private def blinky(): Unit = {
       blink = true

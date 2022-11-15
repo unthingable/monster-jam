@@ -24,6 +24,9 @@ trait ClipMatrix { this: Jam =>
     ext.transport.playPosition().markInterested()
     ext.transport.defaultLaunchQuantization().markInterested()
     ext.preferences.launchTolerance.markInterested()
+    ext.transport.timeSignature().numerator().markInterested()
+    ext.transport.timeSignature().denominator().markInterested()
+    ext.transport.tempo().markInterested()
 
     override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
@@ -100,32 +103,34 @@ trait ClipMatrix { this: Jam =>
       if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
         () // clip.select() -- see above
       else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
-      else if (ext.transport.playPosition().get() > 0)
+      else
         launchOptions(clip) match
           case None => clip.launch()
           case Some((quant, mode)) =>
             Util.println(s"lenient launch $quant $mode")
             clip.launchWithOptions(quant, mode)
+        // Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
 
     /* If we're a little late starting the clip, that's ok */
     private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
       val launchTolerance: Double = ext.preferences.launchTolerance.get()
-      val clipQString: String     = cursorClip.launchQuantization().get()
+      val lookAhead: Double = ext.preferences.launchLookahead.get()
+      val clipQString: String     = cursorClip.launchQuantization().get()      
       val qString: String =
         if (clipQString == "default") ext.transport.defaultLaunchQuantization().get()
         else clipQString
-      val stepSize: Option[Double] = quant.stepMap.get(qString)
-      if (launchTolerance == 0 || qString == "none" || stepSize.exists(_ < 1))
+      // Util.println(s"tempo: ${ext.transport.tempo().get()}")
+      if (launchTolerance == 0 || qString == "none")
         None
       else
-        stepSize match
+        quant.gridDistanceWithNow(qString) match
           case None =>
             Util.println(s"Unparseable quant: $qString")
             None
-          case Some(qSize) =>
-            val beat = ext.transport.playPosition().get()
+          case Some((prev, now, next)) =>
             // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
-            if (beat % (qSize * 4) < launchTolerance) // * 4 because this is bars
+            Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
+            if prev < launchTolerance || (lookAhead > 0 && next < lookAhead) then
               Some(clipQString, "continue_immediately")
             else
               None

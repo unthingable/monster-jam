@@ -55,8 +55,7 @@ class Jam(implicit val ext: MonsterJamExt)
         ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
 
   (0 until 256).foreach { i =>
-    val t = superBank.getItemAt(i)
-    t.clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
+    superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
   }
 
   given tracker: TrackTracker = UnsafeTracker(superBank)

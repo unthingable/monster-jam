@@ -45,6 +45,8 @@ transparent trait Util {
   case class Timed[A](value: A, instant: Instant)
 }
 object Util extends Util {
+  val EIGHT: Vector[Int] = (0 to 7).toVector
+
   var println: String => Unit = null
 
   extension [A](obj: A)
@@ -96,4 +98,7 @@ object Util extends Util {
       ois.close()
       obj.asInstanceOf[A]
     }.toEither
+  
+  def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
+    f(a) == f(b)
 }

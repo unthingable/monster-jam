@@ -14,11 +14,13 @@ import java.util.EnumSet
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
   altNoteRow: SettableBooleanValue,
+  stepFollow: SettableBooleanValue,
   shiftGroup: SettableBooleanValue,
   shiftDpad: EnumSetting[JamSettings.DpadScroll],
   limitLevel: EnumSetting[JamSettings.LimitLevels],
   shiftPlay: EnumSetting[JamSettings.ShiftPlay],
   launchTolerance: SettableRangedValue,
+  launchLookahead: SettableRangedValue,
   debugOutput: SettableBooleanValue,
 )
 
@@ -84,11 +86,13 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Display", true),
         preferences.getBooleanSetting("Alternating note row colors", "Display: step sequencer", true),
+        preferences.getBooleanSetting("Step sequencer pattern follow", "Behavior", false),
         preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Behavior", true),
         EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Behavior", JamSettings.DpadScroll.`page/single`),
         EnumSetting(preferences, "Limit level sliders", "Behavior", JamSettings.LimitLevels.None),
         EnumSetting(preferences, "SHIFT+PLAY", "Behavior", JamSettings.ShiftPlay.`Pause/Resume`),
         preferences.getNumberSetting("Launch Q forgiveness", "Behaviour", 0, 1, 0.1, "beats", 0.5),
+        preferences.getNumberSetting("Launch Q lookahead", "Behaviour", 0, .5, 0.02, "beats", 0.1),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(
