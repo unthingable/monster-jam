@@ -1,7 +1,7 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue}
+import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue, Track}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.HB.action
 import com.github.unthingable.framework.binding.{
@@ -18,8 +18,9 @@ import com.github.unthingable.jam.Jam
 import com.github.unthingable.framework.binding.BindingDSL
 import java.time.Instant
 import com.github.unthingable.JamSettings
+import com.github.unthingable.Util
 
-trait TransportL extends BindingDSL { this: Jam =>
+trait TransportL extends BindingDSL, Util { this: Jam =>
   lazy val position = SimpleModeLayer(
     "position",
     Vector(
@@ -110,7 +111,7 @@ trait TransportL extends BindingDSL { this: Jam =>
         BB(tracked = false)
       ),
       SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
-      EB(j.record.st.press, "record pressed", () => ext.transport.record()),
+      EB(j.record.st.press, "record pressed", () => ext.transport.record(), BB(exclusive = false)),
       SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
       EB(
         j.auto.st.press,
@@ -196,8 +197,10 @@ trait TransportL extends BindingDSL { this: Jam =>
     name: String,
     modeButton: JamOnOffButton,
     group: Seq[JamRgbButton],
-    prop: Channel => SettableBooleanValue,
-    color: Int // Jam's color index
+    prop: Track => SettableBooleanValue,
+    color: Int, // Jam's color index
+    gateMode: GateMode = GateMode.Auto,
+    silent: Boolean = false
   ): ModeButtonLayer = ModeButtonLayer(
     name,
     modeButton,
@@ -223,11 +226,17 @@ trait TransportL extends BindingDSL { this: Jam =>
           JamColorState.empty
         )
       )
-    }
+    } ++ Vector(
+      EB(j.clear.st.press, "", () => superBank.view.map(prop).foreach(_.set(false)))
+    ),
+    gateMode = gateMode,
+    silent = silent
   )
 
   lazy val solo =
     buttonGroupChannelMode("solo", j.solo, j.groupButtons, _.solo(), JamColorBase.YELLOW)
   lazy val mute =
     buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
+  lazy val record =
+    buttonGroupChannelMode("record", j.record, j.groupButtons, _.arm(), JamColorBase.ORANGE, GateMode.Gate, true)
 }

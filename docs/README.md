@@ -66,6 +66,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 * **PLAY**: Start/Stop playback
 * **REC**: Toggle recording
+* **REC (hold)**: Arm tracks via track buttons
 * **SHIFT+PLAY** Restart or pause/continue (see **Settings**)
 * **SHIFT+RECORD**: Toggle launcher overdub
 * **SHIFT+PAGE LEFT**: Toggle the metronome

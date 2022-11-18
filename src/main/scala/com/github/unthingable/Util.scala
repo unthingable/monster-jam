@@ -2,7 +2,9 @@ package com.github.unthingable
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.{
+  Bank,
   CursorRemoteControlsPage,
+  ObjectProxy,
   Preferences,
   SettableBooleanValue,
   SettableEnumValue,
@@ -30,6 +32,7 @@ import java.io.ObjectOutputStream
 import scala.util.Try
 import java.nio.charset.StandardCharsets
 import scala.annotation.targetName
+import scala.collection.IndexedSeqView
 
 transparent trait Util {
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
@@ -43,6 +46,10 @@ transparent trait Util {
     Color.fromRGBA(color.getRed, color.getGreen, color.getBlue, color.getAlpha)
 
   case class Timed[A](value: A, instant: Instant)
+
+  extension [A <: ObjectProxy](bank: Bank[A])
+    def view: IndexedSeqView[A] =
+      (0 until bank.itemCount().get()).view.map(bank.getItemAt)
 }
 object Util extends Util {
   val EIGHT: Vector[Int] = (0 to 7).toVector
@@ -98,7 +105,7 @@ object Util extends Util {
       ois.close()
       obj.asInstanceOf[A]
     }.toEither
-  
+
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
     f(a) == f(b)
 }
