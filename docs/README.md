@@ -260,7 +260,7 @@ Velocity selector works with two different velocity values:
 
 Play notes and focus step editor.
 
-The 128 notes are divided in 8 pages of 16 (or fewer) notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Maschine), which one depends on which page the bottommost visible note falls into.
+The 128 notes are divided in 8 pages of 16 (or fewer) notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Machine), which one depends on which page the bottommost visible note falls into.
 
 Pressing a pad:
 * Plays the note
@@ -274,7 +274,7 @@ Currently playing notes will flash, letting you see activity outside of the visi
 
 **Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano (if your brain isn't hurting yet, this is opposite of how scenes work with clips). Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
 
-Seeing how the Drum Machine lays out its banks, in chromatic scale the first page is 4 notes while the rest are 16. This is a compromise where the page layout matches Drum Machines (but you cannot access the last page with Scene buttons because there are only 8 — can still scroll though). In non-chromatic mode all pages are 16 notes.
+Seeing how the Drum Machine lays out its banks, in chromatic scale the first page is 4 notes while the rest are 16. This is a compromise where the page layout matches Drum Machine's (but you cannot access the last page with Scene buttons because there are only 8 — can still scroll though). In non-chromatic mode all pages are 16 notes.
 
 Use note/page selectors together with knob scrolling for maximum nagivation.
 
@@ -353,7 +353,7 @@ You can quickly drop into a mode, do something and drop back out with no additio
 Some specific modes use an inverted variant of this behavior (long press leaves mode on).
 
 Some modes that are like this:
-* SOLO, MUTE, TEMPO
+* SOLO, MUTE, TEMPO, RECORD
 * User control pages
 * Control slice selectors
 * etc. — if you think it should be auto-gating it probably is, and if not then let me know.

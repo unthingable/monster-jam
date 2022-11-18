@@ -81,7 +81,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
 
     devices.itemCount().addValueObserver(v => Util.println(v.toString))
-    clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
+    // clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
     // clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
     // follow track selection
