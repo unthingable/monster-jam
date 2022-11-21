@@ -33,15 +33,14 @@ trait TrackTracker {
 /** Track ephemeral IDs as hashcodes of Track objects under proxies.
  * Unlike SmartTracker which was stable, UnsafeTracker does not preserve IDs between host restarts.
  */
-class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends TrackTracker {
+class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends TrackTracker, Util {
 
-  private val bankRange = 0 until bank.getCapacityOfBank()
   private type MRef = Ref[Option[Method]]
   private var idM: MRef = Ref(None)
   private var targetM: MRef = Ref(None)
 
-  bankRange
-    .map(bank.getItemAt)
+  bank
+    .fullView
     .zipWithIndex
     .foreach { case (t, idx) =>
       t.position().markInterested()
@@ -50,9 +49,18 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
   
   bank.itemCount().addValueObserver(_ =>
     // check for collisions
-    val hashes = bankRange.map(bank.getItemAt).flatMap(idForBankTrack)
+    val hashes = bank.view.flatMap(idForBankTrack).toVector
     if (hashes.distinct.size != hashes.size) // && ext.preferences.smartTracker.get())
       ext.host.showPopupNotification("Track ID hash collision detected, superscenes might not work")
+      val dups = hashes.zipWithIndex.map((id, idx) => 
+        val track = bank.getItemAt(idx)
+        Util.println(s"$idx $id ${track.name().get}")
+        (id, track)
+      ).groupBy(_._1)
+      .values.filter(_.length > 1)
+      // .tapEach(v => Util.println(v.toString()))
+      val names = dups.flatten.map(_._2.name().get()).toVector.distinct.mkString(",")
+      ext.host.showPopupNotification(s"Track ID hash collision: $names")      
   )
 
   val ids = mutable.ArraySeq.from(0 until bank.getCapacityOfBank())
@@ -68,7 +76,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
     else None
 
   override inline def getItemAt(id: TrackId): Option[Track] =
-    LazyList.from(bankRange).map(bank.getItemAt).find(t => trackId(t).contains(id))
+    bank.view.find(t => trackId(t).contains(id))
 
   // cache method references
   private def getOr(mref: MRef, method: => Option[Method]): Option[Method] =
@@ -88,7 +96,8 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
       idMethod: Method <- getOr(idM, 
         tObj.getClass().getMethods()
         .filter(_.getReturnType().equals(classOf[UUID]))
-        .headOption) // let's hope there is just one
+        // .tapEach(m => Util.println(s"$st $m"))
+        .lastOption) // we can only hope it's the right one, no way to know for sure
     } yield idMethod.invoke(tObj).asInstanceOf[UUID]
 
     val id = uid.map(_.hashCode())
@@ -97,9 +106,9 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
     id.map(TrackId.apply)
 
   inline def idList: Seq[Option[TrackId]] = 
-    LazyList.from(bankRange).map(idx => idForBankTrack(bank.getItemAt(idx)))
+    bank.view.map(idForBankTrack).toVector
   
   inline def idMap: Seq[(TrackId, Int)] = 
-    idList.zipWithIndex.map{case (a, b) => a.map((_, b))}.flatten
+    idList.zipWithIndex.map{(a, b) => a.map((_, b))}.flatten
 }
 

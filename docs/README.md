@@ -399,6 +399,14 @@ is entered, SuperScene will not be able to launch or stop it directly.
 If a group track containing SuperScene clips in its inner tracks was folded, 
 SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
 
+**NOTE**: SuperScenes are experimental and are built using undocumented implementation details of Bitwig API to derive unique track IDs. There is a chance things will randomly stop working with a new release.
+
+### ID collision warnings
+
+Due to experimental nature of the underlying track ID mechanism, MonsterJam monitors track IDs for uniqueness. If a duplicate ID is detected, a notification will pop up with the names of tracks.
+
+If this happens, try duplicating the offending track and deleting the original, and definitely let me know.
+
 ## Device Selector
 
 Note: there is currently a bug in the API that will cause Device Selector display to freak out when adding new devices. In the meantime, scroll the track bank back and forth to clear.

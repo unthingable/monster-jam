@@ -50,6 +50,9 @@ transparent trait Util {
   extension [A <: ObjectProxy](bank: Bank[A])
     def view: IndexedSeqView[A] =
       (0 until bank.itemCount().get()).view.map(bank.getItemAt)
+    
+    def fullView: IndexedSeqView[A] =
+      (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
 }
 object Util extends Util {
   val EIGHT: Vector[Int] = (0 to 7).toVector
