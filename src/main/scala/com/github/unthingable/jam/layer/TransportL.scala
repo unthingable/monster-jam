@@ -238,5 +238,5 @@ trait TransportL extends BindingDSL, Util { this: Jam =>
   lazy val mute =
     buttonGroupChannelMode("mute", j.mute, j.groupButtons, _.mute(), JamColorBase.ORANGE)
   lazy val record =
-    buttonGroupChannelMode("record", j.record, j.groupButtons, _.arm(), JamColorBase.ORANGE, GateMode.Gate, true)
+    buttonGroupChannelMode("record", j.record, j.groupButtons, _.arm(), JamColorBase.RED, GateMode.Gate, true)
 }
