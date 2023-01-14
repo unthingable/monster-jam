@@ -73,7 +73,17 @@ object state:
 
   inline def Noop = () => Vector.empty
 
-  case class PointStep(point: Point, step: NoteStep, pressed: Instant)
+  /**
+    * A step on the grid.
+    *
+    * @param point Grid location of the step
+    * @param _step is allowed to be by-name, created steps are not reported back immediately
+    * @param pressed Time when step was pressed on the sequencer grid
+    */
+  class PointStep(val point: Point, _step: => NoteStep, val pressed: Instant):
+    def step = _step
+  object PointStep:
+    def unapply(ps: PointStep) = Some((ps.point, ps.step, ps.pressed))
 
   case class StepState(steps: List[PointStep], noRelease: Boolean)
 

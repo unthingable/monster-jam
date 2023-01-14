@@ -57,7 +57,7 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
             case NSState.Empty | NSState.NoteSustain =>
               clip.setStep(ts.channel, X, Y, ts.velocity, ts.stepSize)
         StepState(List.empty, false)
-      case st => st.copy(steps = st.steps.filter(_._1 != Point(X, Y)))
+      case st => st.copy(steps = st.steps.filter(_.point != Point(X, Y)))
     localState.stepState.set(newState)
     // Util.println(stepState.toString())
 

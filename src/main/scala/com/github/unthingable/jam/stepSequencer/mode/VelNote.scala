@@ -15,6 +15,7 @@ import com.github.unthingable.framework.binding.Binding
 
 import com.bitwig.extension.api.Color
 import com.github.unthingable.Util
+import com.bitwig.extension.controller.api.NoteStep
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   lazy val velAndNote =
@@ -32,11 +33,14 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
       inline def velNote(vel: Int) = s"Step: velocity $vel"
 
+      /** Velocity of either a last pressed step or default */
       def getVelocity: Int =
         localState.stepState.get.steps.lastOption
+          .filter(_.step.state() != NoteStep.State.Empty)
           .map(s => (s.step.velocity() * 128).toInt)
           .getOrElse(ts.velocity)
 
+      /** Set default velocity */
       def setVelocity(vel: Int) =
         ext.host.showPopupNotification(velNote(vel)) // TODO consolidate
         val steps = localState.stepState.get.steps
@@ -51,6 +55,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
       def noteRelease(note: RealNote): Unit =
         selectedClipTrack.stopNote(note.value, ts.velocity)
+        Util.println(SeqState.toNoteName(note))
 
       val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn             = j.matrix(7 - row)(col)
@@ -65,13 +70,13 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
 
-      inline def pageOffset = ts.keyScaledOffset.asInstanceOf[Int] / 16
+      def pageOffset = ts.keyScaledOffset.asInstanceOf[Int] / 16
 
       val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
 
-        inline def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
-        inline def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
+        def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
+        def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
         def realNote             = ts.fromScale(scaledNote)
 
         Vector(

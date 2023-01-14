@@ -99,7 +99,8 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
         notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
-trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
+/** A collection of utility methods useful for working with sequencer steps */
+transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
   val gridHeight               = 128
   val gridWidth                = 64
   val fineRes                  = 128
@@ -114,6 +115,7 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
 
+  /** Overrideable function to handle state transformations */
   def onStepState(from: StepState, to: StepState): Unit
 
   def clipColor: Color =
