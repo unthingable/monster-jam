@@ -42,6 +42,8 @@ trait ClipMatrix { this: Jam =>
         clip.color().markInterested()
         clip.hasContent.markInterested()
         clip.isPlaying.markInterested()
+        clip.isRecording().markInterested()
+        clip.isRecordingQueued().markInterested()
         clip.isSelected.markInterested()
         clip.isPlaybackQueued.markInterested()
         clip.isStopQueued.markInterested()
@@ -144,13 +146,15 @@ trait ClipMatrix { this: Jam =>
         JamColorState(
           if (clip.hasContent.get())
             JamColorState.toColorIndex(clip.color().get())
+          else if clip.isRecordingQueued().get() then
+            JamColorBase.RED
           else
             JamColorBase.OFF,
           brightness =
             if (clip.isPlaying.get())
               if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
               else 3
-            else if (clip.isPlaybackQueued.get()) if (j.Mod.blink) 0 else 3
+            else if (clip.isPlaybackQueued.get() || clip.isRecordingQueued().get()) if (j.Mod.blink) 0 else 3
             else 0
         )
   }

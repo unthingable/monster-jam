@@ -32,19 +32,19 @@ object ButtonStateSupplier:
     btn.isPressed.markInterested()
     new ButtonStateSupplier {
       def isPressed: Boolean = btn.isPressed.get()
-      val press = WithSource(ButtonEvt.Press(id), source)
-      val release = WithSource(ButtonEvt.Release(id), source)
-      val pressedAction = btn.pressedAction
-      val releasedAction = btn.releasedAction
+      val press              = WithSource(ButtonEvt.Press(id), source)
+      val release            = WithSource(ButtonEvt.Release(id), source)
+      val pressedAction      = btn.pressedAction
+      val releasedAction     = btn.releasedAction
     }
   }
 
   def apply[S](source: S, btn: FakeButton): ButtonStateSupplier = new ButtonStateSupplier {
     def isPressed: Boolean = btn.isPressed
-    val press = WithSource(ButtonEvt.Press(btn.id), source)
-    val release = WithSource(ButtonEvt.Release(btn.id), source)
-    val pressedAction = btn.pressedAction
-    val releasedAction = btn.releasedAction
+    val press              = WithSource(ButtonEvt.Press(btn.id), source)
+    val release            = WithSource(ButtonEvt.Release(btn.id), source)
+    val pressedAction      = btn.pressedAction
+    val releasedAction     = btn.releasedAction
   }
 
 trait HasButton[A]:
@@ -53,13 +53,12 @@ trait HasButton[A]:
 trait HasButtonState:
   def st: ButtonStateSupplier
 
-sealed trait HasHwButton extends HasButton[HardwareButton] 
-trait HasFakeButton extends HasButton[FakeButton]
-
+sealed trait HasHwButton extends HasButton[HardwareButton]
+trait HasFakeButton      extends HasButton[FakeButton]
 
 sealed trait HasLight[L <: HardwareLight] { val light: L }
 type HasOnOffLight = HasLight[OnOffHardwareLight]
-type HasRgbLight = HasLight[MultiStateHardwareLight]
+type HasRgbLight   = HasLight[MultiStateHardwareLight]
 
 trait Info extends HasId { val info: MidiInfo; final val id: String = info.id }
 
@@ -68,9 +67,9 @@ object JamControl {
   /*  Wired hardware controls */
 
   import ActionDSL.action
-  inline def handle(id: String, e: RawButtonEvent)(using ext: MonsterJamExt): HardwareActionBindable = 
+  inline def handle(id: String, e: RawButtonEvent)(using ext: MonsterJamExt): HardwareActionBindable =
     action("", () => KeyMaster.eval(id, e).foreach(ext.events.eval(s"JamControl handle $id $e")(_)))
-      
+
   def button(info: MidiInfo)(implicit ext: MonsterJamExt): HardwareButton = {
     val button: HardwareButton = ext.hw.createHardwareButton(info.id)
 
@@ -88,8 +87,8 @@ object JamControl {
 
   def rgbLight(info: MidiInfo)(implicit ext: MonsterJamExt): MultiStateHardwareLight = {
     import JamColorState._
-    val light            : MultiStateHardwareLight = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
-    var updatedColorState: JamColorState           = JamColorState.empty
+    val light: MultiStateHardwareLight   = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
+    var updatedColorState: JamColorState = JamColorState.empty
 
     light.setColorToStateFunction(toState)
     light.state().onUpdateHardware { (state: JamColorState) =>
@@ -98,18 +97,18 @@ object JamControl {
     }
     light.state().setValue(JamColorState.empty)
 
-    def toState(color: Color): InternalHardwareLightState = JamColorState(toColorIndex(color), updatedColorState.brightness)
+    def toState(color: Color): InternalHardwareLightState =
+      JamColorState(toColorIndex(color), updatedColorState.brightness)
 
-    def sendColor(color: Int): Unit = {
+    def sendColor(color: Int): Unit =
       info.event match {
-        case CC(cc)     =>
-          //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
+        case CC(cc) =>
+          // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
           ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
         case Note(note) =>
-          //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
+          // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
           ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
       }
-    }
     light
   }
 
@@ -117,35 +116,33 @@ object JamControl {
     val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
     light.onUpdateHardware { () =>
       info.event match {
-        case CC(cc)     =>
-          //ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
+        case CC(cc) =>
+          // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
           ext.midiOut.sendMidi(
             ShortMidiMessage.CONTROL_CHANGE + info.channel,
             cc,
-            if (light.isOn.currentValue) 127 else 0)
+            if (light.isOn.currentValue) 127 else 0
+          )
         case Note(note) =>
-          //ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
-          ext.midiOut.sendMidi(
-            ShortMidiMessage.NOTE_ON + info.channel,
-            note,
-            if (light.isOn.currentValue) 127 else 0)
+          // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
+          ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, if (light.isOn.currentValue) 127 else 0)
       }
     }
     light.isOn.setValue(false)
     light
   }
 
-  def maybeLight(b: Any): Option[OnOffHardwareLight] = 
-    b match 
+  def maybeLight(b: Any): Option[OnOffHardwareLight] =
+    b match
       // let's assume that's the only one, it's a sealed trait after all
       case x: JamOnOffButton => Some(x.light)
-      case _ => None
+      case _                 => None
 }
 
 object JamButton {
   def infoActionMatchers(info: MidiInfo)(using ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
     info.event match {
-      case CC(cc)     =>
+      case CC(cc) =>
         (
           ext.midiIn.createCCActionMatcher(info.channel, cc, 127),
           ext.midiIn.createCCActionMatcher(info.channel, cc, 0)
@@ -164,15 +161,18 @@ object JamButton {
  * */
 
 abstract class JamButtonLight[L <: HardwareLight](id: String, btn: HardwareButton, light: L)
-  extends HasButtonState, HasLight[L], HasHwButton, HasId {
-    val st: ButtonStateSupplier = ButtonStateSupplier(this, id, btn)
-  }
+    extends HasButtonState,
+      HasLight[L],
+      HasHwButton,
+      HasId {
+  val st: ButtonStateSupplier = ButtonStateSupplier(this, id, btn)
+}
 
-case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight) 
-  extends JamButtonLight(id, btn, light)
+case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight)
+    extends JamButtonLight(id, btn, light)
 
-case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight) 
-  extends JamButtonLight(id, btn, light)
+case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight)
+    extends JamButtonLight(id, btn, light)
 
 class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(using ext: MonsterJamExt) {
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
@@ -186,12 +186,10 @@ class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(using ext: 
   slider.beginTouchAction().setActionMatcher(on)
   slider.endTouchAction().setActionMatcher(off)
 
-  def update(value: Int): Unit = {
-    //ext.host.println(s"updating slider ${slide} to $level")
+  def update(value: Int): Unit =
+    // ext.host.println(s"updating slider ${slide} to $level")
     ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + slide.channel, slide.event.value, value)
-  }
 
   // such speedup
   override def hashCode(): Int = touch.event.value
 }
-

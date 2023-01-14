@@ -15,6 +15,8 @@ object state:
   case class Scale(name: String, intervals: Set[Interval])(
     root: RealNote
   ): // notes in intervals from root, always 8 except chromatic
+
+    // "scaled note" is the index into fullScale
     protected[state] lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
     protected[state] lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
     protected[state] lazy val inverseMap: Map[RealNote, ScaledNote]   = fullScaleMap.map(_.swap)
@@ -73,7 +75,17 @@ object state:
 
   inline def Noop = () => Vector.empty
 
-  case class PointStep(point: Point, step: NoteStep, pressed: Instant)
+  /**
+    * A step on the grid.
+    *
+    * @param point Grid location of the step
+    * @param _step is allowed to be by-name, created steps are not reported back immediately
+    * @param pressed Time when step was pressed on the sequencer grid
+    */
+  class PointStep(val point: Point, _step: => NoteStep, val pressed: Instant):
+    def step = _step
+  object PointStep:
+    def unapply(ps: PointStep) = Some((ps.point, ps.step, ps.pressed))
 
   case class StepState(steps: List[PointStep], noRelease: Boolean)
 
@@ -81,16 +93,16 @@ object state:
     case Exp, Operator
 
   case class SeqState(
-    channel: Int,
-    velocity: Int,
-    stepSizeIdx: Int,
-    stepMode: StepMode,
-    stepScrollOffset: Int,
+    val channel: Int,
+    val velocity: Int,
+    val stepSizeIdx: Int,
+    val stepMode: StepMode,
+    val stepScrollOffset: Int,
     keyScaledOffset: ScaledNote, // BOTTOM of viewport
-    noteVelVisible: Boolean,
-    expMode: ExpMode,
-    scaleIdx: Int,
-    scaleRoot: RealNote // starts at 0
+    val noteVelVisible: Boolean,
+    val expMode: ExpMode,
+    val scaleIdx: Int,
+    val scaleRoot: RealNote // starts at 0
   ) extends Serializable:
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
@@ -115,7 +127,7 @@ object state:
     // bound y by allowable range given the current window and scale
     inline def guardYReal(y: RealNote): RealNote = y.max(0).min(127 - keyPageSize)
 
-    inline def guardYScaled(y: ScaledNote): ScaledNote = y.max(0).min(scale.fullScale.last.value - keyPageSize - 1)
+    inline def guardYScaled(y: ScaledNote): ScaledNote = y.max(0).min(scale.fullScale.size - keyPageSize)
 
     inline def fromScale(y: ScaledNote): RealNote = scale.fullScale(y.max(0).min(scale.fullScale.size - 1))
 

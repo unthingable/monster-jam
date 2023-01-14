@@ -122,7 +122,7 @@ class Jam(implicit val ext: MonsterJamExt)
     sceneCycle   -> top,
     bottom       -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
     bottom       -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
-    trackGroup   -> Exclusive(solo, mute),
+    trackGroup   -> Exclusive(solo, mute, record),
     bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer),
     bottom       -> stripGroup,
     bottom       -> Coexist(auxGate, deviceSelector, macroLayer),

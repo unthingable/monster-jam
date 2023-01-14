@@ -9,6 +9,7 @@ import com.bitwig.extension.controller.api.Setting
 import com.bitwig.extension.controller.api.Track
 
 import com.github.unthingable.Util
+import Util.trace
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.quant
@@ -99,7 +100,8 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
         notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
 }
 
-trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
+/** A collection of utility methods useful for working with sequencer steps */
+transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
   val gridHeight               = 128
   val gridWidth                = 64
   val fineRes                  = 128
@@ -114,6 +116,7 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
 
+  /** Overrideable function to handle state transformations */
   def onStepState(from: StepState, to: StepState): Unit
 
   def clipColor: Color =
@@ -129,7 +132,7 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
       // val offset = row * 8 + col // matrix grid scanned
       Some((
         offset % ts.stepPageSize,
-        ts.fromScale((ts.keyScaledOffset.asInstanceOf[Int] + (offset / ts.stepPageSize)).asInstanceOf[ScaledNote]).value
+        ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
       ))
 
   def setGrid(mode: StepMode): Unit =
@@ -144,7 +147,8 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
     // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
   inline def scrollYTo(y: ScaledNote) =
-    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
+    y.trace("unguarded")
+    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y).trace("guarded")))
 
   inline def scrollYBy(offset: Int) = // offset in scaled notes
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
@@ -162,8 +166,8 @@ trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer
 
   inline def canScrollY(dir: UpDown): Boolean =
     clip.exists.get() && (inline dir match
-      case UpDown.Up   => ts.scale.length - ts.keyScaledOffset.asInstanceOf[Int] > ts.stepViewPort.height
-      case UpDown.Down => ts.keyScaledOffset.asInstanceOf[Int] > 0
+      case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
+      case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
     )
 
   inline def setStepPage(page: Int) =
