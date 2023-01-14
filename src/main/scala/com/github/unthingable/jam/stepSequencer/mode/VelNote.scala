@@ -15,7 +15,10 @@ import com.github.unthingable.framework.binding.Binding
 
 import com.bitwig.extension.api.Color
 import com.github.unthingable.Util
+import Util.trace
 import com.bitwig.extension.controller.api.NoteStep
+
+import scala.collection.mutable
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   lazy val velAndNote =
@@ -29,6 +32,8 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       override def onDeactivate(): Unit =
         super.onDeactivate()
         setState(ts.copy(noteVelVisible = false))
+        playingNotes.foreach((_, n) => selectedClipTrack.stopNote(n.value, ts.velocity))
+        playingNotes.clear()
         // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
 
       inline def velNote(vel: Int) = s"Step: velocity $vel"
@@ -49,13 +54,25 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           setState(ts.copy(velocity = vel))
           selectedClipTrack.playNote(ts.fromScale(ts.keyScaledOffset).value, vel)
 
-      def notePress(note: ScaledNote): Unit =
-        scrollYTo(note)
-        selectedClipTrack.startNote(ts.fromScale(note).value, ts.velocity)
+      val playingNotes = mutable.Map.empty[Int, RealNote]
 
-      def noteRelease(note: RealNote): Unit =
-        selectedClipTrack.stopNote(note.value, ts.velocity)
-        Util.println(SeqState.toNoteName(note))
+      def notePress(idx: Int, note: ScaledNote): Unit =
+        if j.select.st.isPressed then scrollYTo(note)
+        else scrollYTo((note.asInstanceOf[Int] / ts.keyPageSize * ts.keyPageSize).asInstanceOf[ScaledNote])
+        
+        val realNote = ts.fromScale(note)
+        playingNotes.get(idx).foreach(n => selectedClipTrack.stopNote(n.value, ts.velocity))
+        playingNotes.update(idx, realNote)
+        selectedClipTrack.startNote(realNote.value, ts.velocity)
+
+      def noteRelease(idx: Int): Unit =
+        playingNotes
+          .get(idx)
+          .foreach(note =>
+            selectedClipTrack.stopNote(note.value, ts.velocity)
+            playingNotes.drop(idx)
+            Util.println(SeqState.toNoteName(note))
+          )
 
       val velBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn             = j.matrix(7 - row)(col)
@@ -70,12 +87,13 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
 
-      def pageOffset = ts.keyScaledOffset.asInstanceOf[Int] / 16
+      def pageOffset = notePageOffset(noteToPageIdx(ts.keyScaledOffset))
 
       val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
 
-        def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
+        val idx           = (3 - row) * 4 + col
+        def scaledNoteIdx = pageOffset.asInstanceOf[Int] + idx
         def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
         def realNote      = ts.fromScale(scaledNote)
 
@@ -83,7 +101,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           SupColorStateB(
             btn.light,
             () =>
-              if (realNote == ts.keyScrollOffsetGuarded)
+              if (scaledNote == ts.keyScrollOffsetGuarded)
                 JamColorState(Color.whiteColor(), 3)
               else if (ts.isNoteVisible(scaledNote))
                 JamColorState(Color.whiteColor(), 1)
@@ -93,15 +111,24 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
                   if (selectedClipTrack.playingNotes().isNotePlaying(realNote.value)) 3 else 0
                 )
           ),
-          EB(btn.st.press, "set note", () => notePress(scaledNote)),
-          EB(btn.st.release, "release note", () => noteRelease(realNote)),
+          EB(btn.st.press, "set note", () => notePress(idx, scaledNote)),
+          EB(btn.st.release, "release note", () => noteRelease(idx)),
         )
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
     }
 
   val pageOffsets = Vector(0, 4, 20, 36, 52, 68, 84, 100, 116, 132).map(_.asInstanceOf[ScaledNote]) // for chromatic
+
+  /** First note on page corresponding to number */
   def notePageOffset(idx: Int): ScaledNote =
     if ts.scale.isChromatic then pageOffsets(idx) else (idx * 16).asInstanceOf[ScaledNote]
+
+  /** Index of page containing note */
+  def noteToPageIdx(note: ScaledNote): Int =
+    if ts.scale.isChromatic then
+      val idx = pageOffsets.lastIndexWhere(_.asInstanceOf[Int] <= note.asInstanceOf[Int])
+      if idx > -1 then idx else pageOffsets.size - 1
+    else note.asInstanceOf[Int] / 16
 
   lazy val notePages =
     new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
