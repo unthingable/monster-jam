@@ -77,7 +77,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
         def scaledNoteIdx = pageOffset * 16 + (3 - row) * 4 + col
         def scaledNote    = scaledNoteIdx.asInstanceOf[ScaledNote]
-        def realNote             = ts.fromScale(scaledNote)
+        def realNote      = ts.fromScale(scaledNote)
 
         Vector(
           SupColorStateB(
@@ -100,16 +100,17 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     }
 
   val pageOffsets = Vector(0, 4, 20, 36, 52, 68, 84, 100, 116, 132).map(_.asInstanceOf[ScaledNote]) // for chromatic
-  def notePageOffset(idx: Int): ScaledNote = if ts.scale.isChromatic then pageOffsets(idx) else (idx * 16).asInstanceOf[ScaledNote]
-  
+  def notePageOffset(idx: Int): ScaledNote =
+    if ts.scale.isChromatic then pageOffsets(idx) else (idx * 16).asInstanceOf[ScaledNote]
+
   lazy val notePages =
     new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
-      inline def keyOffset: ScaledNote   = ts.keyScaledOffset
-      inline def hasContent(idx: Int) = 
-         val note = keyOffset.asInstanceOf[Int]
-         val pageOffset = notePageOffset(idx).asInstanceOf[Int]
-         // detect overlap
-         (note + 16 > pageOffset && note + 16 < pageOffset + 16) || (note < pageOffset + 16 && note > pageOffset)
+      inline def keyOffset: ScaledNote = ts.keyScaledOffset
+      inline def hasContent(idx: Int) =
+        val note       = keyOffset.asInstanceOf[Int]
+        val pageOffset = notePageOffset(idx).asInstanceOf[Int]
+        // detect overlap
+        (note + 16 > pageOffset && note + 16 < pageOffset + 16) || (note < pageOffset + 16 && note > pageOffset)
 
       override def modeBindings: Seq[Binding[?, ?, ?]] =
         j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
@@ -117,7 +118,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
             EB(
               btn.st.press,
               "",
-              () => scrollYTo((notePageOffset(idx)).asInstanceOf[ScaledNote])
+              () => scrollYTo(notePageOffset(idx).asInstanceOf[ScaledNote])
             ),
             SupColorStateB(
               btn.light,
