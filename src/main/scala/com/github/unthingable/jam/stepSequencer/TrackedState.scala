@@ -131,7 +131,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
       // val offset = row * 8 + col // matrix grid scanned
       Some((
         offset % ts.stepPageSize,
-        ts.fromScale((ts.keyScaledOffset.asInstanceOf[Int] + (offset / ts.stepPageSize)).asInstanceOf[ScaledNote]).value
+        ts.fromScale((ts.keyScaledOffset.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
       ))
 
   def setGrid(mode: StepMode): Unit =
