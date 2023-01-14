@@ -213,7 +213,7 @@ Scene button color guide:
 ### Pad matrix
 
 * Press empty step (dark button) to create a step
-* Press an existing step to clear
+* Press an existing step to clear (and release quickly)
 * Press and hold step to select it for editing (long press will not delete it)
 * **SHIFT+NOTES** to toggle alternating note row colors
 
@@ -257,27 +257,29 @@ Velocity selector works with two different velocity values:
 * Default velocity: newly entered note steps will use this
 * Velocity of a specific note step: hold one or more note steps, then you can see/edit its velocity via the selector. If multiple steps are held, it's the last pressed step that takes precedence, and adjustments are made to all of them simultaneously.
 
-### Note selector (WIP)
+### Note selector
 
 Play notes and focus step editor.
 
-The 128 notes are divided in 8 pages of 16 (or fewer) notes each. The note selector is always showing one of those pages (think of the Chain scroller in Drum Machine), which one depends on which page the bottommost visible note falls into.
+The lower right quadrant (numbered pads) correspond to 16 consecutive notes (in scale), starting with the bottom of the current note page (see below). The "bank" of white buttons are notes currently visible in the step grid.
 
 Pressing a pad:
 * Plays the note
-* Scrolls the step editor to that note (so that it's at the top row)
+* Scrolls the step editor to that note "bank" (hold SELECT to ignore banking and scroll to that note directly, or use encoder)
 
-The note selector button corresponding to the bottommost visible note is bright white. If more notes are visible in the step view, their buttons will be dim white. Note that because the step grid is laid out top-down vertically (high notes on top, low on bottom, matching the clip view in the app) and the note buttons are left-right and down-up (as labeled on the Jam), this can feel backwards.
+The note selector button corresponding to the bottommost visible note is bright white. If more notes are visible in the step view, their buttons will be dim white.
 
-Currently playing notes will flash, letting you see activity outside of the visible step grid.
+Currently playing non-white notes will flash, letting you see activity outside of the visible step grid.
 
 #### Note pages
 
-**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano (if your brain isn't hurting yet, this is opposite of how scenes work with clips). Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
+**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano. Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
 
 Seeing how the Drum Machine lays out its banks, in chromatic scale the first page is 4 notes while the rest are 16. This is a compromise where the page layout matches Drum Machine's (but you cannot access the last page with Scene buttons because there are only 8 — can still scroll though). In non-chromatic mode all pages are 16 notes.
 
 Use note/page selectors together with knob scrolling for maximum nagivation.
+
+Note: note page selector always displays pages for the full 8x8 grid, regardless of whether NOTES mode is active.
 
 ## Channel and Scale
 
@@ -509,6 +511,22 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b12
+(changelog since b9)
+### Features
+* Step: note selector jumps in banks
+* Hold REC to arm multiple tracks
+* Clear REC/MUTE/SOLO on all tracks with CLEAR
+* Clip queued for recording will flash red
+### Fixes
+* No more collision warnings that TrackTracker complained about
+* Adding new step would display wrong velocity in NOTES mode
+* Step sequencer was mapped to wrong notes and not aligned with note pads
+
+### Known issues
+* NOTES mode in sequencer does not reactivate automatically
+* After using TUNE, previous strip mode will not reactivate
 
 ## 8.0
 
