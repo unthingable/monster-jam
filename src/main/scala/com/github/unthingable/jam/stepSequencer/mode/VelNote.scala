@@ -52,14 +52,14 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
         else
           setState(ts.copy(velocity = vel))
-          selectedClipTrack.playNote(ts.fromScale(ts.keyScaledOffset).value, vel)
+          selectedClipTrack.playNote(ts.fromScale(ts.keyScrollOffsetGuarded).value, vel)
 
       val playingNotes = mutable.Map.empty[Int, RealNote]
 
       def notePress(idx: Int, note: ScaledNote): Unit =
         if j.select.st.isPressed then scrollYTo(note)
         else scrollYTo((note.asInstanceOf[Int] / ts.keyPageSize * ts.keyPageSize).asInstanceOf[ScaledNote])
-        
+
         val realNote = ts.fromScale(note)
         playingNotes.get(idx).foreach(n => selectedClipTrack.stopNote(n.value, ts.velocity))
         playingNotes.update(idx, realNote)
@@ -87,7 +87,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
 
-      def pageOffset = notePageOffset(noteToPageIdx(ts.keyScaledOffset))
+      def pageOffset = notePageOffset(noteToPageIdx(ts.keyScrollOffsetGuarded))
 
       val noteBindings = for (row <- 0 until 4; col <- 0 until 4) yield
         val btn = j.matrix(row + 4)(col + 4)
@@ -132,7 +132,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
   lazy val notePages =
     new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
-      inline def keyOffset: ScaledNote = ts.keyScaledOffset
+      inline def keyOffset: ScaledNote = ts.keyScrollOffsetGuarded
       inline def hasContent(idx: Int) =
         val note       = keyOffset.asInstanceOf[Int]
         val pageOffset = notePageOffset(idx).asInstanceOf[Int]
@@ -151,9 +151,10 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
               btn.light,
               () =>
                 (notePageOffset(idx) == keyOffset, hasContent(idx)) match
-                  case (true, _) => JamColorState(JamColorBase.WHITE, 2)
-                  case (_, true) => JamColorState(JamColorBase.WHITE, 0)
-                  case _         => JamColorState(JamColorBase.CYAN, 2)
+                  case (true, _)                                                => JamColorState(JamColorBase.WHITE, 2)
+                  case (_, true)                                                => JamColorState(JamColorBase.WHITE, 0)
+                  case _ if ts.scale.isChromatic || idx * 16 <= ts.scale.length => JamColorState(JamColorBase.CYAN, 2)
+                  case _                                                        => JamColorState.empty
             )
           )
         )

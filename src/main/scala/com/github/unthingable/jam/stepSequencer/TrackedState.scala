@@ -9,6 +9,7 @@ import com.bitwig.extension.controller.api.Setting
 import com.bitwig.extension.controller.api.Track
 
 import com.github.unthingable.Util
+import Util.trace
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.quant
@@ -131,7 +132,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
       // val offset = row * 8 + col // matrix grid scanned
       Some((
         offset % ts.stepPageSize,
-        ts.fromScale((ts.keyScaledOffset.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
+        ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
       ))
 
   def setGrid(mode: StepMode): Unit =
@@ -146,7 +147,8 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
   inline def scrollYTo(y: ScaledNote) =
-    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
+    y.trace("unguarded")
+    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y).trace("guarded")))
 
   inline def scrollYBy(offset: Int) = // offset in scaled notes
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
@@ -164,8 +166,8 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   inline def canScrollY(dir: UpDown): Boolean =
     clip.exists.get() && (inline dir match
-      case UpDown.Up   => ts.scale.length - ts.keyScaledOffset.asInstanceOf[Int] > ts.stepViewPort.height
-      case UpDown.Down => ts.keyScaledOffset.asInstanceOf[Int] > 0
+      case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
+      case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
     )
 
   inline def setStepPage(page: Int) =
