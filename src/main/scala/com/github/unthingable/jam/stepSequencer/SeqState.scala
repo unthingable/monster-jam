@@ -26,7 +26,7 @@ object state:
     lazy val length = fullScale.length
 
     def isInScale(note: RealNote): Boolean =
-      intervals.contains((root + note) % 12)
+      intervals.contains(java.lang.Math.floorMod(note - root, 12))
 
     def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
       (note + skip until 128).view.find(isInScale(_))
