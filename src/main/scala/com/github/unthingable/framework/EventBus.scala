@@ -65,7 +65,7 @@ class EventBus[BaseE] {
   inline def addSub[E <: BaseE](r: Reactor[E])(using ct: ClassTag[E]): Unit =
     getSub(ct.runtimeClass).addOne(r)
 
-  inline def rmSub[E <: BaseE](e: EvtMatcher[E], r: Reactor[E]): Unit =
+  inline def rmSub[E <: BaseE](e: EvtMatcher[E], r: Reactor[E])(using Util.SelfEqual[Reactor[E]]): Unit =
     getSub(e).filterInPlace(_ != r)
 
   def setSub[E <: BaseE](e: E, r: Reactor[E]): Unit =

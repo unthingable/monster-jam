@@ -27,6 +27,9 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     val newState: StepState =
       val step  = stepAt(x, y)
       val pstep = PointStep(Point(x, y), step, Instant.now())
+      // simple note preview
+      if !ext.transport.isPlaying().get() then
+        selectedClipTrack.playNote(y, ts.velocity)
       localState.stepState.get match
         case StepState(Nil, _) =>
           if (step.state == NSState.Empty)

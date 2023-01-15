@@ -4,16 +4,16 @@ import com.bitwig.extension.controller.api.{SettableEnumValue, Settings}
 
 object JamSettings {
 
-  enum ShowHide:
+  enum ShowHide derives CanEqual:
     case Show, Hide
 
-  enum LimitLevels:
+  enum LimitLevels derives CanEqual:
     case None, `0dB`, `-10dB`, Smart
 
-  enum DpadScroll:
+  enum DpadScroll derives CanEqual:
     case `single/page`, `page/single`
 
-  enum ShiftPlay:
+  enum ShiftPlay derives CanEqual:
     case Restart, `Pause/Resume`
 
   trait EnumSetting[E] {

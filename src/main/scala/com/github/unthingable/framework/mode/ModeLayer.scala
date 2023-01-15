@@ -44,7 +44,7 @@ import com.github.unthingable.framework.binding.EB
   *   active bindings for this mode
   */
 
-trait ModeLayer extends IntActivatedLayer, HasId {
+trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_, _, _]]
 
@@ -135,7 +135,7 @@ object SimpleModeLayer {
   }
 }
 
-enum GateMode:
+enum GateMode derives CanEqual:
   case Gate, // active only when mode button is pressed
     Toggle,
     Auto,       // toggle on momentary press, gate when held
@@ -219,7 +219,7 @@ object ModeButtonLayer {
   }
 }
 
-enum CycleMode:
+enum CycleMode derives CanEqual:
   // Cycle through each sublayer on modebutton press
   case Cycle
   // No cycling, select sublayers externally

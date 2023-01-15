@@ -161,7 +161,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
 
-  enum UpDown:
+  enum UpDown derives CanEqual:
     case Up, Down
 
   inline def canScrollY(dir: UpDown): Boolean =

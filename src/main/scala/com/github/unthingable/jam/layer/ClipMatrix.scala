@@ -14,6 +14,8 @@ import scala.collection.mutable
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.Util
 
+given Util.SelfEqual[ClipLauncherSlot] = CanEqual.derived
+
 trait ClipMatrix { this: Jam =>
   lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
     case class PressedAt(var value: Instant)

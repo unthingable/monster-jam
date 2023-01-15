@@ -7,6 +7,7 @@ import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB}
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.Util.SelfEqual
 
 import java.time.Instant
 
@@ -58,6 +59,8 @@ trait MacroL { this: Jam =>
         track.color().markInterested()
 
         var lastPress: Option[Timed[Track]] = None
+
+        given SelfEqual[Track] = CanEqual.derived
 
         def select(track: Track): Unit = {
           val now = Instant.now()

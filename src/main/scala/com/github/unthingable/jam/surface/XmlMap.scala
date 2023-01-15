@@ -47,6 +47,8 @@ case class XmlMap(e: Elem) {
 object XmlMap {
   val file = "Bitwig Studio ext.ncmj"
 
+  given Util.SelfEqual[PlatformType] = CanEqual.derived
+  
   def loadMap(host: ControllerHost): XmlMap = {
     val extDir = host.getPlatformType match {
       case PlatformType.WINDOWS =>

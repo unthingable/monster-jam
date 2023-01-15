@@ -12,7 +12,7 @@ import scala.collection.mutable.HashSet
 
 object Graph {
 
-  case class ModeNode(layer: ModeLayer) {
+  case class ModeNode(layer: ModeLayer) derives CanEqual {
     protected[Graph] var parent: Option[ModeNode]                    = None
     protected[Graph] var subParent: Option[ModeNode]                 = None
     protected[Graph] var subAncestor: Option[ModeNode]               = None

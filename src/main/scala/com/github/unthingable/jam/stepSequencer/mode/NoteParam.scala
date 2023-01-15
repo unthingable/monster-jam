@@ -19,6 +19,8 @@ import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.Clip
 import com.bitwig.extension.controller.api.NoteStep.State as NSState
 
+given Util.SelfEqual[NoteStep.State] = CanEqual.derived
+
 trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   object tune
       extends ModeButtonCycleLayer(

@@ -4,6 +4,7 @@ import com.github.unthingable.framework.quant
 import com.bitwig.extension.controller.api.NoteStep
 import java.time.Instant
 import scala.annotation.targetName
+import com.github.unthingable.Util
 
 object state:
   opaque type ScaledNote           = Int // note number in scale, scaled notes are always consecutive
@@ -11,6 +12,9 @@ object state:
   opaque type Interval <: RealNote = Int
   extension (n: RealNote) def value: Int                = n
   extension (s: Seq[RealNote]) def apply(i: ScaledNote) = s(i)
+
+  given Util.SelfEqual[ScaledNote] = CanEqual.derived
+  given Util.SelfEqual[RealNote] = CanEqual.derived
 
   case class Scale(name: String, intervals: Set[Interval])(
     root: RealNote
@@ -59,7 +63,7 @@ object state:
     "Chromatic"                 -> "111111111111",
   ).map((name, seq) => Scale(name, seq.toCharArray.zipWithIndex.filter(_._1 == '1').map(_._2).toSet))
 
-  enum StepMode(val keyRows: Int):
+  enum StepMode(val keyRows: Int) derives CanEqual:
     case One extends StepMode(1)
     case Two extends StepMode(2)
     // case OneFull extends StepMode(1)
@@ -71,7 +75,7 @@ object state:
     lazy val width  = colRight - colLeft
     lazy val size   = height * width
 
-  case class Point(x: Int, y: Int)
+  case class Point(x: Int, y: Int) derives CanEqual
 
   inline def Noop = () => Vector.empty
 
@@ -87,9 +91,9 @@ object state:
   object PointStep:
     def unapply(ps: PointStep) = Some((ps.point, ps.step, ps.pressed))
 
-  case class StepState(steps: List[PointStep], noRelease: Boolean)
+  case class StepState(steps: List[PointStep], noRelease: Boolean) derives CanEqual
 
-  enum ExpMode:
+  enum ExpMode derives CanEqual:
     case Exp, Operator
 
   case class SeqState(

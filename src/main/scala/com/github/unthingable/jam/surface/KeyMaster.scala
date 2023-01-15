@@ -19,15 +19,15 @@ object KeyMaster {
     val modifier: Seq[HasHwButton]
   }
 
-  enum RawButtonEvent:
+  enum RawButtonEvent derives CanEqual:
     case Press, Release
 
-  enum ComboEvent extends HwEvent:
+  enum ComboEvent extends HwEvent derives CanEqual:
     case Pressed(buttonId: String)     // all combo buttons pressed
     case ReleasedOne(buttonId: String) // combo no longer fully held
     case ReleasedAll(buttonId: String) // all combo buttons released
 
-  enum KeyType:
+  enum KeyType derives CanEqual:
     case Modifier, Normal
 
   case class JC(b: NamedButton, mods: NamedButton*)(using ext: MonsterJamExt)

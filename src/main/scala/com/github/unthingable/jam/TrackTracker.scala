@@ -35,6 +35,8 @@ trait TrackTracker {
  */
 class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends TrackTracker, Util {
 
+  given Util.SelfEqual[Option[Method]] = CanEqual.derived
+  
   private type MRef = Ref[Option[Method]]
   private var idM: MRef = Ref(None)
   private var targetM: MRef = Ref(None)

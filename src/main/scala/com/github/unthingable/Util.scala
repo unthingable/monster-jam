@@ -59,6 +59,8 @@ object Util extends Util {
 
   var println: String => Unit = null
 
+  type SelfEqual[A] = CanEqual[A, A]
+
   extension [A](obj: A)
     transparent inline def trace(): A =
       Util.println(obj.toString)
@@ -110,5 +112,6 @@ object Util extends Util {
     }.toEither
 
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
+    given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
 }
