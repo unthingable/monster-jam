@@ -19,22 +19,25 @@ import Util.trace
 import com.bitwig.extension.controller.api.NoteStep
 
 import scala.collection.mutable
+import com.github.unthingable.framework.mode.ModeLayer
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
+  def stepMain: ModeLayer
+
   lazy val velAndNote =
     new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
       selectedClipTrack.playingNotes().markInterested()
       override def onActivate(): Unit =
         super.onActivate()
         setState(ts.copy(noteVelVisible = true))
-        // state.stepViewPort.set(ViewPort(0, 0, 4, 8))
 
       override def onDeactivate(): Unit =
         super.onDeactivate()
-        setState(ts.copy(noteVelVisible = false))
+        // liveness hack: if stepMain is off, sequencer is being deactivated so preserve velNote state
+        if stepMain.isOn then
+          setState(ts.copy(noteVelVisible = false))
         playingNotes.foreach((_, n) => selectedClipTrack.stopNote(n.value, ts.velocity))
         playingNotes.clear()
-        // state.stepViewPort.set(ViewPort(0, 0, 8, 8))
 
       inline def velNote(vel: Int) = s"Step: velocity $vel"
 

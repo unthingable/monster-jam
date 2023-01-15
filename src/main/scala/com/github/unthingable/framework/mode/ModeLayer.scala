@@ -29,6 +29,9 @@ import com.github.unthingable.jam.surface.HasLight
 import com.github.unthingable.jam.surface.JamControl
 import com.github.unthingable.framework.binding.EB
 
+enum ModeState derives CanEqual:
+  case Inactive, Activating, Active, Deactivating
+
 /** A group of control bindings to specific host/app functions that plays well with other layers.
   *
   * A mode has two non-dormant states:
@@ -51,6 +54,16 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
   def silent: Boolean = false
 
   protected var activeAt: Option[Instant] = None
+
+  import ModeState.*
+  protected var modeState = (Inactive, Instant.now())
+
+  /** Current mode state, set externally by ModeGraph, read by mode implementations.
+   * For when mode needs to know when it's being activated or shut down.
+   * 
+   * This extends and somewhat duplicates activeAt inspection, that may be removed later.
+   */
+  def setModeState(st: ModeState) = modeState = (st, Instant.now())
 
   final inline def isOn: Boolean = activeAt.isDefined
 

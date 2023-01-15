@@ -308,7 +308,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     )
 
 
-    lazy val stepMain = SimpleModeLayer(
+    override lazy val stepMain = SimpleModeLayer(
       "stepMain",
       Vector(
         EB(j.Combo.Shift.notes.press, "", () => ext.preferences.altNoteRow.toggle())
@@ -344,8 +344,8 @@ trait StepSequencer extends BindingDSL { this: Jam =>
       //   ???
 
     override def subModesToActivate =
-      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ subModes.filter(
-        _.isOn
+      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ (subModes :+ velAndNote).filter(m =>
+        m.isOn || (m == velAndNote && ts.noteVelVisible)
       )).distinct
 
     override val modeBindings: Seq[Binding[_, _, _]] =
