@@ -7,7 +7,8 @@ import scala.annotation.targetName
 import com.github.unthingable.Util
 
 object state:
-  opaque type ScaledNote           = Int // note number in scale, scaled notes are always consecutive
+  /** Note number in scale (scaled notes are always consecutive) */
+  opaque type ScaledNote           = Int
   opaque type RealNote             = Int // what a clip expects
   opaque type Interval <: RealNote = Int
   extension (n: RealNote) def value: Int                = n
@@ -16,10 +17,16 @@ object state:
   given Util.SelfEqual[ScaledNote] = CanEqual.derived
   given Util.SelfEqual[RealNote] = CanEqual.derived
 
+  /**
+    * A scale.
+    *
+    * @param name
+    * @param intervals notes in intervals from root (here always 8 except chromatic)
+    * @param root
+    */
   case class Scale(name: String, intervals: Set[Interval])(
     root: RealNote
-  ): // notes in intervals from root, always 8 except chromatic
-
+  ):
     // "scaled note" is the index into fullScale
     protected[state] lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
     protected[state] lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
@@ -66,7 +73,6 @@ object state:
   enum StepMode(val keyRows: Int) derives CanEqual:
     case One extends StepMode(1)
     case Two extends StepMode(2)
-    // case OneFull extends StepMode(1)
     case Four  extends StepMode(4)
     case Eight extends StepMode(8)
 
@@ -80,7 +86,7 @@ object state:
   inline def Noop = () => Vector.empty
 
   /**
-    * A step on the grid.
+    * A step in the clip grid.
     *
     * @param point Grid location of the step
     * @param _step is allowed to be by-name, created steps are not reported back immediately
@@ -111,7 +117,7 @@ object state:
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
 
-    // how many notes are visible in the viewport
+    /** How many notes are visible in the viewport */
     lazy val keyPageSize: Int = (stepMode.keyRows / (stepViewPort.width / stepViewPort.height)).max(1)
 
     lazy val scale = scales(scaleIdx)(scaleRoot)
@@ -125,10 +131,10 @@ object state:
     @targetName("isScaledNoteVisible")
     inline def isNoteVisible(note: ScaledNote): Boolean = _isNoteVisible(note)
 
-    // how many steps are visible in the viewport (per note)
+    /** How many steps are visible in the viewport (per each note) */
     lazy val stepPageSize: Int = stepViewPort.size / keyPageSize
 
-    // bound y by allowable range given the current window and scale
+    /** Bound y by allowable range given the current window and scale */
     inline def guardYReal(y: RealNote): RealNote = y.max(0).min(127 - keyPageSize)
 
     inline def guardYScaled(y: ScaledNote): ScaledNote = y.max(0).min(scale.fullScale.size - keyPageSize)

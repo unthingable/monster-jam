@@ -33,17 +33,17 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
   stateStore.asInstanceOf[Setting].hide()
 
   ext.application.projectName().addValueObserver(_ => restoreState())
-  selectedClipTrack.position.addValueObserver(_ => updateState(selectedClipTrack))
+  selectedClipTrack.position.addValueObserver(_ => ext.host.scheduleTask(() => updateState(selectedClipTrack), 0))
 
-  def ts = _ts
+  /** SeqState for the current track */
+  def ts: SeqState = _ts
 
+  /** Serialize and save current sequencer states in project */
   def storeState(): Unit =
-    val data = Util.serialize(stateCache.toSeq)
-    // Util.println(
-    //   s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
-    // )
+    val data = Util.serialize(stateCache.toSeq.trace("Serializing data"))
     stateStore.set(data)
 
+  /** Deserialize and materialize sequencer states from project */
   def restoreState(): Unit =
     Util
       .deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
@@ -52,33 +52,34 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .map { e =>
         Util.println(s"Failed to deserialize step states: ${e}"); e
       }
-      // in case it saved weird
-      // .map(_.map((x, st) => (x, validateState(st))))
+      .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
         ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
       )
 
+  /** Update SeqState of the currently selected track and save it */
   def setState(st: SeqState) =
-    val old       = _ts
-    // val validated = validateState(st)
+    val old = _ts
     _ts = st
     tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
     storeState()
     echoStateDiff(old, st)
 
+  /** When switching to a new track, pull its SeqState from cache and make it current */
   def updateState(cursorTrack: Track): Unit =
     val st = tracker
       .trackId(selectedClipTrack)
+      .map(_.trace("track id"))
       .map(stateCache.getOrElseUpdate(_, SeqState.empty))
+      .map(_.trace(s"Update state for track ${cursorTrack.position().get}\n"))
       .getOrElse(SeqState.empty)
     echoStateDiff(ts, st)
     _ts = st
     // storeState()
 
-  // def validateState(newSt: SeqState): SeqState
-
+  /** Display appropriate notification when state changes */
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
@@ -112,6 +113,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   val devices: DeviceBank = selectedClipTrack.createDeviceBank(1)
   lazy val colorManager   = ColorManager(clipColor)
 
+  /** Local state doesn't need to be stored */
   object localState:
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
@@ -129,26 +131,26 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
       val offset = (port.rowTop + port.height - row) * port.width + (col - port.colLeft)
-      // val offset = row * 8 + col // matrix grid scanned
-      Some((
-        offset % ts.stepPageSize,
-        ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
-      ))
+      Some(
+        (
+          offset % ts.stepPageSize,
+          ts.fromScale(
+            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]
+          ).value
+        )
+      )
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
-    // ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
 
   def incStepSize(inc: Short): Unit =
     setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
     // should probably to this in onStepState
     clip.setStepSize(ts.stepSize)
     fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
-    // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
   inline def scrollYTo(y: ScaledNote) =
-    y.trace("unguarded")
-    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y).trace("guarded")))
+    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
 
   inline def scrollYBy(offset: Int) = // offset in scaled notes
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
