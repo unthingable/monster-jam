@@ -10,7 +10,7 @@ import java.lang.reflect.Method
 import com.github.unthingable.framework.Ref
 import java.util.UUID
 
-case class TrackId(value: Int) extends AnyVal
+case class TrackId(value: Int) extends AnyVal derives CanEqual
 
 trait TrackTracker {
   protected def bank: TrackBank
@@ -34,6 +34,8 @@ trait TrackTracker {
  * Unlike SmartTracker which was stable, UnsafeTracker does not preserve IDs between host restarts.
  */
 class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends TrackTracker, Util {
+
+  given Util.SelfEqual[Option[Method]] = CanEqual.derived
 
   private type MRef = Ref[Option[Method]]
   private var idM: MRef = Ref(None)

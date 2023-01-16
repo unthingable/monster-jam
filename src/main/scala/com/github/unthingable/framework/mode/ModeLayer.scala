@@ -29,6 +29,9 @@ import com.github.unthingable.jam.surface.HasLight
 import com.github.unthingable.jam.surface.JamControl
 import com.github.unthingable.framework.binding.EB
 
+enum ModeState derives CanEqual:
+  case Inactive, Activating, Active, Deactivating
+
 /** A group of control bindings to specific host/app functions that plays well with other layers.
   *
   * A mode has two non-dormant states:
@@ -44,13 +47,23 @@ import com.github.unthingable.framework.binding.EB
   *   active bindings for this mode
   */
 
-trait ModeLayer extends IntActivatedLayer, HasId {
+trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
   // all bindings when layer is active
   def modeBindings: Seq[Binding[_, _, _]]
 
   def silent: Boolean = false
 
   protected var activeAt: Option[Instant] = None
+
+  import ModeState.*
+  protected var modeState = (Inactive, Instant.now())
+
+  /** Current mode state, set externally by ModeGraph, read by mode implementations.
+   * For when mode needs to know when it's being activated or shut down.
+   * 
+   * This extends and somewhat duplicates activeAt inspection, that may be removed later.
+   */
+  def setModeState(st: ModeState) = modeState = (st, Instant.now())
 
   final inline def isOn: Boolean = activeAt.isDefined
 
@@ -135,7 +148,7 @@ object SimpleModeLayer {
   }
 }
 
-enum GateMode:
+enum GateMode derives CanEqual:
   case Gate, // active only when mode button is pressed
     Toggle,
     Auto,       // toggle on momentary press, gate when held
@@ -219,7 +232,7 @@ object ModeButtonLayer {
   }
 }
 
-enum CycleMode:
+enum CycleMode derives CanEqual:
   // Cycle through each sublayer on modebutton press
   case Cycle
   // No cycling, select sublayers externally

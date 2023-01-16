@@ -21,29 +21,37 @@ import com.github.unthingable.jam.stepSequencer.state.*
 import scala.collection.mutable
 import com.github.unthingable.framework.Watched
 
-trait TrackedState(val selectedClipTrack: CursorTrack)(using
+transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
 ) { this: ModeLayer =>
-  private var _ts        = SeqState.empty // track state
-  private val stateCache = mutable.HashMap.empty[TrackId, SeqState]
+  private var _ts                   = SeqState.empty(None) // track state
+  private var _tid: Option[TrackId] = None
+  private val stateCache            = mutable.HashMap.empty[TrackId, SeqState]
 
   private val bufferSize = 1024 * 1024
   private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
   stateStore.asInstanceOf[Setting].hide()
 
   ext.application.projectName().addValueObserver(_ => restoreState())
-  selectedClipTrack.position.addValueObserver(_ => updateState(selectedClipTrack))
+  selectedClipTrack.position.addValueObserver(pos =>
+    val tid = tracker.trackId(selectedClipTrack).map(_.trace(s"TrackedState: caching id for $pos"))
+    _tid = tid
+    updateState(tid)
+  )
 
-  def ts = _ts
+  /** SeqState for the current track */
+  def ts: SeqState = _ts
 
+  /** Handle SeqState change on the current track */
+  def onSeqState(oldSt: SeqState, newSt: SeqState): Unit
+
+  /** Serialize and save current sequencer states in project */
   def storeState(): Unit =
-    val data = Util.serialize(stateCache.toSeq)
-    // Util.println(
-    //   s"saving stepState: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
-    // )
+    val data = Util.serialize(stateCache.toSeq.trace("Serializing data"))
     stateStore.set(data)
 
+  /** Deserialize and materialize sequencer states from project (when switching) */
   def restoreState(): Unit =
     Util
       .deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
@@ -52,33 +60,39 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .map { e =>
         Util.println(s"Failed to deserialize step states: ${e}"); e
       }
-      // in case it saved weird
-      // .map(_.map((x, st) => (x, validateState(st))))
+      .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
-        ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
+        ext.host.scheduleTask(() => updateState(_tid), 30)
       )
 
-  def setState(st: SeqState) =
-    val old       = _ts
-    // val validated = validateState(st)
-    _ts = st
-    tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
-    storeState()
-    echoStateDiff(old, st)
+  /** Commit SeqState of the currently selected track and save it */
+  def setState(st: SeqState): Unit =
+    // protect against a state update coming in too late
+    if st.tid == _tid then
+      val old = _ts
+      _ts = st
+      _tid
+        .map(_.trace(s => s"setState for $s $st"))
+        .foreach(stateCache.update(_, st))
+      storeState()
+      echoStateDiff(old, st)
+    else st.trace(s"setState mismatch, tid is now $_tid")
 
-  def updateState(cursorTrack: Track): Unit =
-    val st = tracker
-      .trackId(selectedClipTrack)
-      .map(stateCache.getOrElseUpdate(_, SeqState.empty))
-      .getOrElse(SeqState.empty)
+  /** When switching to a new track, pull its SeqState from cache and make it current */
+  private def updateState(id: Option[TrackId]): Unit =
+    val st: SeqState = id
+      .map(tid => stateCache.getOrElseUpdate(tid, SeqState.empty(Some(tid))))
+      .getOrElse(SeqState.empty(None))
     echoStateDiff(ts, st)
+    onSeqState(ts, st)
     _ts = st
-    // storeState()
 
-  // def validateState(newSt: SeqState): SeqState
+  /** True if SeqState and current track are still in sync */
+  def isCurrent(ts: SeqState): Boolean = ts.tid == _tid
 
+  /** Display appropriate notification when state changes */
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
@@ -112,6 +126,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   val devices: DeviceBank = selectedClipTrack.createDeviceBank(1)
   lazy val colorManager   = ColorManager(clipColor)
 
+  /** Local state doesn't need to be stored */
   object localState:
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
@@ -129,26 +144,26 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
       val offset = (port.rowTop + port.height - row) * port.width + (col - port.colLeft)
-      // val offset = row * 8 + col // matrix grid scanned
-      Some((
-        offset % ts.stepPageSize,
-        ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]).value
-      ))
+      Some(
+        (
+          offset % ts.stepPageSize,
+          ts.fromScale(
+            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]
+          ).value
+        )
+      )
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
-    // ext.host.showPopupNotification(s"Step grid: ${ts.keyPageSize} x ${ts.stepPageSize}")
 
   def incStepSize(inc: Short): Unit =
     setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
     // should probably to this in onStepState
     clip.setStepSize(ts.stepSize)
     fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
-    // ext.host.showPopupNotification(s"Step size: ${ts.stepString}")
 
   inline def scrollYTo(y: ScaledNote) =
-    y.trace("unguarded")
-    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y).trace("guarded")))
+    setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
 
   inline def scrollYBy(offset: Int) = // offset in scaled notes
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
@@ -161,7 +176,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
 
-  enum UpDown:
+  enum UpDown derives CanEqual:
     case Up, Down
 
   inline def canScrollY(dir: UpDown): Boolean =

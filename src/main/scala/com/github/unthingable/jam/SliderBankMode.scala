@@ -24,7 +24,7 @@ import com.github.unthingable.jam.JamParameter.*
 case class PRange(min: Double, max: Double):
   val size = max - min
 
-sealed trait JamParameter
+sealed trait JamParameter derives CanEqual
 
 object JamParameter:
   sealed trait WithParam extends JamParameter:
@@ -381,7 +381,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
 }
 
 object SliderBankMode {
-  sealed trait Event
+  sealed trait Event derives CanEqual
   sealed trait ShiftEvent   extends Event
   sealed trait StripEvent   extends Event
   sealed trait PressEvent   extends Event
@@ -395,7 +395,7 @@ object SliderBankMode {
     case object ClearR extends StripEvent with ReleaseEvent
   }
 
-  enum State:
+  enum State derives CanEqual:
     case ShiftTracking, Normal
 
   trait Exists[-A]:

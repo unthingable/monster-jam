@@ -4,18 +4,30 @@ import com.github.unthingable.framework.quant
 import com.bitwig.extension.controller.api.NoteStep
 import java.time.Instant
 import scala.annotation.targetName
+import com.github.unthingable.Util
+import com.github.unthingable.jam.TrackId
 
 object state:
-  opaque type ScaledNote           = Int // note number in scale, scaled notes are always consecutive
+  /** Note number in scale (scaled notes are always consecutive) */
+  opaque type ScaledNote           = Int
   opaque type RealNote             = Int // what a clip expects
   opaque type Interval <: RealNote = Int
   extension (n: RealNote) def value: Int                = n
   extension (s: Seq[RealNote]) def apply(i: ScaledNote) = s(i)
 
+  given Util.SelfEqual[ScaledNote] = CanEqual.derived
+  given Util.SelfEqual[RealNote] = CanEqual.derived
+
+  /**
+    * A scale.
+    *
+    * @param name
+    * @param intervals notes in intervals from root (here always 8 except chromatic)
+    * @param root
+    */
   case class Scale(name: String, intervals: Set[Interval])(
     root: RealNote
-  ): // notes in intervals from root, always 8 except chromatic
-
+  ):
     // "scaled note" is the index into fullScale
     protected[state] lazy val fullScale: IndexedSeq[RealNote]         = (0 until 128).filter(isInScale(_))
     protected[state] lazy val fullScaleMap: Map[ScaledNote, RealNote] = fullScale.zipWithIndex.toMap
@@ -26,7 +38,7 @@ object state:
     lazy val length = fullScale.length
 
     def isInScale(note: RealNote): Boolean =
-      intervals.contains((root + note) % 12)
+      intervals.contains(java.lang.Math.floorMod(note - root, 12))
 
     def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
       (note + skip until 128).view.find(isInScale(_))
@@ -59,10 +71,9 @@ object state:
     "Chromatic"                 -> "111111111111",
   ).map((name, seq) => Scale(name, seq.toCharArray.zipWithIndex.filter(_._1 == '1').map(_._2).toSet))
 
-  enum StepMode(val keyRows: Int):
+  enum StepMode(val keyRows: Int) derives CanEqual:
     case One extends StepMode(1)
     case Two extends StepMode(2)
-    // case OneFull extends StepMode(1)
     case Four  extends StepMode(4)
     case Eight extends StepMode(8)
 
@@ -71,12 +82,12 @@ object state:
     lazy val width  = colRight - colLeft
     lazy val size   = height * width
 
-  case class Point(x: Int, y: Int)
+  case class Point(x: Int, y: Int) derives CanEqual
 
   inline def Noop = () => Vector.empty
 
   /**
-    * A step on the grid.
+    * A step in the clip grid.
     *
     * @param point Grid location of the step
     * @param _step is allowed to be by-name, created steps are not reported back immediately
@@ -87,12 +98,13 @@ object state:
   object PointStep:
     def unapply(ps: PointStep) = Some((ps.point, ps.step, ps.pressed))
 
-  case class StepState(steps: List[PointStep], noRelease: Boolean)
+  case class StepState(steps: List[PointStep], noRelease: Boolean) derives CanEqual
 
-  enum ExpMode:
+  enum ExpMode derives CanEqual:
     case Exp, Operator
 
   case class SeqState(
+    val tid: Option[TrackId],
     val channel: Int,
     val velocity: Int,
     val stepSizeIdx: Int,
@@ -107,7 +119,7 @@ object state:
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
 
-    // how many notes are visible in the viewport
+    /** How many notes are visible in the viewport */
     lazy val keyPageSize: Int = (stepMode.keyRows / (stepViewPort.width / stepViewPort.height)).max(1)
 
     lazy val scale = scales(scaleIdx)(scaleRoot)
@@ -121,10 +133,10 @@ object state:
     @targetName("isScaledNoteVisible")
     inline def isNoteVisible(note: ScaledNote): Boolean = _isNoteVisible(note)
 
-    // how many steps are visible in the viewport (per note)
+    /** How many steps are visible in the viewport (per each note) */
     lazy val stepPageSize: Int = stepViewPort.size / keyPageSize
 
-    // bound y by allowable range given the current window and scale
+    /** Bound y by allowable range given the current window and scale */
     inline def guardYReal(y: RealNote): RealNote = y.max(0).min(127 - keyPageSize)
 
     inline def guardYScaled(y: ScaledNote): ScaledNote = y.max(0).min(scale.fullScale.size - keyPageSize)
@@ -141,7 +153,8 @@ object state:
     lazy val stepString: String = quant.stepString(stepSizeIdx)
 
   object SeqState:
-    def empty: SeqState = SeqState(
+    def empty(tid: Option[TrackId] = None): SeqState = SeqState(
+      tid = tid,
       channel = 0,
       velocity = 100,
       stepSizeIdx = 5,

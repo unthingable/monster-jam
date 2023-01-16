@@ -12,7 +12,7 @@ object BlackSysexMagic {
 
   val zeroStrips = "f000210915004d5000010500000000000000000000000000000000f7"
 
-  case class BarMode(v: String) extends AnyVal
+  case class BarMode(v: String) extends AnyVal derives CanEqual
 
   object BarMode {
     val DUAL = BarMode("03")

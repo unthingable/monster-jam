@@ -243,6 +243,7 @@ case class EB[S](
   override val bindingSource: Event = ev
 
   override def clear(): Unit =
+    given Util.SelfEqual[Event => Unit] = CanEqual.derived
     ext.events.rmSub(ev, receiver)
     operatedAt = None
     isActive = false

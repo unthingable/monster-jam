@@ -12,7 +12,7 @@ import scala.collection.mutable.HashSet
 
 object Graph {
 
-  case class ModeNode(layer: ModeLayer) {
+  case class ModeNode(layer: ModeLayer) derives CanEqual {
     protected[Graph] var parent: Option[ModeNode]                    = None
     protected[Graph] var subParent: Option[ModeNode]                 = None
     protected[Graph] var subAncestor: Option[ModeNode]               = None
@@ -171,6 +171,7 @@ object Graph {
       layers.foreach(l => if isOcculted(l) then reactivate(l))
       
     protected def activate(reason: String)(node: ModeNode): Unit = {
+      node.layer.setModeState(ModeState.Activating)
       Util.println(s"activating node ${node.layer.id}: $reason")
 
       // Deactivate exclusive
@@ -241,13 +242,16 @@ object Graph {
       node.bumpingMe.clear()
       node.layer.onActivate()
 
+      node.layer.setModeState(ModeState.Active)
       Util.println(s"-- activated ${node.layer.id} ---")
     }
 
     protected def deactivate(reason: String)(node: ModeNode): Unit = {
+      node.layer.setModeState(ModeState.Deactivating)
       Util.println(s"deactivating node ${node.layer.id}: $reason")
       node.layer.onDeactivate()
       node.nodeBindings.foreach(ext.binder.unbind)
+      node.layer.setModeState(ModeState.Inactive)
       Util.println(s"-- deactivated ${node.layer.id} ---")
 
       def printBumpers(max: Int, cur: Int, node: ModeNode): String =

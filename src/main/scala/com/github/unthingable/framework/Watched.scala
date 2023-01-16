@@ -1,6 +1,7 @@
 package com.github.unthingable.framework
 
 import scala.collection.mutable
+import com.github.unthingable.Util.SelfEqual
 
 /** Yet another eventful value thingy. Can you have too many? Apparently not.
   *
@@ -9,7 +10,7 @@ import scala.collection.mutable
   * Allows subscribing to value changes, observer style. Somewhat duplicates EventBus functionality.
   */
 
-class Watched[A](val init: A, val onChange: (A, A) => Unit):
+class Watched[A: SelfEqual](val init: A, val onChange: (A, A) => Unit):
   private var _value: A = init
 
   inline def get: A = _value
@@ -21,11 +22,11 @@ class Watched[A](val init: A, val onChange: (A, A) => Unit):
 
   inline def update(f: A => A): Unit = set(f(_value))
 
-class Ref[A](init: A) extends Watched(init, (_, _) => ())
+class Ref[A: SelfEqual](init: A) extends Watched(init, (_, _) => ())
 
 /** Subscribable Ref, Parameter-style.
   */
-class RefSub[A](init: A) extends Ref[A](init):
+class RefSub[A: SelfEqual](init: A) extends Ref[A](init):
   private var listeners = mutable.ListBuffer.empty[A => Unit]
 
   def addValueObserver(f: A => Unit): Unit =

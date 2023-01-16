@@ -7,6 +7,9 @@ import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.JamSurface
+import com.github.unthingable.Util
+
+given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
 class ColorManager(clipColor: => Color)(using ext: MonsterJamExt) {
   import JamColorBase.*

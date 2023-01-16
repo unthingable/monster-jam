@@ -27,6 +27,11 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     val newState: StepState =
       val step  = stepAt(x, y)
       val pstep = PointStep(Point(x, y), step, Instant.now())
+
+      // simple note preview
+      if !ext.transport.isPlaying().get() && ext.preferences.stepNotePreview.get() then
+        selectedClipTrack.playNote(y, ts.velocity)
+
       localState.stepState.get match
         case StepState(Nil, _) =>
           if (step.state == NSState.Empty)
@@ -62,10 +67,6 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     // Util.println(stepState.toString())
 
   lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
-    // override def onActivate(): Unit =
-    //   super.onActivate()
-    // state.stepState.set(StepState(List.empty, false))
-
     override val modeBindings: Seq[Binding[_, _, _]] =
       (for (col <- EIGHT; row <- EIGHT) yield {
         // val (stepNum, x, y) = stepView(row, col)
