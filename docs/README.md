@@ -192,9 +192,9 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 * **KNOB (push turn)**: scroll steps left/right
 * **GRID**: activate grid selector
 * **SHIFT+SOLO**: activate pattern length selector
-* **NOTE**: activate Note/Velocity mode
+* **NOTES**: activate Note/Velocity mode
 * **TUNE**: adjust step parameters with sliders (see **Parameter adjustments**)
-* **PERFORM (hold)**: change current MIDI channel via the lower right pad matrix quadrant (WIP)
+* **PERFORM (hold)**: change current MIDI channel, scale
 
 The button grid is bottom-focused. Note mode will push the grid up. When using note pages, the first note in the page will be the bottom-most visible note on the grid.
 
@@ -239,15 +239,17 @@ The step sequencer matrix is a windowed view of a clip, showing up to 64 steps a
   * 4: 8 notes per 8 rows (1 row per note)
 * **KNOB**: change step size
 
-## Note/Velocity submode (WIP)
+## Note/Velocity submode
 
-* **NOTE**: activate note/velocity selectors
-* **NOTE (hold)**: display note page selectors (scene buttons)
-* **NOTE+scene**: select a note page (each page is 16 notes)
+* **NOTES**: activate note/velocity selectors
+* **NOTES (hold)**: display note page selectors (scene buttons)
+* **NOTES+scene**: select a note page (each page is 16 notes)
 
-When NOTE is on, the lower half of the pad matrix changes function and is solidly lit with the color of the clip. The mode itself is split in two:
+When NOTES is on, the lower half of the pad matrix changes function and is solidly lit with the color of the clip. The mode itself is split in two:
 * Left half: velocity selector
 * Right half (numbered pads): note selector
+
+NOTES mode is per track.
 
 ### Velocity selector
 
@@ -273,7 +275,7 @@ Currently playing non-white notes will flash, letting you see activity outside o
 
 #### Note pages
 
-**Press and hold NOTE** to see the page selector (SCENE buttons), higher notes are on the right like on a piano. Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
+**Press and hold NOTES** to see the page selector (SCENE buttons), higher notes are on the right like on a piano. Unlike Note selector that is fixed to a page, page selector will indicate if current note window straddles two pages, pages with visible content will be in dim white. Pressing a button always scrolls bottom note row to the bottom of that page. If the grid is aligned exactly to the beginning of a page, its page button will be bright white.
 
 Seeing how the Drum Machine lays out its banks, in chromatic scale the first page is 4 notes while the rest are 16. This is a compromise where the page layout matches Drum Machine's (but you cannot access the last page with Scene buttons because there are only 8 — can still scroll though). In non-chromatic mode all pages are 16 notes.
 
@@ -490,6 +492,7 @@ The 64 controls are grouped in 8 pages. To select a page use the track buttons, 
 will change the colors of the top row of the clip matrix buttons to indicate that they are special.
 * **Step sequencer: Alternating row colors**: in step sequencer, each note row gets a different color
 * **Behavior: Step sequencer pattern follow**: active step sequencer pattern page will automatically follow playing position
+* **Behavior: Step sequencer note preview**: pressing steps in sequencer will play corresponding notes
 * **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
 * **DPAD scroll (regular/SHIFT)**: Flip **DPAD** function with and without **SHIFT**: arrows scroll by page/SHIFT-arrow by single row, or vice versa.
 * **Limit level sliders**: slider range when controlling track levels
@@ -511,6 +514,15 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b13
+### Features
+* Step: note preview + setting. Pressing any step in step sequencer will play that note.
+* Step: NOTES mode now restores automatically and reliably, per track
+
+### Fixes
+* All scales are now correct, not just C
+* It was possible for sequencer state to save on the wrong track, now much more robust
 
 ## 8.0b12
 (changelog since b9)
