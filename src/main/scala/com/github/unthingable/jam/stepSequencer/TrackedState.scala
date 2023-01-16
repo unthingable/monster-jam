@@ -25,25 +25,33 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
 ) { this: ModeLayer =>
-  private var _ts        = SeqState.empty // track state
-  private val stateCache = mutable.HashMap.empty[TrackId, SeqState]
+  private var _ts                   = SeqState.empty(None) // track state
+  private var _tid: Option[TrackId] = None
+  private val stateCache            = mutable.HashMap.empty[TrackId, SeqState]
 
   private val bufferSize = 1024 * 1024
   private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
   stateStore.asInstanceOf[Setting].hide()
 
   ext.application.projectName().addValueObserver(_ => restoreState())
-  selectedClipTrack.position.addValueObserver(_ => ext.host.scheduleTask(() => updateState(selectedClipTrack), 0))
+  selectedClipTrack.position.addValueObserver(pos =>
+    val tid = tracker.trackId(selectedClipTrack).map(_.trace(s"TrackedState: caching id for $pos"))
+    _tid = tid
+    updateState(tid)
+  )
 
   /** SeqState for the current track */
   def ts: SeqState = _ts
+
+  /** Handle SeqState change on the current track */
+  def onSeqState(oldSt: SeqState, newSt: SeqState): Unit
 
   /** Serialize and save current sequencer states in project */
   def storeState(): Unit =
     val data = Util.serialize(stateCache.toSeq.trace("Serializing data"))
     stateStore.set(data)
 
-  /** Deserialize and materialize sequencer states from project */
+  /** Deserialize and materialize sequencer states from project (when switching) */
   def restoreState(): Unit =
     Util
       .deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
@@ -56,28 +64,34 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(data)
-        ext.host.scheduleTask(() => updateState(ext.cursorTrack), 30)
+        ext.host.scheduleTask(() => updateState(_tid), 30)
       )
 
-  /** Update SeqState of the currently selected track and save it */
-  def setState(st: SeqState) =
-    val old = _ts
-    _ts = st
-    tracker.trackId(selectedClipTrack).foreach(stateCache.update(_, st))
-    storeState()
-    echoStateDiff(old, st)
+  /** Commit SeqState of the currently selected track and save it */
+  def setState(st: SeqState): Unit =
+    // protect against a state update coming in too late
+    if st.tid == _tid then
+      val old = _ts
+      _ts = st
+      _tid
+        .map(_.trace(s => s"setState for $s $st"))
+        .foreach(stateCache.update(_, st))
+      storeState()
+      echoStateDiff(old, st)
+    else st.trace(s"setState mismatch, tid is now $_tid")
 
   /** When switching to a new track, pull its SeqState from cache and make it current */
-  def updateState(cursorTrack: Track): Unit =
-    val st = tracker
-      .trackId(selectedClipTrack)
-      .map(_.trace("track id"))
-      .map(stateCache.getOrElseUpdate(_, SeqState.empty))
-      .map(_.trace(s"Update state for track ${cursorTrack.position().get}\n"))
-      .getOrElse(SeqState.empty)
+  private def updateState(id: Option[TrackId]): Unit =
+    val st: SeqState = id
+      .map(tid => stateCache.getOrElseUpdate(tid, SeqState.empty(Some(tid))))
+      .getOrElse(SeqState.empty(None))
     echoStateDiff(ts, st)
+    onSeqState(ts, st)
     _ts = st
     // storeState()
+
+  /** True if SeqState and current track are still in sync */
+  def isCurrent(ts: SeqState): Boolean = ts.tid == _tid
 
   /** Display appropriate notification when state changes */
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =

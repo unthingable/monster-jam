@@ -5,6 +5,7 @@ import com.bitwig.extension.controller.api.NoteStep
 import java.time.Instant
 import scala.annotation.targetName
 import com.github.unthingable.Util
+import com.github.unthingable.jam.TrackId
 
 object state:
   /** Note number in scale (scaled notes are always consecutive) */
@@ -103,6 +104,7 @@ object state:
     case Exp, Operator
 
   case class SeqState(
+    val tid: Option[TrackId],
     val channel: Int,
     val velocity: Int,
     val stepSizeIdx: Int,
@@ -151,7 +153,8 @@ object state:
     lazy val stepString: String = quant.stepString(stepSizeIdx)
 
   object SeqState:
-    def empty: SeqState = SeqState(
+    def empty(tid: Option[TrackId] = None): SeqState = SeqState(
+      tid = tid,
       channel = 0,
       velocity = 100,
       stepSizeIdx = 5,

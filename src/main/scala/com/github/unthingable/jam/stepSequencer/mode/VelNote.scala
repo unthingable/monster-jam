@@ -29,13 +29,12 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       selectedClipTrack.playingNotes().markInterested()
       override def onActivate(): Unit =
         super.onActivate()
-        setState(ts.copy(noteVelVisible = true))
+        if isCurrent(ts) then setState(ts.copy(noteVelVisible = true))
 
       override def onDeactivate(): Unit =
         super.onDeactivate()
         // liveness hack: if stepMain is off, sequencer is being deactivated so preserve velNote state
-        if stepMain.isOn then
-          setState(ts.copy(noteVelVisible = false))
+        if stepMain.isOn && isCurrent(ts) then setState(ts.copy(noteVelVisible = false))
         playingNotes.foreach((_, n) => selectedClipTrack.stopNote(n.value, ts.velocity))
         playingNotes.clear()
 

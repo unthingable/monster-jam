@@ -59,8 +59,10 @@ import com.bitwig.extension.controller.api.Clip
 import java.time.Instant
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
+import com.github.unthingable.framework.mode.ModeState
 
-trait StepSequencer extends BindingDSL { this: Jam =>
+trait StepSequencer extends BindingDSL:
+  this: Jam =>
   val stepModeMap = Map(
     0 -> StepMode.One,
     1 -> StepMode.Two,
@@ -72,9 +74,15 @@ trait StepSequencer extends BindingDSL { this: Jam =>
   // Large submodes live in separate files, small ones live here
   trait StepModes extends TrackedState, ModeLayer, StepMatrix, VelNote, NoteParam
 
-  object stepSequencer extends ModeCycleLayer("STEP"), ListeningLayer, TrackedState(selectedClipTrack), StepCap, StepModes {
+  object stepSequencer
+      extends ModeCycleLayer("STEP"),
+        ListeningLayer,
+        TrackedState(selectedClipTrack),
+        StepCap,
+        StepModes:
 
     // a mirror of the bitwig clip, channel / x / y
+
     val steps =
       ArraySeq.fill(16)(ArraySeq.fill(gridWidth)(ArraySeq.fill(gridHeight)(null: NoteStep)))
 
@@ -131,13 +139,14 @@ trait StepSequencer extends BindingDSL { this: Jam =>
     // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
     // page follower
-    clip.playingStep().addValueObserver(step =>
-      if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
-        val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
-        val playingPage: Int = step / ts.stepPageSize
-        if currentPage != playingPage then
-          setStepPage(playingPage)
-    )
+    clip
+      .playingStep()
+      .addValueObserver(step =>
+        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
+          val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
+          val playingPage: Int = step / ts.stepPageSize
+          if currentPage != playingPage then setStepPage(playingPage)
+      )
 
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
@@ -253,13 +262,13 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
       // note buttons
       val noteMatrix = Vector(
-        Vector(0,2,4,0,7,9,11,0),
-        Vector(1,3,5,6,8,10,12,0),
+        Vector(0, 2, 4, 0, 7, 9, 11, 0),
+        Vector(1, 3, 5, 6, 8, 10, 12, 0),
       )
 
       val rootBindings =
         (for (row <- 0 to 1; col <- EIGHT) yield
-          val btn = j.matrix(row)(col)
+          val btn     = j.matrix(row)(col)
           val noteIdx = (noteMatrix(row)(col) - 1).asInstanceOf[RealNote]
           if noteIdx == -1.asInstanceOf[RealNote] then
             Vector(
@@ -268,30 +277,37 @@ trait StepSequencer extends BindingDSL { this: Jam =>
             )
           else
             Vector(
-              SupColorStateB(btn.light, () => JamColorState(
-                if ts.scaleRoot == noteIdx then JamColorBase.BLUE else JamColorBase.CYAN,
-                2
-              )),
+              SupColorStateB(
+                btn.light,
+                () =>
+                  JamColorState(
+                    if ts.scaleRoot == noteIdx then JamColorBase.BLUE else JamColorBase.CYAN,
+                    2
+                  )
+              ),
               EB(btn.st.press, "", () => setState(ts.copy(scaleRoot = noteIdx)))
             )
         ).flatten
 
       val scaleBindings =
         (for (row <- 2 to 3; col <- EIGHT) yield
-          val btn = j.matrix(row)(col)
+          val btn      = j.matrix(row)(col)
           val scaleIdx = (row - 2) * 8 + col
           Vector(
-            SupColorStateB(btn.light, () => JamColorState(
-              JamColorBase.FUCHSIA,
-              if ts.scaleIdx == scaleIdx then 3 else 1
-            )),
+            SupColorStateB(
+              btn.light,
+              () =>
+                JamColorState(
+                  JamColorBase.FUCHSIA,
+                  if ts.scaleIdx == scaleIdx then 3 else 1
+                )
+            ),
             EB(btn.st.press, "", () => setState(ts.copy(scaleIdx = scaleIdx)))
           )
         ).flatten
-        
+
       override def modeBindings = chanBindings ++ rootBindings ++ scaleBindings
     }
-
 
     lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
@@ -306,7 +322,6 @@ trait StepSequencer extends BindingDSL { this: Jam =>
         SupBooleanB(j.dpad.right.light.isOn, clip.canScrollStepsForwards()),
       )
     )
-
 
     override lazy val stepMain = SimpleModeLayer(
       "stepMain",
@@ -338,8 +353,7 @@ trait StepSequencer extends BindingDSL { this: Jam =>
 
     override def onStepState(from: StepState, to: StepState): Unit =
       val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
-      if tune.isOn && stateDiff(_.steps.map(_.step)) then
-        tune.setCurrentSteps(to.steps.map(_.step))
+      if tune.isOn && stateDiff(_.steps.map(_.step)) then tune.setCurrentSteps(to.steps.map(_.step))
       // if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
       //   ???
 
@@ -383,8 +397,16 @@ trait StepSequencer extends BindingDSL { this: Jam =>
           case Some(foundClip) =>
             clip.selectClip(foundClip)
             clip.clipLauncherSlot().select()
-  }
-}
+
+    override def onSeqState(oldSt: SeqState, newSt: SeqState): Unit =
+      if modeState._1 == ModeState.Active then
+        (newSt.noteVelVisible, velAndNote.isOn) match
+          case (true, false) => ext.events.eval("sync track SeqState")(velAndNote.activateEvent*)
+          case (false, true) => ext.events.eval("sync track SeqState")(velAndNote.deactivateEvent*)
+          case _             => ()
+
+  end stepSequencer
+end StepSequencer
 
 /* todos and ideas
 [x] store grid settings per track
