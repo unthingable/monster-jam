@@ -21,7 +21,7 @@ import com.github.unthingable.jam.stepSequencer.state.*
 import scala.collection.mutable
 import com.github.unthingable.framework.Watched
 
-trait TrackedState(val selectedClipTrack: CursorTrack)(using
+transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
 ) { this: ModeLayer =>
@@ -88,7 +88,6 @@ trait TrackedState(val selectedClipTrack: CursorTrack)(using
     echoStateDiff(ts, st)
     onSeqState(ts, st)
     _ts = st
-    // storeState()
 
   /** True if SeqState and current track are still in sync */
   def isCurrent(ts: SeqState): Boolean = ts.tid == _tid
