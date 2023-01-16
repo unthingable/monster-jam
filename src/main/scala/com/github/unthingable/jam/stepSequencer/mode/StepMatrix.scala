@@ -8,7 +8,7 @@ import com.github.unthingable.jam.stepSequencer.state.Point
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.Util.EIGHT
+import com.github.unthingable.Util.{EIGHT, trace}
 import com.github.unthingable.framework.binding.SupColorStateB
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.jam.surface.JamSurface

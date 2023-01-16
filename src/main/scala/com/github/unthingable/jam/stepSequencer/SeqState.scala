@@ -16,13 +16,13 @@ object state:
   extension (s: Seq[RealNote]) def apply(i: ScaledNote) = s(i)
 
   given Util.SelfEqual[ScaledNote] = CanEqual.derived
-  given Util.SelfEqual[RealNote] = CanEqual.derived
+  given Util.SelfEqual[RealNote]   = CanEqual.derived
 
-  /**
-    * A scale.
+  /** A scale.
     *
     * @param name
-    * @param intervals notes in intervals from root (here always 8 except chromatic)
+    * @param intervals
+    *   notes in intervals from root (here always 8 except chromatic)
     * @param root
     */
   case class Scale(name: String, intervals: Set[Interval])(
@@ -51,6 +51,7 @@ object state:
 
     inline def notesRemainingDown(note: RealNote): Option[Int] =
       prevInScale(note).flatMap(inverseMap.get)
+  end Scale
 
   val scales: Vector[RealNote => Scale] = Vector(
     "Natural Minor"             -> "101101011010",
@@ -72,8 +73,8 @@ object state:
   ).map((name, seq) => Scale(name, seq.toCharArray.zipWithIndex.filter(_._1 == '1').map(_._2).toSet))
 
   enum StepMode(val keyRows: Int) derives CanEqual:
-    case One extends StepMode(1)
-    case Two extends StepMode(2)
+    case One   extends StepMode(1)
+    case Two   extends StepMode(2)
     case Four  extends StepMode(4)
     case Eight extends StepMode(8)
 
@@ -86,12 +87,14 @@ object state:
 
   inline def Noop = () => Vector.empty
 
-  /**
-    * A step in the clip grid.
+  /** A step in the clip grid.
     *
-    * @param point Grid location of the step
-    * @param _step is allowed to be by-name, created steps are not reported back immediately
-    * @param pressed Time when step was pressed on the sequencer grid
+    * @param point
+    *   Grid location of the step
+    * @param _step
+    *   is allowed to be by-name, created steps are not reported back immediately
+    * @param pressed
+    *   Time when step was pressed on the sequencer grid
     */
   class PointStep(val point: Point, _step: => NoteStep, val pressed: Instant):
     def step = _step
@@ -151,6 +154,7 @@ object state:
     lazy val stepSize: Double = quant.stepSize(stepSizeIdx)
 
     lazy val stepString: String = quant.stepString(stepSizeIdx)
+  end SeqState
 
   object SeqState:
     def empty(tid: Option[TrackId] = None): SeqState = SeqState(
@@ -175,3 +179,5 @@ object state:
 
     def toNoteNameNoOct(note: RealNote): String =
       NoteName.values(note % 12).toString
+  end SeqState
+end state
