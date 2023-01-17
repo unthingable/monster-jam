@@ -35,7 +35,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
 
   ext.application.projectName().addValueObserver(_ => restoreState())
   selectedClipTrack.position.addValueObserver(pos =>
-    val tid = tracker.trackId(selectedClipTrack).map(_.trace(s"TrackedState: caching id for $pos"))
+    val tid = tracker.trackId(selectedClipTrack).trace(s"TrackedState: caching id for $pos")
     _tid = tid
     updateState(tid)
   )
@@ -57,9 +57,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .deserialize[Seq[(TrackId, SeqState)]](stateStore.get())
       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
       .left
-      .map { e =>
-        Util.println(s"Failed to deserialize step states: ${e}"); e
-      }
+      .map(_.trace("Failed to deserialize step states:"))
       .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
@@ -98,7 +96,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
     // can't show multiple notifications at once, oh well
     val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
     val notify    = ext.host.showPopupNotification
-    if (isOn)
+    if isOn then
       if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
           newSt.keyScaledOffset +: (
@@ -143,12 +141,15 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     val port = ts.stepViewPort
     if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
-      val offset = (port.rowTop + port.height - row) * port.width + (col - port.colLeft)
+      val offsetRow = row - port.rowTop
+      val offsetCol = col - port.colLeft
+      val offset    = offsetRow * port.width + offsetCol // unrolled sequence
       Some(
         (
           offset % ts.stepPageSize,
           ts.fromScale(
-            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (offset / ts.stepPageSize) - 1).asInstanceOf[ScaledNote]
+            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (ts.keyPageSize - offset / ts.stepPageSize) - 1)
+              .asInstanceOf[ScaledNote]
           ).value
         )
       )

@@ -153,7 +153,8 @@ enum GateMode derives CanEqual:
     Toggle,
     Auto,       // toggle on momentary press, gate when held
     OneWay,     // pressing turns mode on
-    AutoInverse // toggle on momentary press, ignore release after long press
+    AutoInverse, // toggle on momentary press, ignore release after long press
+    SmartRelease // toggle momentary, momentary when operated
 
 trait ModeButtonLayer(
   val id: String,
@@ -190,6 +191,9 @@ trait ModeButtonLayer(
           case OneWay =>
             noRelease = true
             if (!isOn) activateEvent else Vector.empty
+          case SmartRelease => 
+            noRelease = false
+            Vector.empty
       }, // bb = BB(exclusive = false)
     ),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
@@ -200,17 +204,19 @@ trait ModeButtonLayer(
     inline def operated         = modeBindings.hasOperatedAfter(pressedAt)
     inline def isAlreadyOn      = activeAt.map(pressedAt.isAfter).getOrElse(false)
 
-    if (!isOn || noRelease) Vector.empty
+    if noRelease then Vector.empty
     else
       gateMode match {
-        case Gate => deactivateEvent
-        case Auto =>
+        case Gate if isOn => deactivateEvent
+        case Auto if isOn =>
           if (isHeldLongEnough || isAlreadyOn || operated)
             deactivateEvent
           else
             Vector.empty
-        case AutoInverse =>
+        case AutoInverse if isOn =>
           if (isHeldLongEnough || operated) Vector.empty else deactivateEvent
+        case SmartRelease => 
+          if (isHeldLongEnough || operated) Vector.empty else toggleEvent
         case _ => Vector.empty
       }
 }
