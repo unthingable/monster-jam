@@ -1,15 +1,7 @@
 package com.github.unthingable.framework.binding
 
-import com.bitwig.extension.callback.{
-  BooleanValueChangedCallback,
-  ColorValueChangedCallback,
-  ValueChangedCallback
-}
-import com.bitwig.extension.controller.api.{
-  HardwareActionBindable,
-  HardwareBinding,
-  HardwareBindingSource
-}
+import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
+import com.bitwig.extension.controller.api.{HardwareActionBindable, HardwareBinding, HardwareBindingSource}
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.jam.surface.FakeAction
 
@@ -17,13 +9,13 @@ import java.time.Instant
 import java.util.function.Supplier
 import com.bitwig.`extension`.controller.api.RelativeHardwarControlBindable
 
-transparent trait ActionDSL {
+transparent trait ActionDSL:
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =
     ext.host.createAction(
-      () => {
+      () =>
         if name.nonEmpty then Util.println(s"! $name")
         f()
-      },
+      ,
       () => name
     )
 
@@ -31,10 +23,10 @@ transparent trait ActionDSL {
     ext: MonsterJamExt
   ): HardwareActionBindable =
     ext.host.createAction(
-      () => {
+      () =>
         Util.println(s"! ${name.get()}")
         f()
-      },
+      ,
       name
     )
 
@@ -45,37 +37,34 @@ transparent trait ActionDSL {
     ext: MonsterJamExt
   ): HardwareActionBindable =
     ext.host.createAction(f(_), name)
-}
-transparent trait BindingDSL extends ActionDSL {
-  type HBS = HardwareBindingSource[_ <: HardwareBinding]
+end ActionDSL
+transparent trait BindingDSL extends ActionDSL:
+  type HBS = HardwareBindingSource[? <: HardwareBinding]
 
-  trait EmptyCB[A <: ValueChangedCallback] { def empty: A }
+  trait EmptyCB[A <: ValueChangedCallback]:
+    def empty: A
 
-  implicit object emptyBool extends EmptyCB[BooleanValueChangedCallback] {
+  implicit object emptyBool extends EmptyCB[BooleanValueChangedCallback]:
     override def empty: BooleanValueChangedCallback = _ => ()
-  }
 
-  implicit object emptyColor extends EmptyCB[ColorValueChangedCallback] {
+  implicit object emptyColor extends EmptyCB[ColorValueChangedCallback]:
     override def empty: ColorValueChangedCallback = (_, _, _) => ()
-  }
 
   // fake action detector (optimize later)
-  inline def isFakeAction(source: Any): Boolean = inline source match {
+  inline def isFakeAction(source: Any): Boolean = inline source match
     case a: FakeAction => true // !a.masquerade
     case _             => false
-  }
 
-  implicit class BindingOps(bindings: Iterable[Binding[_, _, _]]) {
-    def inBindings: Iterable[InBinding[_, _]] = bindings.collect { case x: InBinding[_, _] => x }
-    def outBindings: Iterable[OutBinding[_, _, _]] = bindings.collect {
-      case x: OutBinding[_, _, _] => x
+  implicit class BindingOps(bindings: Iterable[Binding[?, ?, ?]]):
+    def inBindings: Iterable[InBinding[?, ?]] = bindings.collect { case x: InBinding[?, ?] => x }
+    def outBindings: Iterable[OutBinding[?, ?, ?]] = bindings.collect {
+      case x: OutBinding[?, ?, ?] => x
     }
-    def operatedAfter(instant: Instant): Iterable[OutBinding[_, _, _]] =
+    def operatedAfter(instant: Instant): Iterable[OutBinding[?, ?, ?]] =
       bindings.outBindings.view.filter(_.operatedAt.exists(_.isAfter(instant)))
 
     def hasOperatedAfter(instant: Instant): Boolean =
       bindings.outBindings.view.exists(_.operatedAt.exists(_.isAfter(instant)))
-  }
 
   inline def stepTarget(inc: () => Unit, dec: () => Unit)(using
     ext: MonsterJamExt
@@ -84,7 +73,7 @@ transparent trait BindingDSL extends ActionDSL {
       action("", inc),
       action("", dec)
     )
-}
+end BindingDSL
 
 object ActionDSL  extends ActionDSL
 object BindingDSL extends BindingDSL

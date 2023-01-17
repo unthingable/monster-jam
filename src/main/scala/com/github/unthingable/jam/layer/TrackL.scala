@@ -10,7 +10,8 @@ import java.time.Instant
 import java.util.function.BooleanSupplier
 import com.github.unthingable.framework.binding.EB
 
-trait TrackL { this: Jam =>
+trait TrackL:
+  this: Jam =>
   /*
     Workaround for weird TrackBank.scrollBy() behavior - if next page is empty it won't scroll right,
     instead it will always jump to (last track index - bank size) [117008]
@@ -18,11 +19,11 @@ trait TrackL { this: Jam =>
   def scrollBy(n: Int): Unit =
     trackBank.scrollPosition().set(trackBank.scrollPosition().get() + n)
 
-  lazy val trackGroup = new SimpleModeLayer("trackGroup") {
+  lazy val trackGroup = new SimpleModeLayer("trackGroup"):
     ext.cursorTrack.position().markInterested()
     var lastPress: Option[Int] = None
 
-    override val modeBindings: Seq[Binding[_, _, _]] = j.groupButtons.indices flatMap { idx =>
+    override val modeBindings: Seq[Binding[?, ?, ?]] = j.groupButtons.indices flatMap { idx =>
       val btn       = j.groupButtons(idx)
       var pressedOn = Instant.now()
 
@@ -41,8 +42,8 @@ trait TrackL { this: Jam =>
 
       def handlePress(): Unit =
         val now = Instant.now()
-        if (lastPress.exists(_ != idx)) lastPress.foreach(i => scrollBy(i - idx))
-        else if (track.isGroup.get && now.isBefore(pressedOn.plusMillis(400))) {
+        if lastPress.exists(_ != idx) then lastPress.foreach(i => scrollBy(i - idx))
+        else if track.isGroup.get && now.isBefore(pressedOn.plusMillis(400)) then
 
           // val trackId  = tracker.trackId(track)
           // val callback = () => {
@@ -60,16 +61,16 @@ trait TrackL { this: Jam =>
 
           track.isGroupExpanded.toggle()
           // foldToggleTop.invoke()
-
-        } else if (GlobalMode.Clear.isOn) track.deleteObject()
-        else if (GlobalMode.Duplicate.isOn) track.duplicate()
+        else if GlobalMode.Clear.isOn then track.deleteObject()
+        else if GlobalMode.Duplicate.isOn then track.duplicate()
         else track.selectInMixer()
+        end if
         pressedOn = now
         lastPress = Some(idx)
+      end handlePress
 
       def handleRelease(): Unit =
-        if (lastPress.contains(idx))
-          lastPress = None
+        if lastPress.contains(idx) then lastPress = None
 
       Vector(
         SupColorStateB(
@@ -77,11 +78,10 @@ trait TrackL { this: Jam =>
           () =>
             JamColorState(
               color.get(),
-              brightness = (playingNotes.get().length > 0, cursorIndex.get() == idx) match {
+              brightness = (playingNotes.get().length > 0, cursorIndex.get() == idx) match
                 case (_, true)  => 3
                 case (true, _)  => 2
                 case (false, _) => 0
-              }
             ),
           JamColorState.empty
         ),
@@ -90,11 +90,10 @@ trait TrackL { this: Jam =>
         EB(btn.st.release, s"group $idx released", () => handleRelease())
       )
     }
-  }
 
   def trackGate(idx: Int) =
-    new ModeButtonLayer(s"track gate $idx", j.groupButtons(idx), GateMode.Gate, silent = true) {
-      import com.github.unthingable.jam.surface.KeyMaster._
+    new ModeButtonLayer(s"track gate $idx", j.groupButtons(idx), GateMode.Gate, silent = true):
+      import com.github.unthingable.jam.surface.KeyMaster.*
       val track = trackBank.getItemAt(idx)
       val isAtTop = ext.host.getProject.getRootTrackGroup
         .createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
@@ -107,7 +106,7 @@ trait TrackL { this: Jam =>
       track.arm().markInterested()
       trackBank.scrollPosition().markInterested()
 
-      override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+      override val modeBindings: Seq[Binding[?, ?, ?]] = Vector(
         SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Mod.blink3),
         SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Mod.blink3),
         SupBooleanB(j.dpad.left.light.isOn, () => true),
@@ -128,9 +127,8 @@ trait TrackL { this: Jam =>
         EB(j.mute.st.press, "track direct mute", () => track.mute().toggle),
         EB(j.record.st.press, "track direct arm", () => track.arm().toggle()),
       )
-    }
 
-  lazy val masterButton = new SimpleModeLayer("master button") {
+  lazy val masterButton = new SimpleModeLayer("master button"):
     val first: Track               = trackBank.getItemAt(0)
     val parent: Track              = first.createParentTrack(0, 0)
     val master: MasterTrack        = ext.host.createMasterTrack(0)
@@ -146,17 +144,14 @@ trait TrackL { this: Jam =>
     def inGroup: Boolean = parent.isGroup.get() && parent.position().get() >= 0
     // if first track is not a group, parent will be "Project" track with index -1
 
-    val equals: BooleanSupplier = () => if (inGroup) equalsParent.get() else equalsMaster.get()
+    val equals: BooleanSupplier = () => if inGroup then equalsParent.get() else equalsMaster.get()
 
-    val selectMaster: () => Unit = () => {
-      val localMaster = if (inGroup) parent else master
+    val selectMaster: () => Unit = () =>
+      val localMaster = if inGroup then parent else master
       ext.cursorTrack.selectChannel(localMaster)
-    }
 
-    override val modeBindings: Seq[Binding[_, _, _]] = Vector(
+    override val modeBindings: Seq[Binding[?, ?, ?]] = Vector(
       SupBooleanB(j.master.light.isOn, equals),
       EB(j.master.st.press, "focus on master", selectMaster),
     )
-  }
-
-}
+end TrackL

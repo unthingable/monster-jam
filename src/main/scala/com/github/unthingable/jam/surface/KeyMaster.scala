@@ -12,12 +12,11 @@ import com.bitwig.`extension`.controller.api.HardwareButton
 import com.github.unthingable.Util
 
 // key chords
-object KeyMaster {
-  type NamedButton = HasButtonState & HasId & HasButton[_]
+object KeyMaster:
+  type NamedButton = HasButtonState & HasId & HasButton[?]
 
-  trait HasModifier {
+  trait HasModifier:
     val modifier: Seq[HasHwButton]
-  }
 
   enum RawButtonEvent derives CanEqual:
     case Press, Release
@@ -30,9 +29,7 @@ object KeyMaster {
   enum KeyType derives CanEqual:
     case Modifier, Normal
 
-  case class JC(b: NamedButton, mods: NamedButton*)(using ext: MonsterJamExt)
-      extends Clearable,
-        HasId {
+  case class JC(b: NamedButton, mods: NamedButton*)(using ext: MonsterJamExt) extends Clearable, HasId:
     override val id = b.id + "<" + mods.map(_.id).mkString("+")
 
     val allb: Seq[NamedButton] = b +: mods
@@ -66,10 +63,10 @@ object KeyMaster {
     private def onPress(): Option[ComboEvent] =
       val newState = keysOn + 1
       keysOn = newState
-      if (newState == 1 + mods.size) {
+      if newState == 1 + mods.size then
         quasiOn = true
         Some(press.value)
-      } else None
+      else None
 
     private def onRelease(): Option[ComboEvent] =
       // this would happen if a modifier was used as a mode button
@@ -77,17 +74,17 @@ object KeyMaster {
 
       val newState = keysOn - 1
       keysOn = newState
-      if (newState > 0 && newState <= mods.size && quasiOn) // one less than all the buttons
+      if newState > 0 && newState <= mods.size && quasiOn then // one less than all the buttons
         Some(releaseOne.value)
-      else if (newState == 0 && quasiOn) {
+      else if newState == 0 && quasiOn then
         quasiOn = false
         Some(releaseAll.value)
-      } else None
+      else None
 
     def clear(): Unit =
       keysOn = 0
       quasiOn = false
-  }
+  end JC
 
   def eval(buttonId: String, ev: RawButtonEvent)(using ext: MonsterJamExt): Iterable[Event] =
     Util.println(s"KeyMaster eval $buttonId $ev")
@@ -109,4 +106,5 @@ object KeyMaster {
                         case RawButtonEvent.Release => ButtonEvt.Release(buttonId)
                       )
                     else Seq.empty)
-}
+  end eval
+end KeyMaster

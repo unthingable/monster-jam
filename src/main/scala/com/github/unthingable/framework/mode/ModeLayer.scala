@@ -47,9 +47,9 @@ enum ModeState derives CanEqual:
   *   active bindings for this mode
   */
 
-trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
+trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   // all bindings when layer is active
-  def modeBindings: Seq[Binding[_, _, _]]
+  def modeBindings: Seq[Binding[?, ?, ?]]
 
   def silent: Boolean = false
 
@@ -58,22 +58,22 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
   import ModeState.*
   protected var modeState = (Inactive, Instant.now())
 
-  /** Current mode state, set externally by ModeGraph, read by mode implementations.
-   * For when mode needs to know when it's being activated or shut down.
-   * 
-   * This extends and somewhat duplicates activeAt inspection, that may be removed later.
-   */
+  /** Current mode state, set externally by ModeGraph, read by mode implementations. For when mode needs to know when
+    * it's being activated or shut down.
+    *
+    * This extends and somewhat duplicates activeAt inspection, that may be removed later.
+    */
   def setModeState(st: ModeState) = modeState = (st, Instant.now())
 
   final inline def isOn: Boolean = activeAt.isDefined
 
   final private inline def dirtyBindings(
-    withBindings: Binding[_, _, _]*
-  ): Seq[OutBinding[_, _, _]] =
+    withBindings: Binding[?, ?, ?]*
+  ): Seq[OutBinding[?, ?, ?]] =
     activeAt.toSeq.flatMap(withBindings.operatedAfter)
 
   // because activeAt is hidden now
-  final inline def hasDirtyBindings(withBindings: Binding[_, _, _]*): Boolean =
+  final inline def hasDirtyBindings(withBindings: Binding[?, ?, ?]*): Boolean =
     activeAt.map(withBindings.hasOperatedAfter).getOrElse(false)
 
   final inline def isOlderThan(inline duration: Duration): Boolean =
@@ -87,7 +87,7 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
 
   def onDeactivate(): Unit = activeAt = None
 
-  override def toggleEvent = if (isOn) deactivateEvent else activateEvent
+  override def toggleEvent = if isOn then deactivateEvent else activateEvent
 
   protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
     val ml = JamControl.maybeLight(b)
@@ -96,26 +96,25 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual {
 
   // let's just say we're too lazy to import cats and make a proper Show instance
   override def toString(): String = s"ML:$id"
-}
+end ModeLayer
 
 /** Layer whose (de)activation is controlled by actions
   */
-trait ActivatedLayer[+A] {
+trait ActivatedLayer[+A]:
   def activateEvent: A
   def deactivateEvent: A
   def toggleEvent: A
-}
 
 /** (De)activation is triggered by internal actions: must invoke them explicitly
   */
-trait IntActivatedLayer extends ActivatedLayer[Seq[ModeCommand[_]]] {
+trait IntActivatedLayer extends ActivatedLayer[Seq[ModeCommand[?]]]:
   /* main act/deact events to bind to */
   protected[mode] val selfActivateEvent   = WithSource(ModeCommand.Activate(this), this)
   protected[mode] val selfDeactivateEvent = WithSource(ModeCommand.Deactivate(this), this)
 
   /* */
-  def activateEvent: Vector[ModeCommand[_]]   = selfActivateEvent.value +: maybeActivate
-  def deactivateEvent: Vector[ModeCommand[_]] = maybeDeactivate :+ selfDeactivateEvent.value
+  def activateEvent: Vector[ModeCommand[?]]   = selfActivateEvent.value +: maybeActivate
+  def deactivateEvent: Vector[ModeCommand[?]] = maybeDeactivate :+ selfDeactivateEvent.value
 
   private inline def maybeActivate: Vector[ModeCommand[?]] = this match
     case l: HasSubModes => l.subModesToActivate.flatMap(_.activateEvent)
@@ -124,12 +123,10 @@ trait IntActivatedLayer extends ActivatedLayer[Seq[ModeCommand[_]]] {
   private inline def maybeDeactivate: Vector[ModeCommand[?]] = this match
     case l: HasSubModes => l.subModesToDeactivate.flatMap(_.deactivateEvent)
     case _              => Vector.empty
-}
 
-trait ListeningLayer {
+trait ListeningLayer:
   // all bindings when layer is ready and listening
-  val loadBindings: Seq[Binding[_, _, _]]
-}
+  val loadBindings: Seq[Binding[?, ?, ?]]
 
 // does not self-activate
 abstract class SimpleModeLayer(
@@ -137,22 +134,19 @@ abstract class SimpleModeLayer(
 )(using MonsterJamExt)
     extends ModeLayer {}
 
-object SimpleModeLayer {
-  inline def apply(name: String, modeBindings: Seq[Binding[_, _, _]])(using
+object SimpleModeLayer:
+  inline def apply(name: String, modeBindings: Seq[Binding[?, ?, ?]])(using
     MonsterJamExt
-  ): SimpleModeLayer = {
+  ): SimpleModeLayer =
     val x = modeBindings
-    new SimpleModeLayer(name) {
-      override val modeBindings: Seq[Binding[_, _, _]] = x
-    }
-  }
-}
+    new SimpleModeLayer(name):
+      override val modeBindings: Seq[Binding[?, ?, ?]] = x
 
 enum GateMode derives CanEqual:
   case Gate, // active only when mode button is pressed
     Toggle,
-    Auto,       // toggle on momentary press, gate when held
-    OneWay,     // pressing turns mode on
+    Auto,        // toggle on momentary press, gate when held
+    OneWay,      // pressing turns mode on
     AutoInverse, // toggle on momentary press, ignore release after long press
     SmartRelease // toggle momentary, momentary when operated
 
@@ -163,7 +157,7 @@ trait ModeButtonLayer(
   override val silent: Boolean = false
 )(using ext: MonsterJamExt)
     extends ModeLayer,
-      ListeningLayer {
+      ListeningLayer:
   import GateMode.*
   private var pressedAt: Instant = null
   private object NR:
@@ -171,72 +165,66 @@ trait ModeButtonLayer(
     var noRelease: Boolean = true
   import NR.*
 
-  override val loadBindings: Seq[Binding[_, _, _]] = Vector(
+  override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
     EB(
       modeButton.st.press,
       s"$id: mode button pressed",
-      () => {
+      () =>
         Util.println(" isOn: " + isOn)
         pressedAt = Instant.now()
         gateMode match
           case Auto | Gate =>
             noRelease = false
-            if (!isOn) activateEvent else Vector.empty
+            if !isOn then activateEvent else Vector.empty
           case AutoInverse =>
             noRelease = !isOn
-            if (!isOn) activateEvent else Vector.empty
+            if !isOn then activateEvent else Vector.empty
           case Toggle =>
             noRelease = true
-            if (!isOn) activateEvent else deactivateEvent
+            if !isOn then activateEvent else deactivateEvent
           case OneWay =>
             noRelease = true
-            if (!isOn) activateEvent else Vector.empty
-          case SmartRelease => 
+            if !isOn then activateEvent else Vector.empty
+          case SmartRelease =>
             noRelease = false
             Vector.empty
-      }, // bb = BB(exclusive = false)
+      , // bb = BB(exclusive = false)
     ),
     EB(modeButton.st.release, s"$id: mode button released", () => released)
   ) ++ maybeLightB(modeButton)
 
-  private def released: Seq[ModeCommand[_]] =
+  private def released: Seq[ModeCommand[?]] =
     inline def isHeldLongEnough = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
     inline def operated         = modeBindings.hasOperatedAfter(pressedAt)
     inline def isAlreadyOn      = activeAt.map(pressedAt.isAfter).getOrElse(false)
 
     if noRelease then Vector.empty
     else
-      gateMode match {
+      gateMode match
         case Gate if isOn => deactivateEvent
         case Auto if isOn =>
-          if (isHeldLongEnough || isAlreadyOn || operated)
-            deactivateEvent
-          else
-            Vector.empty
+          if isHeldLongEnough || isAlreadyOn || operated then deactivateEvent
+          else Vector.empty
         case AutoInverse if isOn =>
-          if (isHeldLongEnough || operated) Vector.empty else deactivateEvent
-        case SmartRelease => 
-          if (isHeldLongEnough || operated) Vector.empty else toggleEvent
+          if isHeldLongEnough || operated then Vector.empty else deactivateEvent
+        case SmartRelease =>
+          if isHeldLongEnough || operated then Vector.empty else toggleEvent
         case _ => Vector.empty
-      }
-}
+end ModeButtonLayer
 
-object ModeButtonLayer {
+object ModeButtonLayer:
   inline def apply(
     name: String,
     modeButton: JamOnOffButton,
-    modeBindings: Seq[Binding[_, _, _]],
+    modeBindings: Seq[Binding[?, ?, ?]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false
-  )(using MonsterJamExt): ModeButtonLayer = {
+  )(using MonsterJamExt): ModeButtonLayer =
     val x = modeBindings
-    new ModeButtonLayer(name, modeButton, gateMode, silent) {
-      override val modeBindings: Seq[Binding[_, _, _]] = x
-      val subActivate: Vector[ModeCommand[_]]          = Vector.empty
-      val subDeactivate: Vector[ModeCommand[_]]        = Vector.empty
-    }
-  }
-}
+    new ModeButtonLayer(name, modeButton, gateMode, silent):
+      override val modeBindings: Seq[Binding[?, ?, ?]] = x
+      val subActivate: Vector[ModeCommand[?]]          = Vector.empty
+      val subDeactivate: Vector[ModeCommand[?]]        = Vector.empty
 
 enum CycleMode derives CanEqual:
   // Cycle through each sublayer on modebutton press
@@ -269,7 +257,7 @@ object MultiModeLayer:
 abstract class ModeCycleLayer(
   override val id: String,
 )(using ext: MonsterJamExt)
-    extends MultiModeLayer {
+    extends MultiModeLayer:
   protected var isStuck: Boolean = false
 
   var selected: Option[Int] = Some(0)
@@ -302,8 +290,8 @@ abstract class ModeCycleLayer(
   //     ext.events.eval(s"$id select act")(idx.flatMap(subModes(_).activateEvent)*)
   //     selected = idx.lastOption
 
-  def select(idx: Int): Unit = {
-    if (isOn && !selected.contains(idx))
+  def select(idx: Int): Unit =
+    if isOn && !selected.contains(idx) then
       ext.events.eval(s"$id select deact")(
         selected
           // .filter(_ != idx)
@@ -313,11 +301,10 @@ abstract class ModeCycleLayer(
           .flatMap(_.deactivateEvent)*
       )
     val mode = subModes(idx)
-    Util.println("sub: " + (if (isOn) "activating" else "selecting") + s" submode ${mode.id}")
+    Util.println("sub: " + (if isOn then "activating" else "selecting") + s" submode ${mode.id}")
     selected = Some(idx)
-    if (isOn && !mode.isOn) ext.events.eval(s"$id select act")(mode.activateEvent*)
-  }
-}
+    if isOn && !mode.isOn then ext.events.eval(s"$id select act")(mode.activateEvent*)
+end ModeCycleLayer
 
 abstract class ModeButtonCycleLayer(
   override val id: String,
@@ -328,38 +315,36 @@ abstract class ModeButtonCycleLayer(
   val siblingOperatedModes: Seq[ModeLayer] = Vector(),
 )(using ext: MonsterJamExt)
     extends ModeCycleLayer(id),
-      ModeButtonLayer(id, modeButton) {
+      ModeButtonLayer(id, modeButton):
 
-  def stickyPress: Vector[ModeCommand[_]] =
-    (isOn, cycleMode: CycleMode) match {
+  def stickyPress: Vector[ModeCommand[?]] =
+    (isOn, cycleMode: CycleMode) match
       case (false, _) => activateEvent
       case _          => Vector.empty
-    }
 
   // bindings to inspect when unsticking
-  def operatedBindings: Iterable[Binding[_, _, _]] =
+  def operatedBindings: Iterable[Binding[?, ?, ?]] =
     (selected.map(subModes) ++ siblingOperatedModes).flatMap(_.modeBindings)
 
-  def stickyRelease: Vector[ModeCommand[_]] =
-    (isOn, cycleMode: CycleMode) match {
+  def stickyRelease: Vector[ModeCommand[?]] =
+    (isOn, cycleMode: CycleMode) match
       case (true, CycleMode.Gate) => deactivateEvent
       case (true, CycleMode.Sticky) =>
         lazy val operated = hasDirtyBindings(operatedBindings.toSeq*)
 
-        if (isStuck || !isOlderThan(Duration.ofMillis(500)) || operated) {
+        if isStuck || !isOlderThan(Duration.ofMillis(500)) || operated then
           isStuck = false
           deactivateEvent
-        } else
+        else
           isStuck = true
           Vector.empty
       case _ => Vector.empty
-    }
 
   // overrideable
   def lightOn: BooleanSupplier = () => isOn
 
   // if overriding, remember to include these
-  def modeBindings: Seq[Binding[_, _, _]] = cycleMode match {
+  def modeBindings: Seq[Binding[?, ?, ?]] = cycleMode match
     case CycleMode.Cycle =>
       Vector(
         EB(modeButton.st.press, s"$id cycle", () => cycle(), BB(tracked = false, exclusive = false))
@@ -380,5 +365,4 @@ abstract class ModeButtonCycleLayer(
         )
       )
     case _ => Vector.empty
-  }
-}
+end ModeButtonCycleLayer

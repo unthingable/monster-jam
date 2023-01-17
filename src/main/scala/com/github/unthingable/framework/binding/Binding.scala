@@ -46,27 +46,24 @@ case class BindingBehavior(
   exclusive: Boolean = true
 )
 
-sealed trait Binding[S, B, T] extends Bindable {
+sealed trait Binding[S, B, T] extends Bindable:
   def source: S // exclusivity object, will be indexed by ModeGraph for bumping calculus
   def target: T
 
   def bindingSource: B // actual thing we're binding to, provided by S
 
   val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
-}
 
 // Controller <- Bitwig host
-sealed trait InBinding[H, T] extends Binding[H, T, T] {
+sealed trait InBinding[H, T] extends Binding[H, T, T]:
   def bindingSource: T = target
-}
 
 // Controller -> Bitwig host
-sealed trait OutBinding[S, B, H] extends Binding[S, B, H], BindingDSL, Named {
+sealed trait OutBinding[S, B, H] extends Binding[S, B, H], BindingDSL, Named:
   given ext: MonsterJamExt
 
   // if a control was operated, it's useful to know for momentary modes
   var operatedAt: Option[Instant] = None
-}
 
 // Bind hardware elements to actions
 class HB[S](
@@ -77,55 +74,52 @@ class HB[S](
   override val behavior: BindingBehavior
 )(using val ext: MonsterJamExt)
     extends OutBinding[S, HBS, HardwareBindable],
-      Named {
+      Named:
 
   override val bindingSource = toSource(source)
 
   private val bindings: mutable.ArrayDeque[HardwareBinding] = mutable.ArrayDeque.empty
   var isActive                                              = false
 
-  override def bind(): Unit = {
+  override def bind(): Unit =
     // assert(!isActive)
-    if (!isActive)
+    if !isActive then
       bindings.addAll(
         Vector(
           bindingSource.addBinding(target)
-        ) ++ (if (behavior.tracked)
+        ) ++ (if behavior.tracked then
                 operatedActions
                   .find(bindingSource.canBindTo)
                   .map(bindingSource.addBinding)
               else Seq.empty)
       )
     isActive = true
-  }
 
-  override def clear(): Unit = {
+  override def clear(): Unit =
     bindings.foreach(_.removeBinding())
     bindings.clear()
-    source match {
+    source match
       case x: Clearable => x.clear()
       case _            => ()
-    }
     operatedAt = None
     isActive = false
-  }
 
   private val operatedActions = Vector(
     action(() => s"HB $name: unit operated", () => operatedAt = Some(Instant.now())),
     action(() => s"HB $name: double operated", _ => operatedAt = Some(Instant.now())),
     ext.host.createRelativeHardwareControlAdjustmentTarget(_ => operatedAt = Some(Instant.now()))
   )
-}
+end HB
 
-object HB extends BindingDSL {
+object HB extends BindingDSL:
   /*
   HB describes a binding source as a provider and a getter. The provider will get hashed by
   ModGraph for binding bumping.
   Sometimes all you have is a HardwareAction (hopefully a singleton object), then the getter is identity.
   When creating new non-sigleton HAs, make sure they hash properly.
    */
-  inline def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)(
-    implicit ext: MonsterJamExt
+  inline def apply(source: HBS, name: String, target: () => Unit, behavior: BindingBehavior)(implicit
+    ext: MonsterJamExt
   ): HB[HBS] =
     new HB(source, identity[HBS], name, action(name, target), behavior)
 
@@ -139,8 +133,8 @@ object HB extends BindingDSL {
   ): HB[S] =
     new HB(source, toSource, name, action(name, target), BindingBehavior())
 
-  inline def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)(
-    implicit ext: MonsterJamExt
+  inline def apply(source: HBS, name: String, target: HardwareBindable, behavior: BindingBehavior)(implicit
+    ext: MonsterJamExt
   ): HB[HBS] =
     new HB(source, identity[HBS], name, target, behavior)
 
@@ -148,33 +142,30 @@ object HB extends BindingDSL {
     ext: MonsterJamExt
   ): HB[HBS] =
     new HB(source, identity[HBS], name, target, BindingBehavior())
-}
+end HB
 
 case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
-    extends InBinding[Supplier[Color], MultiStateHardwareLight] {
+    extends InBinding[Supplier[Color], MultiStateHardwareLight]:
   override def bind(): Unit = target.setColorSupplier(source)
 
   override def clear(): Unit = target.setColorSupplier(() => Color.nullColor())
-}
 
 case class SupColorStateB[A <: InternalHardwareLightState](
   target: MultiStateHardwareLight,
   source: Supplier[A],
   empty: A = JamColorState.empty
-) extends InBinding[Supplier[A], MultiStateHardwareLight] {
+) extends InBinding[Supplier[A], MultiStateHardwareLight]:
   override def bind(): Unit = target.state.setValueSupplier(source)
 
   override def clear(): Unit = target.state.setValueSupplier(() => empty)
-}
 
 case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
-    extends InBinding[BooleanSupplier, BooleanHardwareProperty] {
+    extends InBinding[BooleanSupplier, BooleanHardwareProperty]:
   override def bind(): Unit = target.setValueSupplier(source)
 
   override def clear(): Unit = target.setValueSupplier(() => false)
-}
 
-object JCB extends BindingDSL {
+object JCB extends BindingDSL:
   /*
   Helper binding combinations, when you don't need to inspect Binder state
    */
@@ -204,15 +195,15 @@ object JCB extends BindingDSL {
       EB(b.st.release, s"$name release", release),
     )
 
-  inline def empty(b: HasButtonState & HasOnOffLight & HasId, isOn: BooleanSupplier = () => false)(
-    using MonsterJamExt
+  inline def empty(b: HasButtonState & HasOnOffLight & HasId, isOn: BooleanSupplier = () => false)(using
+    MonsterJamExt
   ) =
     Vector(
       SupBooleanB(b.light.isOn, isOn),
       EB(b.st.press, s"${b.id} press noop", () => Seq.empty),
       EB(b.st.release, s"${b.id} release noop", () => Seq.empty),
     )
-}
+end JCB
 
 // event binding
 case class EB[S](
@@ -222,7 +213,7 @@ case class EB[S](
   override val behavior: BindingBehavior,
   val name: String
 )(using val ext: MonsterJamExt)
-    extends OutBinding[S, Event, Outcome] {
+    extends OutBinding[S, Event, Outcome]:
   var isActive = false
 
   val receiver = (_: Event) =>
@@ -235,7 +226,7 @@ case class EB[S](
       case CmdEffect(f)  => ext.events.eval(msg)(f(ev)*)
 
   override def bind(): Unit =
-    if (!isActive) ext.events.addSub(ev, receiver)
+    if !isActive then ext.events.addSub(ev, receiver)
     isActive = true
 
   override val target: Outcome = action
@@ -247,7 +238,7 @@ case class EB[S](
     ext.events.rmSub(ev, receiver)
     operatedAt = None
     isActive = false
-}
+end EB
 
 object EB:
   type EventSpec[S] = Event | (S, S => Event)
@@ -256,7 +247,7 @@ object EB:
     case Event           => Event
     case (S, S => Event) => S
 
-  type OutcomeSpec = Command |(() => Unit) |(() => Seq[Command])
+  type OutcomeSpec = Command | (() => Unit) | (() => Seq[Command])
 
   inline def asOutcome(o: OutcomeSpec): Outcome =
     inline o match
@@ -268,7 +259,8 @@ object EB:
     MonsterJamExt
   ): EB[S] =
     EB(ev.source, ev.value, asOutcome(f), behavior = BindingBehavior(), name = ctx)
-  inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec, bb: BindingBehavior)(
-    using MonsterJamExt
+  inline def apply[S](ev: WithSource[Event, S], ctx: String, f: OutcomeSpec, bb: BindingBehavior)(using
+    MonsterJamExt
   ): EB[S] =
     EB(ev.source, ev.value, asOutcome(f), behavior = bb, name = ctx)
+end EB

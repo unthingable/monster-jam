@@ -8,13 +8,13 @@ import scala.collection.mutable.ListBuffer
 import scala.annotation.targetName
 import scala.reflect.ClassTag
 
-class EventBus[BaseE] {
+class EventBus[BaseE]:
   type Reactor[E <: BaseE]     = E => Unit
-  type EvtMatcher[+E <: BaseE] = E | Class[_]
+  type EvtMatcher[+E <: BaseE] = E | Class[?]
   case class EvtContext[+E <: BaseE](e: E, ctx: String)
 
-  private val valueSubs = mutable.HashMap.empty[BaseE, mutable.HashSet[Reactor[_]]]
-  private val classSubs = mutable.HashMap.empty[Class[_], mutable.HashSet[Reactor[_]]]
+  private val valueSubs = mutable.HashMap.empty[BaseE, mutable.HashSet[Reactor[?]]]
+  private val classSubs = mutable.HashMap.empty[Class[?], mutable.HashSet[Reactor[?]]]
 
   /* Janky actor with a queue, no mind paid to concurrency.
      Assuming the extention is single-threaded this should be fine.
@@ -28,12 +28,12 @@ class EventBus[BaseE] {
       evalQueue(queue)
 
   private def evalQueue(queue: mutable.Queue[EvtContext[BaseE]]): Unit =
-    while (semaphore && queue.nonEmpty)
+    while semaphore && queue.nonEmpty do
       val e  = queue.dequeue()
       val ev = e.e
       // Util.println(s"evt: $e")
       val receivers = receiversFor(ev) // valueSubs.get(ev).toSeq.flatten
-      if (receivers.nonEmpty) Util.println(s"evt: $ev => ${receivers.size} ${e.ctx}")
+      if receivers.nonEmpty then Util.println(s"evt: $ev => ${receivers.size} ${e.ctx}")
       receivers.foreach(_(ev))
     semaphore = false
 
@@ -47,17 +47,17 @@ class EventBus[BaseE] {
     Util.println(s"evt: prequeueing $e with $context")
     e.foreach(ev =>
       val receivers = receiversFor(ev) // valueSubs.get(ev).toSeq.flatten
-      if (receivers.nonEmpty) Util.println(s"evt: $ev => ${receivers.size} ${context}")
+      if receivers.nonEmpty then Util.println(s"evt: $ev => ${receivers.size} ${context}")
       receivers.foreach(_(ev))
     )
 
   private def eval(e: BaseE*): Unit = eval("")(e*)
 
   @targetName("evalS")
-  private def eval(e: WithSource[BaseE, _]*): Unit = eval(e.map(_.value)*)
+  private def eval(e: WithSource[BaseE, ?]*): Unit = eval(e.map(_.value)*)
 
   @targetName("evalS")
-  def eval(context: String)(e: WithSource[BaseE, _]*): Unit = eval(context)(e.map(_.value)*)
+  def eval(context: String)(e: WithSource[BaseE, ?]*): Unit = eval(context)(e.map(_.value)*)
 
   inline def addSub[E <: BaseE](e: E, r: Reactor[E]): Unit =
     getSub(e).addOne(r)
@@ -78,15 +78,15 @@ class EventBus[BaseE] {
     inline e match
       case ev: E =>
         valueSubs
-          .getOrElseUpdate(ev, mutable.HashSet.empty[Reactor[_]])
+          .getOrElseUpdate(ev, mutable.HashSet.empty[Reactor[?]])
           .asInstanceOf[mutable.HashSet[Reactor[E]]]
-      case ec: Class[_] =>
+      case ec: Class[?] =>
         classSubs
-          .getOrElseUpdate(ec, mutable.HashSet.empty[Reactor[_]])
+          .getOrElseUpdate(ec, mutable.HashSet.empty[Reactor[?]])
           .asInstanceOf[mutable.HashSet[Reactor[E]]]
 
   private def receiversFor[E <: BaseE](e: E): Iterable[Reactor[E]] =
     (valueSubs.get(e).toSeq.flatten
       ++ classSubs.get(e.getClass()).toSeq.flatten)
       .asInstanceOf[Iterable[Reactor[E]]]
-}
+end EventBus

@@ -1,13 +1,13 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.controller.api._
+import com.bitwig.extension.controller.api.*
 import com.github.unthingable.{MonsterJamExt, Util}
 import com.github.unthingable.JamSettings.ShowHide
 import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
 import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
 import com.github.unthingable.framework.binding.{BindingBehavior as BB, BindingDSL, EB}
-import com.github.unthingable.jam.surface._
-import com.github.unthingable.jam.layer._
+import com.github.unthingable.jam.surface.*
+import com.github.unthingable.jam.layer.*
 import com.bitwig.`extension`.callback.IndexedBooleanValueChangedCallback
 import com.github.unthingable.framework.binding.GlobalEvent
 
@@ -23,13 +23,13 @@ class Jam(implicit val ext: MonsterJamExt)
       Control,
       MacroL,
       SceneL,
-      StepSequencer {
+      StepSequencer:
 
   implicit val j: JamSurface = new JamSurface()
 
   val EIGHT: Vector[Int] = (0 to 7).toVector
 
-  object GlobalMode {
+  object GlobalMode:
     // These only set their isOn flags and nothing else
     val Clear: ModeButtonLayer =
       ModeButtonLayer("CLEAR", j.clear, modeBindings = Seq.empty, GateMode.Gate)
@@ -37,7 +37,6 @@ class Jam(implicit val ext: MonsterJamExt)
       ModeButtonLayer("DUPLICATE", j.duplicate, modeBindings = Seq.empty, GateMode.Gate)
     val Select: ModeButtonLayer =
       ModeButtonLayer("SELECT", j.select, modeBindings = Seq.empty, GateMode.Gate)
-  }
 
   lazy val trackBank = ext.trackBank
   trackBank.followCursorTrack(ext.cursorTrack)
@@ -51,8 +50,7 @@ class Jam(implicit val ext: MonsterJamExt)
   val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
   def selectedObserver(track: Int): IndexedBooleanValueChangedCallback =
     (idx: Int, selected: Boolean) =>
-      if (selected)
-        ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
+      if selected then ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
 
   (0 until 256).foreach { i =>
     superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
@@ -96,7 +94,7 @@ class Jam(implicit val ext: MonsterJamExt)
         j.song.st.press,
         "song press (restore home)",
         () =>
-          val (noClip :: noScene :: _) = Seq(clipMatrix, sceneCycle).map(graph.isOcculted) : @unchecked
+          val (noClip :: noScene :: _) = Seq(clipMatrix, sceneCycle).map(graph.isOcculted): @unchecked
           Util.println(s"restore home clip/scene: $noClip $noScene")
           if noClip || noScene then
             graph.reactivate(sceneCycle)
@@ -104,13 +102,12 @@ class Jam(implicit val ext: MonsterJamExt)
           else
             sceneCycle.press()
             noRelease = false
-          if (noClip)
-            graph.reactivate(clipMatrix)
+          if noClip then graph.reactivate(clipMatrix)
         ,
         BB(
-          managed = false, 
+          managed = false,
           // exclusive = false
-          )
+        )
       ),
     )
 
@@ -126,7 +123,7 @@ class Jam(implicit val ext: MonsterJamExt)
     bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer),
     bottom       -> stripGroup,
     bottom       -> Coexist(auxGate, deviceSelector, macroLayer),
-    trackGroup   -> Exclusive(EIGHT.map(trackGate): _*),
+    trackGroup   -> Exclusive(EIGHT.map(trackGate)*),
     masterButton -> top,
     bottom       -> Coexist(unmanaged),
   )
@@ -136,4 +133,4 @@ class Jam(implicit val ext: MonsterJamExt)
   //   sceneLayer,
   //   levelCycle,
   // )
-}
+end Jam

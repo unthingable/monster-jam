@@ -1,7 +1,7 @@
 package com.github.unthingable.util
 
 import com.bitwig.extension.controller.api.*
-case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
+case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean):
   c.pageNames().markInterested()
   c.selectedPageIndex().markInterested()
 
@@ -13,13 +13,10 @@ case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean) {
 
   def hasPrevious: () => Boolean = () => prev.isDefined
 
-  def next: Option[Int] = {
+  def next: Option[Int] =
     val current = c.selectedPageIndex().get()
-    c.pageNames().get().zipWithIndex.find {case (name, idx) => idx > current && f(name)}.map(_._2)
-  }
+    c.pageNames().get().zipWithIndex.find { case (name, idx) => idx > current && f(name) }.map(_._2)
 
-  def prev: Option[Int] = {
+  def prev: Option[Int] =
     val current = c.selectedPageIndex().get()
-    c.pageNames().get().zipWithIndex.findLast {case (name, idx) => idx < current && f(name)}.map(_._2)
-  }
-}
+    c.pageNames().get().zipWithIndex.findLast { case (name, idx) => idx < current && f(name) }.map(_._2)

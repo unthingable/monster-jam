@@ -34,28 +34,28 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
       localState.stepState.get match
         case StepState(Nil, _) =>
-          if (step.state == NSState.Empty)
+          if step.state == NSState.Empty then
             clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
             StepState(List(PointStep(Point(x, y), stepAt(x, y), Instant.now())), true)
           else StepState(List(pstep), false)
         case st @ StepState(p @ PointStep(Point(x0, y0), _, _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
           val step0: NoteStep = stepAt(x0, y0)
           val newDuration     = ts.stepSize * (x - x0 + 1)
-          if (step0.duration() == newDuration)
-            step0.setDuration(ts.stepSize)
-          else
-            step0.setDuration(newDuration)
+          if step0.duration() == newDuration then step0.setDuration(ts.stepSize)
+          else step0.setDuration(newDuration)
           st.copy(noRelease = true)
         case st @ StepState(steps, noRelease) if hasStep =>
           StepState(steps :+ pstep, noRelease)
         case st => st
+    end newState
     localState.stepState.set(newState)
     // Util.println(stepState.toString())
+  end stepPress
 
   def stepRelease(X: Int, Y: Int): Unit =
     val newState = localState.stepState.get match
       case StepState(PointStep(Point(X, Y), _, pressed) :: Nil, noRelease) =>
-        if (!noRelease && !pressed.isBefore(Instant.now().minusMillis(200)))
+        if !noRelease && !pressed.isBefore(Instant.now().minusMillis(200)) then
           val step = stepAt(X, Y)
           step.state match
             case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
@@ -66,9 +66,9 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     localState.stepState.set(newState)
     // Util.println(stepState.toString())
 
-  lazy val stepMatrix = new SimpleModeLayer("stepMatrix") {
-    override val modeBindings: Seq[Binding[_, _, _]] =
-      (for (col <- EIGHT; row <- EIGHT) yield {
+  lazy val stepMatrix = new SimpleModeLayer("stepMatrix"):
+    override val modeBindings: Seq[Binding[?, ?, ?]] =
+      (for (col <- EIGHT; row <- EIGHT) yield
         // val (stepNum, x, y) = stepView(row, col)
         def xy: Option[(Int, Int)] = m2clip(row, col)
         // def cachedClip = steps(channel)(xy._1)(xy._2)
@@ -79,17 +79,14 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
               // chasing light
               xy match
                 case Some(xy) =>
-                  if (
-                    ext.transport.isPlaying
+                  if ext.transport.isPlaying
                       .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
-                  )
-                    colorManager.stepPad.playing
-                  else
-                    colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
+                  then colorManager.stepPad.playing
+                  else colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
                 case _ => JamColorState.empty
           ),
           EB(j.matrix(row)(col).st.press, "", () => xy.foreach(stepPress.tupled)),
           EB(j.matrix(row)(col).st.release, "", () => xy.foreach(stepRelease.tupled))
         )
-      }).flatten
-  }
+      ).flatten
+end StepMatrix

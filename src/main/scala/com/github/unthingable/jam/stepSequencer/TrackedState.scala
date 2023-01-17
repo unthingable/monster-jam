@@ -24,7 +24,8 @@ import com.github.unthingable.framework.Watched
 transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
-) { this: ModeLayer =>
+):
+  this: ModeLayer =>
   private var _ts                   = SeqState.empty(None) // track state
   private var _tid: Option[TrackId] = None
   private val stateCache            = mutable.HashMap.empty[TrackId, SeqState]
@@ -110,10 +111,10 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       if stateDiff(_.stepString) then notify(s"Step size: ${newSt.stepString}")
       if stateDiff(_.keyPageSize) || stateDiff(_.stepPageSize) then
         notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
-}
+end TrackedState
 
 /** A collection of utility methods useful for working with sequencer steps */
-transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer {
+transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedState, ModeLayer:
   val gridHeight               = 128
   val gridWidth                = 64
   val fineRes                  = 128
@@ -215,4 +216,4 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   //       st.scale.prevInScale(st.keyScrollOffset).orElse(st.scale.nextInScale(st.keyScrollOffset)).get
   //     )
   //   else st
-}
+end StepCap

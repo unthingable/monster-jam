@@ -83,6 +83,15 @@
         <testSourceDirectory>src/test/scala</testSourceDirectory>
         <plugins>
             <plugin>
+                <groupId>io.github.evis</groupId>
+                <artifactId>scalafix-maven-plugin_2.13</artifactId>
+                <version>0.1.7_0.10.4</version>
+                <configuration>
+                    <!-- <mode>CHECK</mode> -->
+                    <skipTest>true</skipTest>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
                 <version>4.8.0</version>
