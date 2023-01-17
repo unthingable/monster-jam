@@ -1,25 +1,37 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
-import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
+import com.bitwig.extension.controller.api.Channel
+import com.bitwig.extension.controller.api.Device
 import com.bitwig.extension.controller.api.HardwareSlider
+import com.bitwig.extension.controller.api.ObjectProxy
+import com.bitwig.extension.controller.api.Parameter
+import com.bitwig.extension.controller.api.RemoteControl
+import com.bitwig.extension.controller.api.Send
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.Util.safeCast
+import com.github.unthingable.Util.safeMap
+import com.github.unthingable.framework.Ref
+import com.github.unthingable.framework.RefSubSelective
+import com.github.unthingable.framework.Watched
+import com.github.unthingable.framework.binding.Bindable
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, HB}
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.Util.{safeCast, safeMap}
+import com.github.unthingable.jam.JamParameter.*
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamSurface
+import com.github.unthingable.jam.surface.JamTouchStrip
+import com.github.unthingable.jam.surface.NIColorUtil
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import SliderBankMode.*
-import com.github.unthingable.framework.Watched
-import com.github.unthingable.framework.Ref
-import com.github.unthingable.framework.RefSubSelective
-import com.github.unthingable.framework.binding.Bindable
-import com.github.unthingable.jam.JamParameter.*
 
 case class PRange(min: Double, max: Double):
   val size = max - min
@@ -39,7 +51,7 @@ sealed trait SliderOp extends RefSubSelective[SliderOp.Source, Double] with Bind
   def reset(): Unit
   def pull(): Unit
 
-object SliderOp {
+object SliderOp:
   import JamParameter.*
 
   enum Source:
@@ -57,10 +69,10 @@ object SliderOp {
       new SliderOpBase(idx, slider, updateLed, range, isParentOn):
         p.value.markInterested()
         p.name().markInterested()
-        p.value().addValueObserver((v: Double) => if (isParentOn) set(v, Source.Param))
+        p.value().addValueObserver((v: Double) => if isParentOn then set(v, Source.Param))
 
         override def paramListeners: Seq[Listener] = Seq(
-          Some(Source.Param) -> ((v: Double) => if (isParentOn) p.value().set(v))
+          Some(Source.Param) -> ((v: Double) => if isParentOn then p.value().set(v))
         )
 
         override inline def bind(): Unit =
@@ -79,8 +91,8 @@ object SliderOp {
         private val hv = slider.hasTargetValue()
         tv.markInterested()
         hv.markInterested()
-        tv.addValueObserver(v => if (isParentOn && hv.get()) set(v, Source.Param))
-        hv.addValueObserver(v => if (isParentOn) set(if (v) tv.get() else get, Source.Param))
+        tv.addValueObserver(v => if isParentOn && hv.get() then set(v, Source.Param))
+        hv.addValueObserver(v => if isParentOn then set(if v then tv.get() else get, Source.Param))
 
         override def paramListeners: Seq[Listener] = Seq.empty
 
@@ -97,7 +109,7 @@ object SliderOp {
 
     case Internal(f) =>
       new SliderOpBase(idx, slider, updateLed, range, isParentOn):
-        slider.value().addValueObserver((v: Double) => if (isActive) set(s2p(v), Source.Slider))
+        slider.value().addValueObserver((v: Double) => if isActive then set(s2p(v), Source.Slider))
 
         protected var isBound: Boolean = false // slider->value connected
         protected inline def isActive  = isBound && isParentOn
@@ -114,15 +126,14 @@ object SliderOp {
 
         override inline def pull(): Unit = push()
     case Empty =>
-      new SliderOp {
+      new SliderOp:
         def bind(): Unit                            = ()
         def clear(): Unit                           = ()
         val init: (Double, Source)                  = (0, Source.Init)
         protected def listeners: Iterable[Listener] = Vector.empty
         def pull(): Unit                            = ()
         def reset(): Unit                           = ()
-      }
-}
+end SliderOp
 
 // value is unscaled parameter value
 abstract class SliderOpBase(
@@ -131,7 +142,7 @@ abstract class SliderOpBase(
   updateLed: Int => Unit,
   range: => PRange, // lower/upper value limit corresponding to 0/127
   isParentOn: => Boolean
-) extends SliderOp {
+) extends SliderOp:
   import JamParameter.*
   import SliderOp.*
 
@@ -143,7 +154,7 @@ abstract class SliderOpBase(
   protected def paramListeners: Seq[Listener]
 
   override protected val listeners: Iterable[Listener] = paramListeners :+ (
-    None -> ((v: Double) => if (isParentOn) updateLed(p2s(v)))
+    None -> ((v: Double) => if isParentOn then updateLed(p2s(v)))
   )
   // :+ (
   //   None -> (v => Util.println(s"$idx $value"))
@@ -155,7 +166,7 @@ abstract class SliderOpBase(
 
   def s2p(v: Double): Double =
     v * _range.size + _range.min
-}
+end SliderOpBase
 
 class SliderBankMode[Proxy, P <: JamParameter](
   override val id: String,
@@ -168,7 +179,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   j: JamSurface,
   exists: Exists[Proxy]
 ) extends SimpleModeLayer(id)
-    with Util {
+    with Util:
 
   val proxies: Vector[Proxy]                 = j.stripBank.strips.indices.map(obj).toVector
   val sliderParams: Vector[P]                = proxies.map(param)
@@ -192,16 +203,15 @@ class SliderBankMode[Proxy, P <: JamParameter](
   proxies.foreach(_.safeMap[ObjectProxy, Unit](_.exists().markInterested()))
 
   def bindWithRange(idx: Int, force: Boolean = false): Unit =
-    if (force || paramState(idx) == State.Normal) { // check state when binding from outside
+    if force || paramState(idx) == State.Normal then // check state when binding from outside
       sliderOps(idx).bind()
       sliderOps(idx).pull()
-    }
 
   def unbind(idx: Int): Unit =
     // bindings need clearing because they interfere with shift tracking
     sliderOps(idx).clear()
 
-  override def modeBindings: Seq[Binding[_, _, _]] = j.stripBank.strips.indices.flatMap { idx =>
+  override def modeBindings: Seq[Binding[?, ?, ?]] = j.stripBank.strips.indices.flatMap { idx =>
     val strip: JamTouchStrip = j.stripBank.strips(idx)
     val proxy: Proxy         = proxies(idx)
 
@@ -212,14 +222,14 @@ class SliderBankMode[Proxy, P <: JamParameter](
 
     var startValue: Option[Double] = None
 
-    def engage(event: Event): Unit = {
-      import Event._
-      import State._
+    def engage(event: Event): Unit =
+      import Event.*
+      import State.*
 
       val shiftOn = j.Mod.Shift.btn.isPressed
       val stripOn = strip.slider.isBeingTouched.get()
 
-      val state = (shiftOn, stripOn, event, paramState(idx)) match {
+      val state = (shiftOn, stripOn, event, paramState(idx)) match
         case (_, _, ClearP, _) =>
           unbind(idx)
           Normal
@@ -233,16 +243,14 @@ class SliderBankMode[Proxy, P <: JamParameter](
           unbind(idx)
           ShiftTracking
         case (true, true, _: PressEvent, state) =>
-          if (state == Normal)
-            unbind(idx)
+          if state == Normal then unbind(idx)
           val current = sliderOp.get
           startValue = None
-          offsetObserver = { v =>
+          offsetObserver = v =>
             val offset  = (v - startValue.getOrElse(v)) * 0.2
             val floored = (current + offset).max(0).min(1)
             sliderOp.set(floored, null)
-            if (startValue.isEmpty) startValue = Some(v)
-          }
+            if startValue.isEmpty then startValue = Some(v)
           ShiftTracking
         case (true, _, StripR, ShiftTracking) =>
           offsetObserver = _ => ()
@@ -253,37 +261,35 @@ class SliderBankMode[Proxy, P <: JamParameter](
           Normal
         case _ =>
           Normal
-      }
       paramState.update(idx, state)
-    }
+    end engage
 
     // if it's a regular parameter, set up an existential listener
     sliderParams(idx) match
       case Regular(p) =>
         p.exists()
           .addValueObserver(v =>
-            if (isOn)
+            if isOn then
               j.stripBank.setActive(idx, v)
               sliderOps(idx).pull()
           )
       case _ => ()
 
-    proxy match {
+    proxy match
       case channel: Channel =>
         channel.color().markInterested()
         channel
           .color()
-          .addValueObserver((r, g, b) => if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case send: Send =>
         send.sendChannelColor().markInterested()
         send
           .sendChannelColor()
-          .addValueObserver((r, g, b) => if (isOn) j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
       case _: RemoteControl =>
       case _: Parameter     => ()
       case _: Device        => ()
       case _                => ()
-    }
 
     import Event.*
     Vector(
@@ -329,7 +335,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   private def sync(idx: Int, flush: Boolean = true): Unit =
     sliderOps(idx).pull()
 
-  override def onActivate(): Unit = {
+  override def onActivate(): Unit =
     j.stripBank.barMode = barMode
 
     j.stripBank.strips.forindex {
@@ -338,7 +344,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
 
         stripColor
           .map(_(idx))
-          .orElse(proxy match {
+          .orElse(proxy match
             case channel: Channel =>
               Some(JamColorState.toColorIndex(channel.color().get()))
             case send: Send =>
@@ -348,7 +354,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
             case _ =>
               // a random parameter we know nothing about (probably from UserControlBank)
               Some(JamColorBase.RED)
-          })
+          )
           .foreach(c => j.stripBank.setColor(idx, c))
 
         j.stripBank.setActive(
@@ -369,31 +375,27 @@ class SliderBankMode[Proxy, P <: JamParameter](
     j.stripBank.strips.indices.foreach(bindWithRange(_))
 
     // sliderParams.indices.foreach(sync(_, false))
-    if (barMode.contains(BarMode.DUAL))
-      j.stripBank.flushValues()
+    if barMode.contains(BarMode.DUAL) then j.stripBank.flushValues()
+  end onActivate
 
-  }
-
-  override def onDeactivate(): Unit = {
+  override def onDeactivate(): Unit =
     super.onDeactivate()
     j.stripBank.strips.foreach(_.slider.clearBindings())
-  }
-}
+end SliderBankMode
 
-object SliderBankMode {
+object SliderBankMode:
   sealed trait Event derives CanEqual
   sealed trait ShiftEvent   extends Event
   sealed trait StripEvent   extends Event
   sealed trait PressEvent   extends Event
   sealed trait ReleaseEvent extends Event
-  object Event {
+  object Event:
     case object ShiftP extends ShiftEvent with PressEvent
     case object ShiftR extends ShiftEvent with ReleaseEvent
     case object StripP extends StripEvent with PressEvent
     case object StripR extends StripEvent with ReleaseEvent
     case object ClearP extends StripEvent with PressEvent
     case object ClearR extends StripEvent with ReleaseEvent
-  }
 
   enum State derives CanEqual:
     case ShiftTracking, Normal
@@ -405,6 +407,6 @@ object SliderBankMode {
     def apply(p: ObjectProxy) = p.exists().get()
 
   // Optional proxies are useful for skipping sliders
-  given Exists[Option[_]] with
-    def apply(p: Option[_]) = p.isDefined
-}
+  given Exists[Option[?]] with
+    def apply(p: Option[?]) = p.isDefined
+end SliderBankMode

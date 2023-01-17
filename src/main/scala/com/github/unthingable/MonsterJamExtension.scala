@@ -43,41 +43,47 @@ case class MonsterJamExt(
   docPrefs: MonsterDocPrefs,
   binder: Binder = new Binder(),
   events: EventBus[Event] = new EventBus(),
-) {
+):
   lazy val xmlMap = loadMap(host)
-  
+
   type Schedulable = (Int, () => Boolean, () => Unit) | (Int, () => Unit)
 
-  final def sequence(tasks: List[Schedulable]): Unit = {
-    tasks match {
+  final def sequence(tasks: List[Schedulable]): Unit =
+    tasks match
       case Nil => ()
       case (wait, action) :: tt =>
-        host.scheduleTask(() => 
-          action() 
-          sequence(tt*), wait)
+        host.scheduleTask(
+          () =>
+            action()
+            sequence(tt*)
+          ,
+          wait
+        )
       case (wait, condition, action) :: tt =>
-        host.scheduleTask(() => if (condition()) {
-          action()
-          sequence(tt*)
-        }, wait)
-    }
-  }
-  
+        host.scheduleTask(
+          () =>
+            if condition() then
+              action()
+              sequence(tt*),
+          wait
+        )
+
   final inline def sequence(tasks: Schedulable*): Unit = sequence(tasks.toList)
 
   // for when you need a quick action
   def a(f: => Unit): HardwareActionBindable = host.createAction(() => f, () => "")
-}
+end MonsterJamExt
 
-class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost) extends ControllerExtension(definition, host) {
+class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val host: ControllerHost)
+    extends ControllerExtension(definition, host):
 
-  var ext: MonsterJamExt = null
-  private var jam: Jam = null
+  var ext: MonsterJamExt            = null
+  private var jam: Jam              = null
   private var printer: util.Printer = null
 
   val preferences: Preferences = host.getPreferences
 
-  override def init(): Unit = {
+  override def init(): Unit =
     val host = getHost
     ext = MonsterJamExt(
       host,
@@ -86,7 +92,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createHardwareSurface,
       host.createCursorTrack(1, 0),
       host.createMainTrackBank(8, 8, 8),
-      //host.createTrackBank(8, 8, 8, false),
+      // host.createTrackBank(8, 8, 8, false),
       host.createTransport(),
       host.getDocumentState,
       host.createApplication(),
@@ -108,30 +114,28 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       ),
     )
 
-    if (ext.preferences.debugOutput.get())
+    if ext.preferences.debugOutput.get() then
       import java.time.{Instant, ZoneId}
       import java.time.format.DateTimeFormatter
       val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
-      printer = util.Printer(s => 
+      printer = util.Printer(s =>
         host.println(s)
-        java.lang.System.out.println(if (s.nonEmpty) s"MJ ${dtf.format(Instant.now())} " + s else ""))
+        java.lang.System.out.println(if s.nonEmpty then s"MJ ${dtf.format(Instant.now())} " + s else "")
+      )
       Util.println = printer.println
-    else
-      Util.println = _ => ()
+    else Util.println = _ => ()
 
     jam = new Jam()(ext)
 
     host.showPopupNotification("MonsterJam Initialized")
-  }
+  end init
 
-  override def exit(): Unit = {
+  override def exit(): Unit =
     printer match
       case p: util.Printer => p.timer.stop()
 
     getHost.showPopupNotification("MonsterJam Exited")
-  }
 
-  override def flush(): Unit = {
-    if (ext.hw != null) ext.hw.updateHardware()
-  }
-}
+  override def flush(): Unit =
+    if ext.hw != null then ext.hw.updateHardware()
+end MonsterJamExtension

@@ -1,31 +1,31 @@
 package com.github.unthingable.jam.stepSequencer.mode
 
-import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.jam.stepSequencer.state.*
-import com.github.unthingable.framework.binding.SupColorB
-import com.github.unthingable.framework.binding.EB
-import com.github.unthingable.framework.binding.SupColorStateB
-import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.framework.binding.Binding
-
 import com.bitwig.extension.api.Color
-import com.github.unthingable.Util
-import Util.trace
 import com.bitwig.extension.controller.api.NoteStep
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.jam.stepSequencer.StepCap
+import com.github.unthingable.jam.stepSequencer.state.*
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamSurface
 
 import scala.collection.mutable
-import com.github.unthingable.framework.mode.ModeLayer
+
+import Util.trace
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   def stepMain: ModeLayer
 
   lazy val velAndNote =
-    new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.SmartRelease) {
+    new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.SmartRelease):
       selectedClipTrack.playingNotes().markInterested()
       override def onActivate(): Unit =
         super.onActivate()
@@ -51,7 +51,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       def setVelocity(vel: Int) =
         ext.host.showPopupNotification(velNote(vel)) // TODO consolidate
         val steps = localState.stepState.get.steps
-        if (steps.nonEmpty) steps.foreach(_.step.setVelocity(vel / 128.0))
+        if steps.nonEmpty then steps.foreach(_.step.setVelocity(vel / 128.0))
         else
           setState(ts.copy(velocity = vel))
           selectedClipTrack.playNote(ts.fromScale(ts.keyScrollOffsetGuarded).value, vel)
@@ -84,7 +84,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         Vector(
           SupColorStateB(
             btn.light,
-            () => JamColorState(if (getVelocity / velScale == idx) Color.whiteColor() else clipColor, 1)
+            () => JamColorState(if getVelocity / velScale == idx then Color.whiteColor() else clipColor, 1)
           ),
           EB(btn.st.press, velNote(vel), () => setVelocity(vel))
         )
@@ -103,21 +103,18 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           SupColorStateB(
             btn.light,
             () =>
-              if (scaledNote == ts.keyScrollOffsetGuarded)
-                JamColorState(Color.whiteColor(), 3)
-              else if (ts.isNoteVisible(scaledNote))
-                JamColorState(Color.whiteColor(), 1)
+              if scaledNote == ts.keyScrollOffsetGuarded then JamColorState(Color.whiteColor(), 3)
+              else if ts.isNoteVisible(scaledNote) then JamColorState(Color.whiteColor(), 1)
               else
                 JamColorState(
                   colorManager.stepPad.noteColor(scaledNoteIdx),
-                  if (selectedClipTrack.playingNotes().isNotePlaying(realNote.value)) 3 else 0
+                  if selectedClipTrack.playingNotes().isNotePlaying(realNote.value) then 3 else 0
                 )
           ),
           EB(btn.st.press, "set note", () => notePress(idx, scaledNote)),
           EB(btn.st.release, "release note", () => noteRelease(idx)),
         )
       override val modeBindings = velBindings.flatten ++ noteBindings.flatten
-    }
 
   val pageOffsets = Vector(0, 4, 20, 36, 52, 68, 84, 100, 116, 132).map(_.asInstanceOf[ScaledNote]) // for chromatic
 
@@ -133,7 +130,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     else note.asInstanceOf[Int] / 16
 
   lazy val notePages =
-    new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true) {
+    new ModeButtonLayer("notePages", j.notes, gateMode = GateMode.Gate, silent = true):
       inline def keyOffset: ScaledNote = ts.keyScrollOffsetGuarded
       inline def hasContent(idx: Int) =
         val note       = keyOffset.asInstanceOf[Int]
@@ -160,4 +157,4 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
             )
           )
         )
-    }
+end VelNote

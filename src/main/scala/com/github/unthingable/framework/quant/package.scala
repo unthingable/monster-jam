@@ -3,7 +3,7 @@ package com.github.unthingable.framework
 import com.bitwig.extension.controller.api.BeatTimeValue
 import com.github.unthingable.MonsterJamExt
 
-package object quant {
+package object quant:
   type StepFrac = (Int, Int) | Int
 
   val stepSizes = Vector[StepFrac](
@@ -65,4 +65,4 @@ package object quant {
 
   def gridDistanceWithNow(qString: String)(using MonsterJamExt): Option[(Double, Double, Double)] =
     quantGrid(qString).map((prev, now, next) => (now - prev, now, next - now))
-}
+end quant

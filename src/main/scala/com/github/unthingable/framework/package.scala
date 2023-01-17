@@ -1,6 +1,6 @@
 package com.github.unthingable
 
-package object framework {
+package object framework:
 
   opaque type ButtonId = String
 
@@ -10,5 +10,4 @@ package object framework {
     def id: String
 
     // IDs shouldn't repeat among the same set of objects
-    override final def hashCode(): Int = id.hashCode()
-}
+    final override def hashCode(): Int = id.hashCode()

@@ -2,31 +2,29 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
-import com.bitwig.extension.controller.api.{
-  HardwareButton,
-  OnOffHardwareLight,
-  RelativeHardwareKnob
-}
-import com.github.unthingable.framework.binding.{ButtonEvt, HB}
-// import com.github.unthingable.jam.surface.JamControl.HbOps
-import com.github.unthingable.{MonsterJamExt, Util}
+import com.bitwig.extension.controller.api.HardwareButton
+import com.bitwig.extension.controller.api.OnOffHardwareLight
+import com.bitwig.extension.controller.api.RelativeHardwareKnob
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
+import com.github.unthingable.framework.binding.ButtonEvt
+import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 /* Surface model with all the controls, wired to MIDI */
 
-class JamSurface(implicit ext: MonsterJamExt) extends Util {
+class JamSurface(implicit ext: MonsterJamExt) extends Util:
 
-  private def b(id: String) = {
+  private def b(id: String) =
     val info   = ext.xmlMap.button(id)
     val button = JamControl.button(info)
     val led    = JamControl.onOffLight(info)
     JamOnOffButton(id, button, led)
-  }
 
-  object Mod {
-    object Shift extends HasButtonState, HasId, HasFakeButton {
+  object Mod:
+    object Shift extends HasButtonState, HasId, HasFakeButton:
       val id  = "SHIFT"
       val btn = FakeButton(id)
       val st  = ButtonStateSupplier(this, btn)
@@ -35,21 +33,20 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       btn.releasedAction.addBinding(JamControl.handle(id, RawButtonEvent.Release))
 
       override def toString: String = "BtnSHIFT"
-    }
 
     var blink: Boolean  = false // on 50% of the time
     var blink3: Boolean = false // on 75% of the time
-    def blinkTempo: Boolean = ext.transport.isPlaying().get() && (ext.transport.playPosition().get() * 2 + 0.1).toInt % 2 == 0
+    def blinkTempo: Boolean =
+      ext.transport.isPlaying().get() && (ext.transport.playPosition().get() * 2 + 0.1).toInt % 2 == 0
 
-    private def blinky(): Unit = {
+    private def blinky(): Unit =
       blink = true
       blink3 = true
       ext.host.scheduleTask(() => blinky(), 400)
       ext.host.scheduleTask(() => blink = false, 200)
       ext.host.scheduleTask(() => blink3 = false, 300)
-    }
     ext.host.scheduleTask(() => blinky(), 100)
-  }
+  end Mod
 
   /* Left side */
 
@@ -68,12 +65,12 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   val control     = b("BtnControl")
   val auto        = b("BtnAuto")
 
-  object encoder {
+  object encoder:
     val push: HardwareButton =
       JamControl.button(ext.xmlMap.button("PshBrowse", ext.xmlMap.masterElems))
     val touch: HardwareButton =
       JamControl.button(ext.xmlMap.button("CapBrowse", ext.xmlMap.masterElems))
-    val turn: RelativeHardwareKnob = {
+    val turn: RelativeHardwareKnob =
       val enc: MidiInfo              = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
       val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
 
@@ -82,23 +79,19 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
       )
       knob.setStepSize(1 / 127.0)
       knob
-    }
-  }
 
-  object dpad {
-    private def b(idx: Int) = {
+  object dpad:
+    private def b(idx: Int) =
       val id     = s"BtnDpad$idx"
       val info   = ext.xmlMap.button(id)
       val button = JamControl.button(info)
       val led    = JamControl.onOffLight(info)
       JamOnOffButton(id, button, led)
-    }
 
     val up: JamOnOffButton    = b(1)
     val down: JamOnOffButton  = b(3)
     val left: JamOnOffButton  = b(4)
     val right: JamOnOffButton = b(2)
-  }
 
   /* Main section */
 
@@ -148,7 +141,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
   val stripBank = new StripBank()(ext)
 
   // Main level meters are special
-  object levelMeter {
+  object levelMeter:
     val left  = ext.xmlMap.knob("MetLevel1", ext.xmlMap.masterElems)
     val right = ext.xmlMap.knob("MetLevel2", ext.xmlMap.masterElems)
 
@@ -157,7 +150,6 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
     val uL: IntegerValueChangedCallback = update(left) _
     val uR: IntegerValueChangedCallback = update(right) _
-  }
 
   /* Right side */
 
@@ -186,7 +178,7 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
 
   {
     // wire sysex
-    import com.github.unthingable.jam.surface.BlackSysexMagic._
+    import com.github.unthingable.jam.surface.BlackSysexMagic.*
 
     ext.midiIn.setSysexCallback {
       case ShiftDownCommand =>
@@ -208,12 +200,12 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util {
     object Shift:
       val duplicate = JC(j.duplicate, Mod.Shift)
 
-      val play      = JC(j.play, Mod.Shift)
-      val record    = JC(j.record, Mod.Shift)
-      val right     = JC(j.right, Mod.Shift)
-      val left      = JC(j.left, Mod.Shift)
-      val tempo     = JC(j.tempo, Mod.Shift)
-      val solo      = JC(j.solo, Mod.Shift)
-      
-      val notes     = JC(j.notes, Mod.Shift)
-}
+      val play   = JC(j.play, Mod.Shift)
+      val record = JC(j.record, Mod.Shift)
+      val right  = JC(j.right, Mod.Shift)
+      val left   = JC(j.left, Mod.Shift)
+      val tempo  = JC(j.tempo, Mod.Shift)
+      val solo   = JC(j.solo, Mod.Shift)
+
+      val notes = JC(j.notes, Mod.Shift)
+end JamSurface

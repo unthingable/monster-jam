@@ -1,7 +1,8 @@
 package com.github.unthingable.framework
 
-import scala.collection.mutable
 import com.github.unthingable.Util.SelfEqual
+
+import scala.collection.mutable
 
 /** Yet another eventful value thingy. Can you have too many? Apparently not.
   *
@@ -18,7 +19,7 @@ class Watched[A: SelfEqual](val init: A, val onChange: (A, A) => Unit):
   inline def set(a: A): Unit =
     val old = _value
     _value = a
-    if (old != _value) onChange(old, _value)
+    if old != _value then onChange(old, _value)
 
   inline def update(f: A => A): Unit = set(f(_value))
 
@@ -44,20 +45,18 @@ abstract class RefSubSelective[Token, A]:
   inline def get: A = value._1
 
   inline def set(inline v: A, inline token: Token): Unit =
-  // def set(v: A, token: Token): Unit =
+    // def set(v: A, token: Token): Unit =
     val old = value
     value = (v, token)
     // if (value._1 != old._1)
     push()
 
   inline def push(): Unit =
-    listeners.foreach((listenerToken, f) =>
-      if (!listenerToken.contains(value._2)) f(value._1)
-    )
+    listeners.foreach((listenerToken, f) => if !listenerToken.contains(value._2) then f(value._1))
 
 class GetSetProxyBase[A]:
   protected val target = mutable.ListBuffer.empty[A]
-  def setTarget(v: Iterable[A]): Unit = 
+  def setTarget(v: Iterable[A]): Unit =
     target.clear()
     target.addAll(v)
   def clearTarget(): Unit = target.clear()
@@ -65,10 +64,11 @@ class GetSetProxyBase[A]:
 trait Delta[A]:
   def apply(a: A, b: A): A
 
-case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B, B) => Unit)(using delta: Delta[B]) extends GetSetProxyBase[A]:
+case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B, B) => Unit)(using delta: Delta[B])
+    extends GetSetProxyBase[A]:
   protected var value: B = default
-  def get: B = target.map(getf).lastOption.getOrElse(default)
-  def set(v: B) = 
+  def get: B             = target.map(getf).lastOption.getOrElse(default)
+  def set(v: B) =
     target.foreach(setf(_, v, delta(value, v)))
     value = v
 

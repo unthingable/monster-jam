@@ -3,15 +3,15 @@ package com.github.unthingable.jam.stepSequencer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.NoteStep.State
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.Util
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
-class ColorManager(clipColor: => Color)(using ext: MonsterJamExt) {
+class ColorManager(clipColor: => Color)(using ext: MonsterJamExt):
   import JamColorBase.*
   val C = JamColorState
   object stepScene:
@@ -31,5 +31,4 @@ class ColorManager(clipColor: => Color)(using ext: MonsterJamExt) {
         case State.NoteOn      => if custom then C(WHITE, 3) else C(clipColor, 2)
         case State.Empty       => if custom then C(noteColor(noteIdx), 0) else C.empty
         case State.NoteSustain => C(WHITE, 0)
-
-}
+end ColorManager

@@ -6,12 +6,10 @@ import com.bitwig.extension.controller.AutoDetectionMidiPortNamesList
 import com.bitwig.extension.controller.ControllerExtensionDefinition
 import com.bitwig.extension.controller.api.ControllerHost
 
-
-object MonsterJamExtensionDefinition {
+object MonsterJamExtensionDefinition:
   private val DRIVER_ID = UUID.fromString("b4b8b16c-5855-4943-a8c6-45cbdaf9aee1")
-}
 
-class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
+class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
   override def getName = "MonsterJam"
 
   override def getAuthor = "unthingable"
@@ -37,4 +35,4 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition {
     }
 
   override def createInstance(host: ControllerHost) = new MonsterJamExtension(this, host)
-}
+end MonsterJamExtensionDefinition

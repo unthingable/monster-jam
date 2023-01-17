@@ -1,23 +1,30 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
+import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.ClipLauncherSlot
+import com.bitwig.extension.controller.api.ClipLauncherSlotBank
+import com.bitwig.extension.controller.api.Track
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior => BB, EB, SupColorStateB}
 import com.github.unthingable.framework.quant
-import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.KeyMaster.JC
 
-import java.time.{Duration, Instant}
+import java.time.Duration
+import java.time.Instant
 import scala.collection.mutable
-import com.github.unthingable.framework.binding.EB
-import com.github.unthingable.Util
 
 given Util.SelfEqual[ClipLauncherSlot] = CanEqual.derived
 
-trait ClipMatrix { this: Jam =>
-  lazy val clipMatrix = new SimpleModeLayer("clipMatrix") {
+trait ClipMatrix:
+  this: Jam =>
+  lazy val clipMatrix = new SimpleModeLayer("clipMatrix"):
     case class PressedAt(var value: Instant)
     val cursorClip: Clip = ext.host.createLauncherCursorClip(0, 0)
     cursorClip.launchQuantization().markInterested()
@@ -30,7 +37,7 @@ trait ClipMatrix { this: Jam =>
     ext.transport.timeSignature().denominator().markInterested()
     ext.transport.tempo().markInterested()
 
-    override val modeBindings: Seq[Binding[_, _, _]] = j.matrix.indices.flatMap { col =>
+    override val modeBindings: Seq[Binding[?, ?, ?]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
       track.isQueuedForStop.markInterested()
 
@@ -87,45 +94,40 @@ trait ClipMatrix { this: Jam =>
     ): Unit =
       /* Until we're able to directly access clips, must rely on cursor, so select always */
       clip.select()
-      if (GlobalMode.Select.isOn) () // clip.select()
-      else if (GlobalMode.Clear.isOn) clip.deleteObject()
-      else if (GlobalMode.Duplicate.isOn) {
-        if (source.isEmpty) source = Some(clip)
-        else {
-          source.foreach(s => if (s != clip) clip.replaceInsertionPoint().copySlotsOrScenes(s))
+      if GlobalMode.Select.isOn then () // clip.select()
+      else if GlobalMode.Clear.isOn then clip.deleteObject()
+      else if GlobalMode.Duplicate.isOn then
+        if source.isEmpty then source = Some(clip)
+        else
+          source.foreach(s => if s != clip then clip.replaceInsertionPoint().copySlotsOrScenes(s))
           source = None
-        }
-      } else {
-        pressedAt.value = Instant.now()
-      }
+      else pressedAt.value = Instant.now()
 
     private def handleClipRelease(
       clip: ClipLauncherSlot,
       clips: ClipLauncherSlotBank,
       pressedAt: PressedAt
     ): Unit =
-      if (Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))))
-        () // clip.select() -- see above
-      else if (clip.isPlaying.get() && ext.transport.isPlaying.get()) clips.stop()
+      if Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))) then () // clip.select() -- see above
+      else if clip.isPlaying.get() && ext.transport.isPlaying.get() then clips.stop()
       else
         launchOptions(clip) match
           case None => clip.launch()
           case Some((quant, mode)) =>
             Util.println(s"lenient launch $quant $mode")
             clip.launchWithOptions(quant, mode)
-        // Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
+          // Util.println(s"launch fired at ${ext.transport.playPosition().get()}")
 
     /* If we're a little late starting the clip, that's ok */
     private def launchOptions(clip: ClipLauncherSlot): Option[(String, String)] =
       val launchTolerance: Double = ext.preferences.launchTolerance.get()
-      val lookAhead: Double = ext.preferences.launchLookahead.get()
-      val clipQString: String     = cursorClip.launchQuantization().get()      
+      val lookAhead: Double       = ext.preferences.launchLookahead.get()
+      val clipQString: String     = cursorClip.launchQuantization().get()
       val qString: String =
-        if (clipQString == "default") ext.transport.defaultLaunchQuantization().get()
+        if clipQString == "default" then ext.transport.defaultLaunchQuantization().get()
         else clipQString
       // Util.println(s"tempo: ${ext.transport.tempo().get()}")
-      if (launchTolerance == 0 || qString == "none")
-        None
+      if launchTolerance == 0 || qString == "none" then None
       else
         quant.gridDistanceWithNow(qString) match
           case None =>
@@ -136,29 +138,23 @@ trait ClipMatrix { this: Jam =>
             Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
             if prev < launchTolerance || (lookAhead > 0 && next < lookAhead) then
               Some(clipQString, "continue_immediately")
-            else
-              None
+            else None
+    end launchOptions
 
     private def clipColor(track: Track, clip: ClipLauncherSlot): JamColorState =
-      if (GlobalMode.Select.isOn && clip.isSelected.get())
-        JamColorState(JamColorBase.WHITE, 3)
-      else if (!GlobalMode.Select.isOn && source.contains(clip))
-        JamColorState(JamColorBase.WHITE, if (j.Mod.blink) 3 else 1)
+      if GlobalMode.Select.isOn && clip.isSelected.get() then JamColorState(JamColorBase.WHITE, 3)
+      else if !GlobalMode.Select.isOn && source.contains(clip) then
+        JamColorState(JamColorBase.WHITE, if j.Mod.blink then 3 else 1)
       else
         JamColorState(
-          if (clip.hasContent.get())
-            JamColorState.toColorIndex(clip.color().get())
-          else if clip.isRecordingQueued().get() then
-            JamColorBase.RED
-          else
-            JamColorBase.OFF,
+          if clip.hasContent.get() then JamColorState.toColorIndex(clip.color().get())
+          else if clip.isRecordingQueued().get() then JamColorBase.RED
+          else JamColorBase.OFF,
           brightness =
-            if (clip.isPlaying.get())
-              if (track.isQueuedForStop.get()) if (j.Mod.blink) 3 else -1
+            if clip.isPlaying.get() then
+              if track.isQueuedForStop.get() then if j.Mod.blink then 3 else -1
               else 3
-            else if (clip.isPlaybackQueued.get() || clip.isRecordingQueued().get()) if (j.Mod.blink) 0 else 3
+            else if clip.isPlaybackQueued.get() || clip.isRecordingQueued().get() then if j.Mod.blink then 0 else 3
             else 0
         )
-  }
-
-}
+end ClipMatrix

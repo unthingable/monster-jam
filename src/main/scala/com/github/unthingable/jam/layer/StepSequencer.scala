@@ -1,65 +1,61 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
-import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
-import com.github.unthingable.Util
-import com.github.unthingable.framework.mode.{
-  ListeningLayer,
-  ModeCycleLayer,
-  ModeLayer,
-  MultiModeLayer,
-  SimpleModeLayer
-}
-import com.github.unthingable.framework.binding.{
-  Binding,
-  EB,
-  JCB,
-// Noop,
-  SupBooleanB,
-  SupColorB,
-  SupColorStateB
-}
-import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.JamSettings.DpadScroll
-import com.github.unthingable.jam.TrackTracker
-import com.github.unthingable.jam.TrackId.apply
-import com.github.unthingable.jam.TrackId
-import com.github.unthingable.jam.surface.KeyMaster.JC
-import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.stepSequencer.*
-import com.github.unthingable.jam.stepSequencer.state.*
-import com.github.unthingable.jam.stepSequencer.mode.*
-import com.github.unthingable.jam.SliderOp
-import com.github.unthingable.jam.SliderBankMode
-import com.github.unthingable.jam.JamParameter
-import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.Watched
-import com.github.unthingable.framework.quant
-import com.github.unthingable.framework.mode.ModeLayer
-import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
-import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.framework.mode.CycleMode
-import com.github.unthingable.framework.GetSetProxy
-import com.github.unthingable.framework.binding.HB
-import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
-import com.github.unthingable.framework.binding.GlobalEvent
-import com.github.unthingable.framework.binding.BindingDSL
-
-import com.bitwig.extension.controller.api.Track
-import com.bitwig.extension.controller.api.Setting
-import com.bitwig.extension.controller.api.CursorTrack
-import com.bitwig.extension.controller.api.Parameter
-import com.bitwig.extension.controller.api.NoteOccurrence
 import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.CursorTrack
+import com.bitwig.extension.controller.api.Device
+import com.bitwig.extension.controller.api.DeviceBank
+import com.bitwig.extension.controller.api.NoteOccurrence
+import com.bitwig.extension.controller.api.NoteStep
+import com.bitwig.extension.controller.api.NoteStep.State as NSState
+import com.bitwig.extension.controller.api.Parameter
+import com.bitwig.extension.controller.api.PinnableCursorClip
+import com.bitwig.extension.controller.api.Setting
+import com.bitwig.extension.controller.api.Track
+import com.github.unthingable.JamSettings.DpadScroll
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.GetSetProxy
+import com.github.unthingable.framework.Watched
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.GlobalEvent
+import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.JCB
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.SupColorB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ListeningLayer
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.ModeCycleLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.ModeState
+import com.github.unthingable.framework.mode.MultiModeLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.quant
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderBankMode
+import com.github.unthingable.jam.SliderOp
+import com.github.unthingable.jam.TrackId
+import com.github.unthingable.jam.TrackId.apply
+import com.github.unthingable.jam.TrackTracker
+import com.github.unthingable.jam.stepSequencer.*
+import com.github.unthingable.jam.stepSequencer.mode.*
+import com.github.unthingable.jam.stepSequencer.state.*
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.KeyMaster.JC
 
 import java.time.Instant
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
-import com.github.unthingable.framework.mode.ModeState
 
 trait StepSequencer extends BindingDSL:
   this: Jam =>
@@ -153,15 +149,14 @@ trait StepSequencer extends BindingDSL:
       j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
         def hasContent = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize
         Vector(
-          EB(btn.st.press, "", () => if (hasContent) setStepPage(i)),
+          EB(btn.st.press, "", () => if hasContent then setStepPage(i)),
           SupColorStateB(
             btn.light,
             () =>
-              if (hasContent)
-                if (ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i)
+              if hasContent then
+                if ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i then
                   colorManager.stepScene.playing
-                else if (i == ts.stepScrollOffset / ts.stepPageSize)
-                  colorManager.stepScene.selected
+                else if i == ts.stepScrollOffset / ts.stepPageSize then colorManager.stepScene.selected
                 else colorManager.stepScene.nonEmpty
               else colorManager.stepScene.empty
           ),
@@ -175,10 +170,8 @@ trait StepSequencer extends BindingDSL:
     // }
 
     inline def scrollEnc(dir: UpDown): Unit =
-      if (j.encoder.push.isPressed().get())
-        scrollXBy(dir, 1)
-      else
-        scrollYBy(dir, 1)
+      if j.encoder.push.isPressed().get() then scrollXBy(dir, 1)
+      else scrollYBy(dir, 1)
 
     lazy val stepEnc = SimpleModeLayer(
       "stepEnc",
@@ -194,26 +187,23 @@ trait StepSequencer extends BindingDSL:
       )
     )
 
-    lazy val patLength = new SimpleModeLayer("patLength") {
-      override def modeBindings: Seq[Binding[_, _, _]] = (0 until 64).flatMap { idx =>
+    lazy val patLength = new SimpleModeLayer("patLength"):
+      override def modeBindings: Seq[Binding[?, ?, ?]] = (0 until 64).flatMap { idx =>
         JCB(
           id,
           j.matrix(idx / 8)(idx % 8),
-          () => {
+          () =>
             Util.println(s"set playStop $idx")
             val newPatLength = idx + 1
             clip.getLoopLength.set(newPatLength.toDouble)
             clip.getPlayStop.set(newPatLength.toDouble) // doesn't follow the first length change
-          },
+          ,
           () => (),
           () =>
-            if (clip.getPlayStop.get() > idx)
-              JamColorState(clipColor, 2)
-            else
-              JamColorState.empty
+            if clip.getPlayStop.get() > idx then JamColorState(clipColor, 2)
+            else JamColorState.empty
         )
       } ++ Vector(SupBooleanB(j.solo.light.isOn, () => true))
-    }
 
     lazy val gridSelect = ModeButtonLayer(
       "gridSelect",
@@ -231,7 +221,7 @@ trait StepSequencer extends BindingDSL:
               SupColorStateB(
                 btn.light,
                 () =>
-                  if (ts.stepMode == sm) JamColorState(Color.whiteColor(), 3)
+                  if ts.stepMode == sm then JamColorState(Color.whiteColor(), 3)
                   else JamColorState(clipColor, 2)
               )
             )
@@ -249,13 +239,13 @@ trait StepSequencer extends BindingDSL:
       "chanSelect",
       j.perform,
       GateMode.Gate
-    ) {
+    ):
       val chanBindings: Seq[Binding[?, ?, ?]] =
         (for (row <- 0 until 4; col <- 0 until 4) yield
           val btn  = j.matrix(row + 4)(col + 4)
           val chan = (3 - row) * 4 + col
           Vector(
-            SupColorB(btn.light, () => if (chan == ts.channel) Color.whiteColor else clipColor),
+            SupColorB(btn.light, () => if chan == ts.channel then Color.whiteColor else clipColor),
             EB(btn.st.press, s"select channel $chan", () => setChannel(chan))
           )
         ).flatten
@@ -307,7 +297,6 @@ trait StepSequencer extends BindingDSL:
         ).flatten
 
       override def modeBindings = chanBindings ++ rootBindings ++ scaleBindings
-    }
 
     lazy val dpadStep = SimpleModeLayer(
       "dpadStep",
@@ -362,13 +351,13 @@ trait StepSequencer extends BindingDSL:
         m.isOn || (m == velAndNote && ts.noteVelVisible)
       )).distinct
 
-    override val modeBindings: Seq[Binding[_, _, _]] =
+    override val modeBindings: Seq[Binding[?, ?, ?]] =
       Vector(
         EB(j.Combo.Shift.solo.press, "shift-solo pressed", () => patLength.activateEvent),
         EB(j.Combo.Shift.solo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
       ) ++ JCB.empty(j.song)
 
-    override val loadBindings: Seq[Binding[_, _, _]] = Vector(
+    override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
       EB(j.step.st.press, "step toggle", () => toggleEvent),
       SupBooleanB(j.step.light.isOn, () => isOn),
     )
@@ -378,16 +367,16 @@ trait StepSequencer extends BindingDSL:
     def findClip(): Option[Clip] =
       secondClip.selectFirst()
       var cnt = 0
-      while (cnt < 64 && !secondClip.exists().get())
+      while cnt < 64 && !secondClip.exists().get() do
         cnt += 1
         secondClip.selectNext()
-      if (secondClip.exists().get()) Some(secondClip) else None
+      if secondClip.exists().get() then Some(secondClip) else None
 
     override def onActivate(): Unit =
       restoreState()
       super.onActivate()
 
-      if (!clip.exists().get())
+      if !clip.exists().get() then
         findClip() match
           case None =>
             val t = selectedClipTrack.position().get()

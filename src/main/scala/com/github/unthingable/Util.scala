@@ -1,46 +1,39 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{
-  Bank,
-  CursorRemoteControlsPage,
-  ObjectProxy,
-  Preferences,
-  SettableBooleanValue,
-  SettableEnumValue,
-  Settings
-}
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.{
-  CYAN,
-  FUCHSIA,
-  GREEN,
-  LIME,
-  MAGENTA,
-  ORANGE,
-  RED,
-  YELLOW
-}
+import com.bitwig.extension.controller.api.Bank
+import com.bitwig.extension.controller.api.CursorRemoteControlsPage
+import com.bitwig.extension.controller.api.ObjectProxy
+import com.bitwig.extension.controller.api.Preferences
+import com.bitwig.extension.controller.api.SettableBooleanValue
+import com.bitwig.extension.controller.api.SettableEnumValue
+import com.bitwig.extension.controller.api.Settings
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.CYAN
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.FUCHSIA
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.GREEN
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.LIME
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.MAGENTA
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.ORANGE
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.RED
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.YELLOW
 
 import java.awt.event.ActionEvent
-import java.nio.ByteBuffer
-import java.time.Instant
-
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-import scala.util.Try
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.util.Try
 
-transparent trait Util {
-  implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]) {
-    def forindex(f: (A, Int) => Unit): S[A] = {
+transparent trait Util:
+  implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]):
+    def forindex(f: (A, Int) => Unit): S[A] =
       seq.zipWithIndex.foreach(f.tupled)
       seq
-    }
-  }
 
   def toColor(color: java.awt.Color): Color =
     Color.fromRGBA(color.getRed, color.getGreen, color.getBlue, color.getAlpha)
@@ -50,11 +43,11 @@ transparent trait Util {
   extension [A <: ObjectProxy](bank: Bank[A])
     def view: IndexedSeqView[A] =
       (0 until bank.itemCount().get()).view.map(bank.getItemAt)
-    
+
     def fullView: IndexedSeqView[A] =
       (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
-}
-object Util extends Util {
+
+object Util extends Util:
   val EIGHT: Vector[Int] = (0 to 7).toVector
 
   var println: String => Unit = null
@@ -85,14 +78,14 @@ object Util extends Util {
       obj match
         case b: B => Some(f(b))
         case _    => None
+  end extension
 
-  def printColor(c: Color): Unit = {
+  def printColor(c: Color): Unit =
     Util.println((c.getRed, c.getGreen, c.getBlue, c.getAlpha).toString())
     Vector(c.getRed, c.getGreen, c.getBlue, c.getAlpha).foreach { v =>
       val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
-  }
   val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
 
   def serialize[A](o: A): String =
@@ -114,4 +107,4 @@ object Util extends Util {
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
     given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
-}
+end Util

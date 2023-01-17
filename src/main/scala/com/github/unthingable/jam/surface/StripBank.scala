@@ -1,11 +1,13 @@
 package com.github.unthingable.jam.surface
 
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.surface.BlackSysexMagic.{createCommand, BarMode}
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.BlackSysexMagic.createCommand
 
 import scala.collection.mutable
 
-class StripBank()(implicit ext: MonsterJamExt) extends Util {
+class StripBank()(implicit ext: MonsterJamExt) extends Util:
   val strips: Vector[JamTouchStrip] = ('A' to 'H')
     .map { idx =>
       new JamTouchStrip(
@@ -23,19 +25,18 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
   private val values: mutable.ArraySeq[Int] = mutable.ArraySeq.fill(8)(0)
   val active: mutable.ArraySeq[Boolean]     = mutable.ArraySeq.fill(8)(false)
 
-  def setColor(idx: Int, color: Int, flush: Boolean = true): Unit = {
+  def setColor(idx: Int, color: Int, flush: Boolean = true): Unit =
     // some more NI magic for you, white is not the same for strips. Also we can't really show black tracks.
-    colors.update(idx, if (color == 68 || color == 0) 120 else color)
-    if (flush) flushColors()
-  }
+    colors.update(idx, if color == 68 || color == 0 then 120 else color)
+    if flush then flushColors()
   inline def setValue(idx: Int, value: Int, inline flush: Boolean = true): Unit =
-    if (barMode(idx) == BarMode.DUAL) {
+    if barMode(idx) == BarMode.DUAL then
       values.update(idx, value)
-      inline if (flush) flushValues()
-    } else strips(idx).update(value)
+      inline if flush then flushValues()
+    else strips(idx).update(value)
   inline def setActive(inline idx: Int, inline value: Boolean, inline flush: Boolean = true): Unit =
     active.update(idx, value)
-    inline if (flush) flushColors()
+    inline if flush then flushColors()
 
   inline def setActive(f: Int => Boolean): Unit =
     (0 until 8).foreach(idx => active.update(idx, f(idx)))
@@ -48,7 +49,7 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
         colors
           .zip(active)
           .zipWithIndex
-          .map { case ((n, a), idx) => f"${if (a) barMode(idx).v else "00"}${n}%02x" }
+          .map { case ((n, a), idx) => f"${if a then barMode(idx).v else "00"}${n}%02x" }
           .mkString
       )
     )
@@ -57,4 +58,4 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util {
     ext.midiOut.sendSysex(createCommand("04", values.map(n => f"${n}%02x").mkString))
 
   inline def clear(): Unit = ext.midiOut.sendSysex(BlackSysexMagic.zeroStrips)
-}
+end StripBank

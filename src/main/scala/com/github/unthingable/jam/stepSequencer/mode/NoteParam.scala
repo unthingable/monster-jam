@@ -1,23 +1,22 @@
 package com.github.unthingable.jam.stepSequencer.mode
 
+import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.NoteStep
+import com.bitwig.extension.controller.api.NoteStep.State as NSState
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.Util
+import com.github.unthingable.framework.GetSetProxy
 import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.framework.GetSetProxy
-import com.github.unthingable.jam.stepSequencer.state.ExpMode
-import com.github.unthingable.Util
-import com.github.unthingable.jam.SliderOp
-import com.github.unthingable.jam.SliderBankMode
-import com.github.unthingable.jam.JamParameter
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
-
-import com.bitwig.extension.controller.api.NoteStep
-import com.bitwig.extension.controller.api.Clip
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderBankMode
+import com.github.unthingable.jam.SliderOp
+import com.github.unthingable.jam.stepSequencer.StepCap
+import com.github.unthingable.jam.stepSequencer.state.ExpMode
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.JamSurface
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
@@ -28,14 +27,13 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         j.tune,
         CycleMode.Select,
         gateMode = GateMode.Auto
-      ) {
+      ):
 
     case class FineStep(step: NoteStep):
       def offset: Int = step.x % fineRes
       def moveFineBy(clip: Clip, dx: Int): Unit =
         // ensure no crossings
-        if (step.x / 128 == (step.x + dx) / 128)
-          clip.moveStep(ts.channel, step.x, step.y, dx, 0)
+        if step.x / 128 == (step.x + dx) / 128 then clip.moveStep(ts.channel, step.x, step.y, dx, 0)
 
     def toFine(step: NoteStep): Option[FineStep] =
       (0 until fineRes).view
@@ -94,7 +92,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       setCurrentSteps(localState.stepState.get.steps.view.map(_.step))
 
     def setCurrentSteps(steps: Iterable[NoteStep]): Unit =
-      if (steps.nonEmpty)
+      if steps.nonEmpty then
         Util.println(s"setting active $mask")
         realProxies.foreach(_.setTarget(steps))
         j.stripBank.setActive(mask)
@@ -125,4 +123,5 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       super.onActivate()
       select(0)
     override val subModes: Vector[ModeLayer] = Vector(sliders)
-  }
+  end tune
+end NoteParam
