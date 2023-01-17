@@ -515,6 +515,10 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 
 # Changelog
 
+## 8.0b14
+* Step: multi-row notes were wrapping incorrectly
+* Step: NOTES - improved activation (experimental). Now a single press activates mode, but holding+SCENE navigates to note pages without activating
+
 ## 8.0b13
 ### Features
 * Step: note preview + setting. Pressing any step in step sequencer will play that note.
