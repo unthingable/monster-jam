@@ -25,7 +25,7 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   def stepMain: ModeLayer
 
   lazy val velAndNote =
-    new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.AutoInverse) {
+    new ModeButtonLayer("velAndNote", j.notes, gateMode = GateMode.SmartRelease) {
       selectedClipTrack.playingNotes().markInterested()
       override def onActivate(): Unit =
         super.onActivate()
