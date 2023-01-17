@@ -1,6 +1,7 @@
 package com.github.unthingable
 
-import com.bitwig.extension.controller.api.{SettableEnumValue, Settings}
+import com.bitwig.extension.controller.api.SettableEnumValue
+import com.bitwig.extension.controller.api.Settings
 
 object JamSettings:
 

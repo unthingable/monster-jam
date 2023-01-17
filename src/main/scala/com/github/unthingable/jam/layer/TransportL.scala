@@ -1,17 +1,30 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Channel, HardwareActionBindable, SettableBooleanValue, Track}
-import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.HB.action
-import com.github.unthingable.framework.binding.{BindingBehavior as BB, EB, HB, SupBooleanB, SupColorB, SupColorStateB}
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamOnOffButton, JamRgbButton}
-import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.binding.BindingDSL
-import java.time.Instant
+import com.bitwig.extension.controller.api.Channel
+import com.bitwig.extension.controller.api.HardwareActionBindable
+import com.bitwig.extension.controller.api.SettableBooleanValue
+import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.JamSettings
 import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.HB.action
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.SupColorB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamOnOffButton
+import com.github.unthingable.jam.surface.JamRgbButton
+
+import java.time.Instant
 
 trait TransportL extends BindingDSL, Util:
   this: Jam =>

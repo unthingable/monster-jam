@@ -1,13 +1,19 @@
 package com.github.unthingable.framework.mode
 
 import com.bitwig.extension.controller.api.HardwareActionBindable
-import com.github.unthingable.framework.binding.HB.{action, isFakeAction, HBS}
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior as BB, HB, ModeCommand}
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.HB.HBS
+import com.github.unthingable.framework.binding.HB.action
+import com.github.unthingable.framework.binding.HB.isFakeAction
+import com.github.unthingable.framework.binding.ModeCommand
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.MultiModeLayer
-import com.github.unthingable.{MonsterJamExt, Util}
 
 import scala.collection.mutable
-import com.github.unthingable.framework.binding.EB
 import scala.collection.mutable.HashSet
 
 object Graph:

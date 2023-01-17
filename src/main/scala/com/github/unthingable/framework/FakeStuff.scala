@@ -1,11 +1,9 @@
 package com.github.unthingable.jam.surface
 
-import com.bitwig.extension.controller.api.{
-  HardwareActionBindable,
-  HardwareActionBinding,
-  HardwareBindable,
-  HardwareBindingSource
-}
+import com.bitwig.extension.controller.api.HardwareActionBindable
+import com.bitwig.extension.controller.api.HardwareActionBinding
+import com.bitwig.extension.controller.api.HardwareBindable
+import com.bitwig.extension.controller.api.HardwareBindingSource
 import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
 

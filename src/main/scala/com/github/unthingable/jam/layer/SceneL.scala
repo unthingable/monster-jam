@@ -1,19 +1,29 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{Bank, Scene, SettableStringValue, Setting}
+import com.bitwig.extension.controller.api.Bank
+import com.bitwig.extension.controller.api.Scene
+import com.bitwig.extension.controller.api.SettableStringValue
+import com.bitwig.extension.controller.api.Setting
+import com.bitwig.`extension`.controller.api.Track
 import com.github.unthingable.Util
-import com.github.unthingable.framework.mode.{ModeCycleLayer, ModeLayer, SimpleModeLayer}
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.HB.BindingOps
-import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB, SupColorStateB}
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.ModeCycleLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.TrackId
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.{Jam, TrackId}
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamRgbButton
 
 import java.time.Instant
 import scala.collection.mutable
 import scala.util.Try
-import com.bitwig.`extension`.controller.api.Track
 
 trait SceneL:
   this: Jam =>
@@ -43,10 +53,9 @@ trait SceneL:
     private def handlePress(scene: Scene): Unit =
       if GlobalMode.Clear.isOn then scene.deleteObject()
       else if GlobalMode.Duplicate.isOn then scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
-      else {
+      else
         superSceneSub.lastScene = None
         scene.launch()
-      }
 
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util:
     val maxTracks =

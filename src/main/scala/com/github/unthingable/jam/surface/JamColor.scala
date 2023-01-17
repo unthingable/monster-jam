@@ -1,7 +1,8 @@
 package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{HardwareLightVisualState, InternalHardwareLightState}
+import com.bitwig.extension.controller.api.HardwareLightVisualState
+import com.bitwig.extension.controller.api.InternalHardwareLightState
 
 object JamColor:
   object JamColorBase:

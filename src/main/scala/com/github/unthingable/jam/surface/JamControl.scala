@@ -4,14 +4,14 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.controller.api.*
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.HB.HBS
+import com.github.unthingable.framework.binding.*
+import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 import scala.language.implicitConversions
-import com.github.unthingable.framework.binding.*
-import com.github.unthingable.framework.HasId
-import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 
 /*
 Jam controls, self-wired to midi

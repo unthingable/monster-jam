@@ -1,23 +1,22 @@
 package com.github.unthingable.jam.stepSequencer.mode
 
+import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.NoteStep
+import com.bitwig.extension.controller.api.NoteStep.State as NSState
 import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.Util
+import com.github.unthingable.framework.GetSetProxy
 import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.framework.GetSetProxy
-import com.github.unthingable.jam.stepSequencer.state.ExpMode
-import com.github.unthingable.Util
-import com.github.unthingable.jam.SliderOp
-import com.github.unthingable.jam.SliderBankMode
-import com.github.unthingable.jam.JamParameter
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
-
-import com.bitwig.extension.controller.api.NoteStep
-import com.bitwig.extension.controller.api.Clip
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderBankMode
+import com.github.unthingable.jam.SliderOp
+import com.github.unthingable.jam.stepSequencer.StepCap
+import com.github.unthingable.jam.stepSequencer.state.ExpMode
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.JamSurface
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 

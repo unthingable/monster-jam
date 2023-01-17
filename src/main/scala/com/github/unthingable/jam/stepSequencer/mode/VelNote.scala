@@ -1,25 +1,25 @@
 package com.github.unthingable.jam.stepSequencer.mode
 
-import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.jam.stepSequencer.state.*
-import com.github.unthingable.framework.binding.SupColorB
-import com.github.unthingable.framework.binding.EB
-import com.github.unthingable.framework.binding.SupColorStateB
-import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.framework.binding.Binding
-
 import com.bitwig.extension.api.Color
-import com.github.unthingable.Util
-import Util.trace
 import com.bitwig.extension.controller.api.NoteStep
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.jam.stepSequencer.StepCap
+import com.github.unthingable.jam.stepSequencer.state.*
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamSurface
 
 import scala.collection.mutable
-import com.github.unthingable.framework.mode.ModeLayer
+
+import Util.trace
 
 trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   def stepMain: ModeLayer

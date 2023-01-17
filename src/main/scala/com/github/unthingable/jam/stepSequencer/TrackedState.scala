@@ -7,19 +7,19 @@ import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.PinnableCursorClip
 import com.bitwig.extension.controller.api.Setting
 import com.bitwig.extension.controller.api.Track
-
-import com.github.unthingable.Util
-import Util.trace
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.quant
-import com.github.unthingable.jam.TrackTracker
-import com.github.unthingable.jam.TrackId.apply
 import com.github.unthingable.jam.TrackId
+import com.github.unthingable.jam.TrackId.apply
+import com.github.unthingable.jam.TrackTracker
 import com.github.unthingable.jam.stepSequencer.state.*
 
 import scala.collection.mutable
-import com.github.unthingable.framework.Watched
+
+import Util.trace
 
 transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   ext: MonsterJamExt,

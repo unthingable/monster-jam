@@ -2,12 +2,19 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Send
 import com.github.unthingable.Util
-import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB}
-import com.github.unthingable.framework.mode.{CycleMode, GateMode, ModeButtonCycleLayer, ModeButtonLayer}
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderBankMode
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.{Jam, SliderBankMode, JamParameter}
 
 trait Aux:
   this: Jam =>

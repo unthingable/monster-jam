@@ -1,19 +1,20 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{Bank, Clip}
+import com.bitwig.extension.controller.api.Bank
+import com.bitwig.extension.controller.api.Clip
 import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.framework.mode.{
-  CycleMode,
-  GateMode,
-  ModeButtonCycleLayer,
-  ModeButtonLayer,
-  SimpleModeLayer
-}
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamRgbButton}
-import com.github.unthingable.jam.*
-import com.github.unthingable.framework.binding.{Binding, EB, SupColorStateB}
+import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.jam.*
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamRgbButton
 
 trait Shift:
   this: Jam with SceneL with StepSequencer =>

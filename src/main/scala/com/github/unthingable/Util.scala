@@ -1,38 +1,33 @@
 package com.github.unthingable
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.{
-  Bank,
-  CursorRemoteControlsPage,
-  ObjectProxy,
-  Preferences,
-  SettableBooleanValue,
-  SettableEnumValue,
-  Settings
-}
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.{
-  CYAN,
-  FUCHSIA,
-  GREEN,
-  LIME,
-  MAGENTA,
-  ORANGE,
-  RED,
-  YELLOW
-}
+import com.bitwig.extension.controller.api.Bank
+import com.bitwig.extension.controller.api.CursorRemoteControlsPage
+import com.bitwig.extension.controller.api.ObjectProxy
+import com.bitwig.extension.controller.api.Preferences
+import com.bitwig.extension.controller.api.SettableBooleanValue
+import com.bitwig.extension.controller.api.SettableEnumValue
+import com.bitwig.extension.controller.api.Settings
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.CYAN
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.FUCHSIA
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.GREEN
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.LIME
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.MAGENTA
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.ORANGE
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.RED
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.YELLOW
 
 import java.awt.event.ActionEvent
-import java.nio.ByteBuffer
-import java.time.Instant
-
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-import scala.util.Try
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.util.Try
 
 transparent trait Util:
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]):
@@ -51,6 +46,7 @@ transparent trait Util:
 
     def fullView: IndexedSeqView[A] =
       (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
+
 object Util extends Util:
   val EIGHT: Vector[Int] = (0 to 7).toVector
 

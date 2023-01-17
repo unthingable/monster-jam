@@ -1,18 +1,24 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{Clip, ClipLauncherSlot, ClipLauncherSlotBank, Track}
+import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.ClipLauncherSlot
+import com.bitwig.extension.controller.api.ClipLauncherSlotBank
+import com.bitwig.extension.controller.api.Track
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior as BB, EB, SupColorStateB}
 import com.github.unthingable.framework.quant
-import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.KeyMaster.JC
 
-import java.time.{Duration, Instant}
+import java.time.Duration
+import java.time.Instant
 import scala.collection.mutable
-import com.github.unthingable.framework.binding.EB
-import com.github.unthingable.Util
 
 given Util.SelfEqual[ClipLauncherSlot] = CanEqual.derived
 
@@ -92,10 +98,9 @@ trait ClipMatrix:
       else if GlobalMode.Clear.isOn then clip.deleteObject()
       else if GlobalMode.Duplicate.isOn then
         if source.isEmpty then source = Some(clip)
-        else {
+        else
           source.foreach(s => if s != clip then clip.replaceInsertionPoint().copySlotsOrScenes(s))
           source = None
-        }
       else pressedAt.value = Instant.now()
 
     private def handleClipRelease(

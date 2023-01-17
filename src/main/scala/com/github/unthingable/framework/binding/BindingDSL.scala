@@ -1,13 +1,18 @@
 package com.github.unthingable.framework.binding
 
-import com.bitwig.extension.callback.{BooleanValueChangedCallback, ColorValueChangedCallback, ValueChangedCallback}
-import com.bitwig.extension.controller.api.{HardwareActionBindable, HardwareBinding, HardwareBindingSource}
-import com.github.unthingable.{MonsterJamExt, Util}
+import com.bitwig.extension.callback.BooleanValueChangedCallback
+import com.bitwig.extension.callback.ColorValueChangedCallback
+import com.bitwig.extension.callback.ValueChangedCallback
+import com.bitwig.extension.controller.api.HardwareActionBindable
+import com.bitwig.extension.controller.api.HardwareBinding
+import com.bitwig.extension.controller.api.HardwareBindingSource
+import com.bitwig.`extension`.controller.api.RelativeHardwarControlBindable
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.FakeAction
 
 import java.time.Instant
 import java.util.function.Supplier
-import com.bitwig.`extension`.controller.api.RelativeHardwarControlBindable
 
 transparent trait ActionDSL:
   def action(name: String, f: () => Unit)(implicit ext: MonsterJamExt): HardwareActionBindable =

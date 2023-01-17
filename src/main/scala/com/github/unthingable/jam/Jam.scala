@@ -1,15 +1,22 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.controller.api.*
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.JamSettings.ShowHide
-import com.github.unthingable.framework.mode.Graph.{Coexist, Exclusive, ModeDGraph}
-import com.github.unthingable.framework.mode.{GateMode, ModeButtonLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.{BindingBehavior as BB, BindingDSL, EB}
-import com.github.unthingable.jam.surface.*
-import com.github.unthingable.jam.layer.*
 import com.bitwig.`extension`.callback.IndexedBooleanValueChangedCallback
+import com.bitwig.extension.controller.api.*
+import com.github.unthingable.JamSettings.ShowHide
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.GlobalEvent
+import com.github.unthingable.framework.binding.BindingBehavior as BB
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.Graph.Coexist
+import com.github.unthingable.framework.mode.Graph.Exclusive
+import com.github.unthingable.framework.mode.Graph.ModeDGraph
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.jam.layer.*
+import com.github.unthingable.jam.surface.*
 
 class Jam(implicit val ext: MonsterJamExt)
     extends BindingDSL,

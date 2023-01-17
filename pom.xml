@@ -90,6 +90,18 @@
                     <!-- <mode>CHECK</mode> -->
                     <skipTest>true</skipTest>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.github.liancheng</groupId>
+                        <artifactId>organize-imports_2.13</artifactId>
+                        <version>0.6.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.geirsson</groupId>
+                        <artifactId>metaconfig-pprint_2.13</artifactId>
+                        <version>0.11.1</version>
+                    </dependency>
+                </dependencies>
             </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>

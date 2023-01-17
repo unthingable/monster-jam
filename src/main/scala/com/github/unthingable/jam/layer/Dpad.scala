@@ -1,11 +1,15 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.controller.api.{BooleanValue, HardwareActionBindable, Scrollable}
+import com.bitwig.extension.controller.api.BooleanValue
+import com.bitwig.extension.controller.api.HardwareActionBindable
+import com.bitwig.extension.controller.api.Scrollable
 import com.github.unthingable.JamSettings.DpadScroll
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, EB, SupBooleanB}
-import com.github.unthingable.jam.surface.JamOnOffButton
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.surface.JamOnOffButton
 
 trait Dpad:
   this: Jam =>

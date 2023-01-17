@@ -2,11 +2,14 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.IntegerValueChangedCallback
-import com.bitwig.extension.controller.api.{HardwareButton, OnOffHardwareLight, RelativeHardwareKnob}
-import com.github.unthingable.framework.binding.{ButtonEvt, HB}
-// import com.github.unthingable.jam.surface.JamControl.HbOps
-import com.github.unthingable.{MonsterJamExt, Util}
+import com.bitwig.extension.controller.api.HardwareButton
+import com.bitwig.extension.controller.api.OnOffHardwareLight
+import com.bitwig.extension.controller.api.RelativeHardwareKnob
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
+import com.github.unthingable.framework.binding.ButtonEvt
+import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.jam.surface.KeyMaster.JC
 import com.github.unthingable.jam.surface.KeyMaster.RawButtonEvent
 

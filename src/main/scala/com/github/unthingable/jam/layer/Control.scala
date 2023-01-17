@@ -1,20 +1,28 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.*
-import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer, ModeLayer, SimpleModeLayer}
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior as BB, EB, SupBooleanB, SupColorStateB}
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.*
-import com.github.unthingable.framework.binding.HB.BindingOps
 import com.github.unthingable.Util
 import com.github.unthingable.Util.trace
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.HB.BindingOps
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.jam.*
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.HasHwButton
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.util.FilteredPage
 
-import java.time.{Duration, Instant}
+import java.time.Duration
+import java.time.Instant
 import java.util.function.BooleanSupplier
-import com.github.unthingable.jam.surface.HasHwButton
 
 trait Control:
   this: Jam with MacroL =>

@@ -1,65 +1,61 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
-import com.bitwig.extension.controller.api.{Device, DeviceBank, NoteStep, PinnableCursorClip}
-import com.github.unthingable.Util
-import com.github.unthingable.framework.mode.{
-  ListeningLayer,
-  ModeCycleLayer,
-  ModeLayer,
-  MultiModeLayer,
-  SimpleModeLayer
-}
-import com.github.unthingable.framework.binding.{
-  Binding,
-  EB,
-  JCB,
-// Noop,
-  SupBooleanB,
-  SupColorB,
-  SupColorStateB
-}
-import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.JamSettings.DpadScroll
-import com.github.unthingable.jam.TrackTracker
-import com.github.unthingable.jam.TrackId.apply
-import com.github.unthingable.jam.TrackId
-import com.github.unthingable.jam.surface.KeyMaster.JC
-import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
-import com.github.unthingable.jam.stepSequencer.*
-import com.github.unthingable.jam.stepSequencer.state.*
-import com.github.unthingable.jam.stepSequencer.mode.*
-import com.github.unthingable.jam.SliderOp
-import com.github.unthingable.jam.SliderBankMode
-import com.github.unthingable.jam.JamParameter
-import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.Watched
-import com.github.unthingable.framework.quant
-import com.github.unthingable.framework.mode.ModeLayer
-import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
-import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.framework.mode.CycleMode
-import com.github.unthingable.framework.GetSetProxy
-import com.github.unthingable.framework.binding.HB
-import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
-import com.github.unthingable.framework.binding.GlobalEvent
-import com.github.unthingable.framework.binding.BindingDSL
-
-import com.bitwig.extension.controller.api.Track
-import com.bitwig.extension.controller.api.Setting
-import com.bitwig.extension.controller.api.CursorTrack
-import com.bitwig.extension.controller.api.Parameter
-import com.bitwig.extension.controller.api.NoteOccurrence
 import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.CursorTrack
+import com.bitwig.extension.controller.api.Device
+import com.bitwig.extension.controller.api.DeviceBank
+import com.bitwig.extension.controller.api.NoteOccurrence
+import com.bitwig.extension.controller.api.NoteStep
+import com.bitwig.extension.controller.api.NoteStep.State as NSState
+import com.bitwig.extension.controller.api.Parameter
+import com.bitwig.extension.controller.api.PinnableCursorClip
+import com.bitwig.extension.controller.api.Setting
+import com.bitwig.extension.controller.api.Track
+import com.github.unthingable.JamSettings.DpadScroll
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.GetSetProxy
+import com.github.unthingable.framework.Watched
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.BindingDSL
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.GlobalEvent
+import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.JCB
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.SupColorB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.GateMode
+import com.github.unthingable.framework.mode.ListeningLayer
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeButtonLayer
+import com.github.unthingable.framework.mode.ModeCycleLayer
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.ModeState
+import com.github.unthingable.framework.mode.MultiModeLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
+import com.github.unthingable.framework.quant
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.SliderBankMode
+import com.github.unthingable.jam.SliderOp
+import com.github.unthingable.jam.TrackId
+import com.github.unthingable.jam.TrackId.apply
+import com.github.unthingable.jam.TrackTracker
+import com.github.unthingable.jam.stepSequencer.*
+import com.github.unthingable.jam.stepSequencer.mode.*
+import com.github.unthingable.jam.stepSequencer.state.*
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.JamColor.JamColorBase
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.KeyMaster.JC
 
 import java.time.Instant
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
-import com.github.unthingable.framework.mode.ModeState
 
 trait StepSequencer extends BindingDSL:
   this: Jam =>

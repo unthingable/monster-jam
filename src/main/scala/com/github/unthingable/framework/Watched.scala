@@ -1,7 +1,8 @@
 package com.github.unthingable.framework
 
-import scala.collection.mutable
 import com.github.unthingable.Util.SelfEqual
+
+import scala.collection.mutable
 
 /** Yet another eventful value thingy. Can you have too many? Apparently not.
   *

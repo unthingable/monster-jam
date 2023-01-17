@@ -1,33 +1,31 @@
 package com.github.unthingable.framework.mode
 
-import com.bitwig.extension.controller.api.OnOffHardwareLight
-import com.github.unthingable.framework.binding.BindingDSL.*
-import com.github.unthingable.framework.binding.{
-  Binding,
-  BindingBehavior as BB,
-  ButtonEvt,
-  ModeCommand,
-  OutBinding,
-  SupBooleanB
-}
-import com.github.unthingable.jam.surface.{
-  FakeAction,
-  FakeButton,
-  HasButtonState,
-  HasHwButton,
-  HasOnOffLight,
-  JamOnOffButton,
-  WithSource
-}
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.framework.HasId
-
-import java.time.{Duration, Instant}
-import java.util.function.BooleanSupplier
 import com.bitwig.`extension`.controller.api.HardwareButton
-import com.github.unthingable.jam.surface.HasLight
-import com.github.unthingable.jam.surface.JamControl
+import com.bitwig.extension.controller.api.OnOffHardwareLight
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.HasId
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.BindingDSL.*
+import com.github.unthingable.framework.binding.ButtonEvt
 import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.ModeCommand
+import com.github.unthingable.framework.binding.OutBinding
+import com.github.unthingable.framework.binding.SupBooleanB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
+import com.github.unthingable.jam.surface.FakeAction
+import com.github.unthingable.jam.surface.FakeButton
+import com.github.unthingable.jam.surface.HasButtonState
+import com.github.unthingable.jam.surface.HasHwButton
+import com.github.unthingable.jam.surface.HasLight
+import com.github.unthingable.jam.surface.HasOnOffLight
+import com.github.unthingable.jam.surface.JamControl
+import com.github.unthingable.jam.surface.JamOnOffButton
+import com.github.unthingable.jam.surface.WithSource
+
+import java.time.Duration
+import java.time.Instant
+import java.util.function.BooleanSupplier
 
 enum ModeState derives CanEqual:
   case Inactive, Activating, Active, Deactivating

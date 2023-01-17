@@ -2,13 +2,16 @@ package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.Util
-import com.github.unthingable.framework.mode.{CycleMode, ModeButtonCycleLayer}
+import com.github.unthingable.framework.mode.CycleMode
+import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.JamParameter
+import com.github.unthingable.jam.PRange
+import com.github.unthingable.jam.SliderBankMode
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamTouchStrip
-import com.github.unthingable.jam.{Jam, SliderBankMode, JamParameter}
 
 import scala.collection.mutable
-import com.github.unthingable.jam.PRange
 
 trait Level:
   this: Jam =>

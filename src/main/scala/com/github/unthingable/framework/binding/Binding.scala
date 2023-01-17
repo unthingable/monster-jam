@@ -3,25 +3,25 @@ package com.github.unthingable.framework.binding
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.*
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding.HB.HBS
 import com.github.unthingable.framework.mode.Graph
-import com.github.unthingable.jam.surface.{
-  HasHwButton,
-  HasOnOffLight,
-  HasRgbLight,
-  JamColorState,
-  JamOnOffButton,
-  JamRgbButton,
-  WithSource
-}
+import com.github.unthingable.jam.surface.HasButtonState
+import com.github.unthingable.jam.surface.HasHwButton
+import com.github.unthingable.jam.surface.HasOnOffLight
+import com.github.unthingable.jam.surface.HasRgbLight
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamOnOffButton
+import com.github.unthingable.jam.surface.JamRgbButton
+import com.github.unthingable.jam.surface.WithSource
 
 import java.time.Instant
-import java.util.function.{BooleanSupplier, Supplier}
+import java.util.function.BooleanSupplier
+import java.util.function.Supplier
 import scala.collection.mutable
+
 import reflect.Selectable.reflectiveSelectable
-import com.github.unthingable.Util
-import com.github.unthingable.jam.surface.HasButtonState
-import com.github.unthingable.framework.HasId
 
 trait Clearable:
   // stop the binding from doing its thing

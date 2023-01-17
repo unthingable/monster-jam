@@ -1,7 +1,9 @@
 package com.github.unthingable.jam.surface
 
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.jam.surface.BlackSysexMagic.{createCommand, BarMode}
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
+import com.github.unthingable.jam.surface.BlackSysexMagic.createCommand
 
 import scala.collection.mutable
 

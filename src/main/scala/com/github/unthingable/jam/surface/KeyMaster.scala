@@ -1,15 +1,20 @@
 package com.github.unthingable.jam.surface
 
+import com.bitwig.`extension`.controller.api.HardwareButton
 import com.bitwig.extension.controller.api.HardwareLight
-import com.github.unthingable.{jam, MonsterJamExt}
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding
-import com.github.unthingable.framework.binding.{ButtonEvt, Clearable, Event, HB, HwEvent}
+import com.github.unthingable.framework.binding.ButtonEvt
+import com.github.unthingable.framework.binding.Clearable
+import com.github.unthingable.framework.binding.Event
+import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.HB.HBS
+import com.github.unthingable.framework.binding.HwEvent
+import com.github.unthingable.jam
 
 import scala.collection.mutable
-import com.bitwig.`extension`.controller.api.HardwareButton
-import com.github.unthingable.Util
 
 // key chords
 object KeyMaster:

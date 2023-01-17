@@ -3,11 +3,11 @@ package com.github.unthingable.jam.stepSequencer
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.NoteStep.State
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.Util
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 

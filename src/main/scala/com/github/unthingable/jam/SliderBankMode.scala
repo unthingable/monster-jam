@@ -1,25 +1,37 @@
 package com.github.unthingable.jam
 
 import com.bitwig.extension.callback.DoubleValueChangedCallback
-import com.bitwig.extension.controller.api.{Channel, Device, ObjectProxy, Parameter, RemoteControl, Send}
+import com.bitwig.extension.controller.api.Channel
+import com.bitwig.extension.controller.api.Device
 import com.bitwig.extension.controller.api.HardwareSlider
+import com.bitwig.extension.controller.api.ObjectProxy
+import com.bitwig.extension.controller.api.Parameter
+import com.bitwig.extension.controller.api.RemoteControl
+import com.bitwig.extension.controller.api.Send
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
+import com.github.unthingable.Util.safeCast
+import com.github.unthingable.Util.safeMap
+import com.github.unthingable.framework.Ref
+import com.github.unthingable.framework.RefSubSelective
+import com.github.unthingable.framework.Watched
+import com.github.unthingable.framework.binding.Bindable
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.HB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.{Binding, BindingBehavior as BB, HB}
-import com.github.unthingable.{MonsterJamExt, Util}
-import com.github.unthingable.Util.{safeCast, safeMap}
+import com.github.unthingable.jam.JamParameter.*
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
-import com.github.unthingable.jam.surface.{JamColorState, JamSurface, JamTouchStrip, NIColorUtil}
+import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamSurface
+import com.github.unthingable.jam.surface.JamTouchStrip
+import com.github.unthingable.jam.surface.NIColorUtil
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import SliderBankMode.*
-import com.github.unthingable.framework.Watched
-import com.github.unthingable.framework.Ref
-import com.github.unthingable.framework.RefSubSelective
-import com.github.unthingable.framework.binding.Bindable
-import com.github.unthingable.jam.JamParameter.*
 
 case class PRange(min: Double, max: Double):
   val size = max - min

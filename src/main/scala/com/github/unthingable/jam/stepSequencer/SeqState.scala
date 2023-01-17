@@ -1,11 +1,12 @@
 package com.github.unthingable.jam.stepSequencer
 
-import com.github.unthingable.framework.quant
 import com.bitwig.extension.controller.api.NoteStep
+import com.github.unthingable.Util
+import com.github.unthingable.framework.quant
+import com.github.unthingable.jam.TrackId
+
 import java.time.Instant
 import scala.annotation.targetName
-import com.github.unthingable.Util
-import com.github.unthingable.jam.TrackId
 
 object state:
   /** Note number in scale (scaled notes are always consecutive) */

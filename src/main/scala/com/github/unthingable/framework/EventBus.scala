@@ -3,9 +3,9 @@ package com.github.unthingable.framework
 import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.WithSource
 
+import scala.annotation.targetName
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.annotation.targetName
 import scala.reflect.ClassTag
 
 class EventBus[BaseE]:

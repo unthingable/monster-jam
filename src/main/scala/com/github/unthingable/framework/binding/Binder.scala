@@ -1,7 +1,8 @@
 package com.github.unthingable.framework.binding
 
-import scala.collection.mutable
 import com.github.unthingable.framework.mode.Graph.ModeNode
+
+import scala.collection.mutable
 
 class Binder:
   // All source elements currently bound by us

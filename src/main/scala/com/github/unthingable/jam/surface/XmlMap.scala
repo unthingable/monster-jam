@@ -3,13 +3,16 @@ package com.github.unthingable.jam.surface
 import com.bitwig.extension.api.PlatformType
 import com.bitwig.extension.controller.api.ControllerHost
 import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.XmlMap.controlInfo
 
 import java.io.File
 import scala.io.Source
 import scala.util.Try
-import scala.xml.{Elem, Node, NodeSeq, XML}
-import com.github.unthingable.Util
+import scala.xml.Elem
+import scala.xml.Node
+import scala.xml.NodeSeq
+import scala.xml.XML
 
 sealed trait MidiEvent:
   val value: Int

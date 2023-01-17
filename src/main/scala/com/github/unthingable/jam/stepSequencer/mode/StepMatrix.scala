@@ -1,24 +1,24 @@
 package com.github.unthingable.jam.stepSequencer.mode
 
+import com.bitwig.extension.controller.api.NoteStep
+import com.bitwig.extension.controller.api.NoteStep.State as NSState
+import com.github.unthingable.MonsterJamExt
+import com.github.unthingable.Util.EIGHT
+import com.github.unthingable.Util.trace
+import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.mode.ModeLayer
+import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.jam.stepSequencer.StepCap
 import com.github.unthingable.jam.stepSequencer.TrackedState
-import com.github.unthingable.jam.stepSequencer.state.StepState
-import com.github.unthingable.jam.stepSequencer.state.PointStep
 import com.github.unthingable.jam.stepSequencer.state.Point
-import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.binding.Binding
-import com.github.unthingable.MonsterJamExt
-import com.github.unthingable.Util.{EIGHT, trace}
-import com.github.unthingable.framework.binding.SupColorStateB
-import com.github.unthingable.framework.binding.EB
+import com.github.unthingable.jam.stepSequencer.state.PointStep
+import com.github.unthingable.jam.stepSequencer.state.StepState
+import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.surface.JamSurface
-import com.github.unthingable.framework.mode.ModeLayer
-
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
-import com.bitwig.extension.controller.api.NoteStep
 
 import java.time.Instant
-import com.github.unthingable.jam.surface.JamColorState
 
 trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   def stepPress(x: Int, y: Int): Unit =
