@@ -70,7 +70,7 @@ trait StepSequencer extends BindingDSL:
   trait StepModes extends TrackedState, ModeLayer, StepMatrix, VelNote, NoteParam
 
   object stepSequencer
-      extends ModeButtonLayer("STEP", j.step),
+      extends ModeButtonLayer("STEP", j.step, GateMode.AutoInverse),
         MultiModeLayer,
         ListeningLayer,
         TrackedState(selectedClipTrack),
@@ -328,27 +328,6 @@ trait StepSequencer extends BindingDSL:
       )
     )
 
-    lazy val stepGate = ModeButtonLayer(
-      "stepGate",
-      j.step,
-      Vector(
-        EB(j.clear.st.press, "clear steps", () => clip.clearSteps(), BB.soft),
-        EB(j.duplicate.st.press, "duplicate pattern", () => clip.duplicateContent(), BB.soft),
-        EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
-        SupBooleanB(j.clear.light, () => true, BB.soft),
-        SupBooleanB(j.duplicate.light, () => true, BB.soft),
-        SupBooleanB(
-          j.play.light,
-          () =>
-            if ext.preferences.stepFollow.get() then j.Mod.blink3
-            else !ext.transport.isPlaying().get(),
-          BB.soft
-        )
-      ),
-      gateMode = GateMode.Gate,
-      silent = true
-    )
-
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
@@ -358,7 +337,6 @@ trait StepSequencer extends BindingDSL:
       chanSelect,
       dpadStep,
       tune,
-      stepGate,
     )
 
     override def onStepState(from: StepState, to: StepState): Unit =
@@ -401,7 +379,7 @@ trait StepSequencer extends BindingDSL:
 
       ext.host.scheduleTask(
         () =>
-          if !clip.exists().get() then
+          if !clip.exists().get() && selectedClipTrack.position().get() >= 0 then
             findClip() match
               case None =>
                 val t = selectedClipTrack.position().get()
@@ -423,7 +401,30 @@ trait StepSequencer extends BindingDSL:
           case (false, true) => ext.events.eval("sync track SeqState")(velAndNote.deactivateEvent*)
           case _             => ()
 
+    override lazy val extraOperated = stepGate.modeBindings
+
   end stepSequencer
+
+  lazy val stepGate = ModeButtonLayer(
+    "stepGate",
+    j.step,
+    Vector(
+      EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
+      EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
+      EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
+      SupBooleanB(j.clear.light, () => true, BB.soft),
+      SupBooleanB(j.duplicate.light, () => true, BB.soft),
+      SupBooleanB(
+        j.play.light,
+        () =>
+          if ext.preferences.stepFollow.get() then j.Mod.blink3
+          else !ext.transport.isPlaying().get(),
+        BB.soft
+      )
+    ),
+    gateMode = GateMode.Gate,
+    silent = true
+  )
 end StepSequencer
 
 /* todos and ideas

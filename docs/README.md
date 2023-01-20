@@ -178,6 +178,9 @@ Same goes for remote control pages within a device. You can use Device Selector 
 # Step Sequencer (WIP)
 
 * **STEP**: Toggle sequencer mode
+* **STEP+CLEAR**: Clear current clip
+* **STEP+DUPLICATE**: Duplicate content of current clip
+* **STEP+PLAY**: Toggle pattern follow
 
 Step sequencer settings are stored per track and saved with the project. Most steq sequencer submodes are auto-gating.
 
