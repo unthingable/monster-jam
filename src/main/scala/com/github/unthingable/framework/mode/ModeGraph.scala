@@ -11,22 +11,26 @@ import com.github.unthingable.framework.binding.HB.action
 import com.github.unthingable.framework.binding.HB.isFakeAction
 import com.github.unthingable.framework.binding.ModeCommand
 import com.github.unthingable.framework.binding.BindingBehavior as BB
+import com.github.unthingable.framework.binding.RestoreBehavior as RB
 import com.github.unthingable.framework.mode.MultiModeLayer
 
 import scala.collection.mutable
 import scala.collection.mutable.HashSet
 
+import Util.trace
+
 object Graph:
 
   case class ModeNode(layer: ModeLayer) derives CanEqual:
-    protected[Graph] var parent: Option[ModeNode]                    = None
-    protected[Graph] var subParent: Option[ModeNode]                 = None
-    protected[Graph] var subAncestor: Option[ModeNode]               = None
-    protected[Graph] val children: mutable.HashSet[ModeNode]         = mutable.HashSet.empty
-    protected[Graph] val nodeBindings: mutable.Set[Binding[?, ?, ?]] = mutable.LinkedHashSet.empty
-    protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode]   = mutable.HashSet.empty
-    protected[Graph] val bumpingMe: mutable.ArrayDeque[ModeNode]     = mutable.ArrayDeque.empty
-    protected[Graph] def isActive                                    = layer.isOn
+    protected[Graph] var parent: Option[ModeNode]                                         = None
+    protected[Graph] var subParent: Option[ModeNode]                                      = None
+    protected[Graph] var subAncestor: Option[ModeNode]                                    = None
+    protected[Graph] val children: mutable.HashSet[ModeNode]                              = mutable.HashSet.empty
+    protected[Graph] val nodeBindings: mutable.Set[Binding[?, ?, ?]]                      = mutable.LinkedHashSet.empty
+    protected[Graph] val nodesToRestore: mutable.HashSet[ModeNode]                        = mutable.HashSet.empty
+    protected[Graph] val bindingsToRestore: mutable.HashSet[(Binding[?, ?, ?], ModeNode)] = mutable.HashSet.empty
+    protected[Graph] val bumpingMe: mutable.ArrayDeque[ModeNode]                          = mutable.ArrayDeque.empty
+    protected[Graph] def isActive                                                         = layer.isOn
     // override def hashCode(): Int = layer.name.hashCode()
 
     // side-effect-y but convenient
@@ -38,7 +42,7 @@ object Graph:
   // this first attempt at structure is now largely superceded by MultiModeLayer, but still here out of laziness
   sealed abstract class LayerGroup(val layers: Iterable[ModeLayer])
   // Layers activate and deactivate as they please (the default container)
-  case class Coexist(override val layers: ModeLayer*) extends LayerGroup(layers)
+  case class Coexist(override val layers: ModeLayer*)   extends LayerGroup(layers)
   // A layer deactivates all others
   case class Exclusive(override val layers: ModeLayer*) extends LayerGroup(layers)
 
@@ -51,11 +55,11 @@ object Graph:
     def synLoadBindings(node: ModeNode, cause: Option[ModeNode] = None)(using
       MonsterJamExt
     ): Seq[Binding[?, ?, ?]] =
-      val layer = node.layer
+      val layer         = node.layer
       val layerBindings = layer match
         case x: ListeningLayer => x.loadBindings
         case _                 => Seq.empty
-      val causeId = cause.map(c => s"${c.layer.id}->${layer.id}").getOrElse(layer.id)
+      val causeId       = cause.map(c => s"${c.layer.id}->${layer.id}").getOrElse(layer.id)
       layerBindings ++ Vector(
         EB(
           layer.selfActivateEvent,
@@ -114,7 +118,7 @@ object Graph:
             sub.subAncestor = node.subAncestor.orElse(Some(node))
             indexSubs(l, sub)
           }
-        case _ => ()
+        case _                   => ()
 
     // Build exclusive groups
     private val exclusiveGroups: Map[ModeNode, Set[ModeNode]] =
@@ -199,7 +203,7 @@ object Graph:
                   l.subModesToDeactivate
                     .flatMap(layerMap.get)
                     .foreach(deactivate(bumpMsg + s" (sub ${l.id})"))
-                case _ => ()
+                case _              => ()
               deactivate(bumpMsg)(n)
               None
             }
@@ -209,7 +213,9 @@ object Graph:
 
       val bumpBindings: Iterable[Bumped] =
         node.nodeBindings
-          .filter(b => !isFakeAction(b.bindingSource) && b.behavior.exclusive)
+          // .trace("incoming bindings before filter\n", _.mkString("\n"))
+          .filter(b => !isFakeAction(b.bindingSource) && b.behavior.exclusive != RB.None)
+          // .trace("incoming bindings after fake filter\n", _.mkString("\n"))
           .map(b =>
             Bumped(
               b,
@@ -217,32 +223,44 @@ object Graph:
                 .get(b.source)
                 .toSet
                 .flatten
-                .filter(_._1.behavior.exclusive)
+                // .trace(s"found in binder for $b: ")
+                .filter(_._1.behavior.exclusive != RB.None)
                 .filter(_._2 != node)
             )
           )
+          // .trace("incoming bindings after binder filter\n", _.mkString("\n"))
           // .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
 
-      val bumpNodes: Iterable[ModeNode] = bumpBindings
+      val bumpedNodes: Iterable[ModeNode] = bumpBindings
+        .filter(_._1.behavior.exclusive == RB.Layer)
         .flatMap(_.bumped.map(_._2))
         // FIXME hack: can't bump own submodes
         // .filter(!_.parent.contains(node))
         // can't bump self
         .filter(_ != node) ++ bumpedExc
 
-      if bumpNodes.nonEmpty then
+      val bumpedBindings = bumpBindings
+        .filter(_._1.behavior.exclusive == RB.Single)
+        .flatMap(_.bumped)
+      // .trace("bumped bindings\n", _.mkString("\n"))
+
+      if bumpedNodes.nonEmpty then
         def names(bb: Iterable[Binding[?, ?, ?]]) = bb.collect { case b: HB[?] => b.name }
-        Util.println(s">> BUMP ${node.layer.id} bumps ${bumpNodes.map(_.layer.id).mkString(",")}: ")
+        Util.println(s">> BUMP ${node.layer.id} bumps ${bumpedNodes.map(_.layer.id).mkString(",")}: ")
 
       // remember for deactivation
-      node.nodesToRestore.addAll(bumpNodes)
-      bumpNodes.foreach(_.bumpingMe.addOne(node))
+      node.nodesToRestore.addAll(bumpedNodes)
+      node.bindingsToRestore.addAll(bumpedBindings)
+
+      bumpedNodes.foreach(_.bumpingMe.addOne(node))
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
       bumpBindings.flatMap(_.bumped.map(_._1)).foreach(ext.binder.unbind)
 
-      node.nodeBindings.foreach(ext.binder.bind(_, node))
+      node.nodeBindings
+        // .trace(b => if node.layer.id == "play" then s"binding $b" else "")
+        .foreach(ext.binder.bind(_, node))
 
       node.bumpingMe.clear()
       node.layer.onActivate()
@@ -281,6 +299,13 @@ object Graph:
       // entryNodes.foreach(activate)
       baseRestore.foreach(n => n.bumpingMe.filterInPlace(_ == n))
       node.nodesToRestore.clear()
+
+      // restore bindings after soft bump
+      node.bindingsToRestore
+        // .trace("restoring bindings\n", _.mkString("\n"))
+        .foreach(ext.binder.bind.tupled)
+      node.bindingsToRestore.clear()
+
       Util.println(s"-- reactivated ${node.layer.id} bumped nodes ---")
     end deactivate
   end ModeDGraph

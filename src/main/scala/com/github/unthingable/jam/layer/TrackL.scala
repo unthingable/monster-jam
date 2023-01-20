@@ -113,10 +113,10 @@ trait TrackL:
       trackBank.scrollPosition().markInterested()
 
       override val modeBindings: Seq[Binding[?, ?, ?]] = Vector(
-        SupBooleanB(j.dpad.up.light.isOn, () => !isAtTop.get() && j.Mod.blink3),
-        SupBooleanB(j.dpad.down.light.isOn, () => track.isGroup.get() && j.Mod.blink3),
-        SupBooleanB(j.dpad.left.light.isOn, () => true),
-        SupBooleanB(j.dpad.right.light.isOn, () => true),
+        SupBooleanB(j.dpad.up.light, () => !isAtTop.get() && j.Mod.blink3),
+        SupBooleanB(j.dpad.down.light, () => track.isGroup.get() && j.Mod.blink3),
+        SupBooleanB(j.dpad.left.light, () => true),
+        SupBooleanB(j.dpad.right.light, () => true),
         EB(j.dpad.up.st.press, "exit group", () => ext.application.navigateToParentTrackGroup()),
         EB(
           j.dpad.down.st.press,
@@ -125,9 +125,9 @@ trait TrackL:
         ),
         EB(j.dpad.left.st.press, "scroll left", () => scrollBy(idx - 7)),
         EB(j.dpad.right.st.press, "scroll right", () => scrollBy(idx)),
-        SupBooleanB(j.solo.light.isOn, track.solo()),
-        SupBooleanB(j.mute.light.isOn, track.mute()),
-        SupBooleanB(j.record.light.isOn, track.arm()),
+        SupBooleanB(j.solo.light, track.solo()),
+        SupBooleanB(j.mute.light, track.mute()),
+        SupBooleanB(j.record.light, track.arm()),
         // FIXME - fixed?
         EB(j.solo.st.press, "track direct solo", () => track.solo().toggle()),
         EB(j.mute.st.press, "track direct mute", () => track.mute().toggle),
@@ -157,7 +157,7 @@ trait TrackL:
       ext.cursorTrack.selectChannel(localMaster)
 
     override val modeBindings: Seq[Binding[?, ?, ?]] = Vector(
-      SupBooleanB(j.master.light.isOn, equals),
+      SupBooleanB(j.master.light, equals),
       EB(j.master.st.press, "focus on master", selectMaster),
     )
 end TrackL

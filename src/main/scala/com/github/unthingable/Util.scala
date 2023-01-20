@@ -61,12 +61,19 @@ object Util extends Util:
 
     @targetName("tracem")
     transparent inline def trace(inline msg: String): A =
-      Util.println(s"$msg $obj")
+      if msg.nonEmpty then Util.println(s"$msg $obj")
+      obj
+
+    @targetName("tracef")
+    transparent inline def trace(inline msg: A => String): A =
+      val s = msg(obj)
+      if s.nonEmpty then Util.println(msg(obj))
       obj
 
     @targetName("tracefm")
-    transparent inline def trace(inline msg: A => String): A =
-      Util.println(msg(obj))
+    transparent inline def trace(inline msg: String, inline f: A => String): A =
+      val s = f(obj)
+      if s.nonEmpty || msg.nonEmpty then Util.println(s"$msg ${f(obj)}")
       obj
 
     inline def safeCast[B]: Option[B] =

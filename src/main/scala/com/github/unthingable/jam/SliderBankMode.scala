@@ -297,37 +297,37 @@ class SliderBankMode[Proxy, P <: JamParameter](
         j.clear.btn.pressedAction,
         s"clear $idx pressed",
         () => engage(ClearP),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.clear.btn.releasedAction,
         s"clear $idx released",
         () => engage(ClearR),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.Mod.Shift.btn.pressedAction,
         s"shift $idx pressed",
         () => engage(ShiftP),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.Mod.Shift.btn.releasedAction,
         s"shift $idx released",
         () => engage(ShiftR),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         strip.slider.beginTouchAction,
         s"strip $idx pressed",
         () => engage(StripP),
-        BB(tracked = true, exclusive = false)
+        BB.omni
       ),
       HB(
         strip.slider.endTouchAction,
         s"strip $idx released",
         () => engage(StripR),
-        BB(tracked = true, exclusive = false)
+        BB.omni
       ),
     )
   }

@@ -41,6 +41,6 @@ trait Dpad:
       EB(j.dpad.down.st.press, "page down", scroll(true, sceneBank)),
     ) ++ actionMap.map {
       case (b: JamOnOffButton, e: BooleanValue) =>
-        SupBooleanB(b.light.isOn, e)
+        SupBooleanB(b.light, e)
     }
 end Dpad

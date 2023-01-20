@@ -101,7 +101,7 @@ trait TransportL extends BindingDSL, Util:
     override val modeBindings = Vector(
       // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
       EB(j.play.st.press, "", () => playPress(), BB(tracked = false)),
-      SupBooleanB(j.play.light.isOn, ext.transport.isPlaying),
+      SupBooleanB(j.play.light, ext.transport.isPlaying),
       EB(
         j.noteRepeat.st.press,
         "note repeat pressed",
@@ -114,9 +114,9 @@ trait TransportL extends BindingDSL, Util:
         () => ext.transport.isFillModeActive.set(false),
         BB(tracked = false)
       ),
-      SupBooleanB(j.noteRepeat.light.isOn, ext.transport.isFillModeActive),
-      EB(j.record.st.press, "record pressed", () => ext.transport.record(), BB(exclusive = false)),
-      SupBooleanB(j.record.light.isOn, ext.transport.isArrangerRecordEnabled),
+      SupBooleanB(j.noteRepeat.light, ext.transport.isFillModeActive),
+      EB(j.record.st.press, "record pressed", () => ext.transport.record(), BB.omni),
+      SupBooleanB(j.record.light, ext.transport.isArrangerRecordEnabled),
       EB(
         j.auto.st.press,
         "auto pressed",
@@ -125,7 +125,7 @@ trait TransportL extends BindingDSL, Util:
           else ext.transport.isArrangerAutomationWriteEnabled.toggle()
       ),
       SupBooleanB(
-        j.auto.light.isOn,
+        j.auto.light,
         () =>
           if ext.transport.isAutomationOverrideActive.get() then j.Mod.blink
           else ext.transport.isArrangerAutomationWriteEnabled.get()
@@ -147,7 +147,7 @@ trait TransportL extends BindingDSL, Util:
     def b(button: JamOnOffButton, name: String, param: SettableBooleanValue) = Vector(
       // FIXME - fixed?
       EB(button.st.press, s"shiftTransport $name pressed", () => param.toggle()),
-      SupBooleanB(button.light.isOn, param)
+      SupBooleanB(button.light, param)
     )
 
     override val modeBindings = Vector(

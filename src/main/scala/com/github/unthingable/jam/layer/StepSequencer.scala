@@ -27,12 +27,11 @@ import com.github.unthingable.framework.binding.JCB
 import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.ListeningLayer
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
 import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.ModeCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.ModeState
 import com.github.unthingable.framework.mode.MultiModeLayer
@@ -71,18 +70,18 @@ trait StepSequencer extends BindingDSL:
   trait StepModes extends TrackedState, ModeLayer, StepMatrix, VelNote, NoteParam
 
   object stepSequencer
-      extends ModeCycleLayer("STEP"),
+      extends ModeButtonLayer("STEP", j.step),
+        MultiModeLayer,
         ListeningLayer,
         TrackedState(selectedClipTrack),
         StepCap,
         StepModes:
-
     // a mirror of the bitwig clip, channel / x / y
 
-    val steps =
-      ArraySeq.fill(16)(ArraySeq.fill(gridWidth)(ArraySeq.fill(gridHeight)(null: NoteStep)))
+    // val steps =
+    //   ArraySeq.fill(16)(ArraySeq.fill(gridWidth)(ArraySeq.fill(gridHeight)(null: NoteStep)))
 
-    clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
+    // clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
 
     devices.itemCount().addValueObserver(v => Util.println(v.toString))
     // clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
@@ -190,7 +189,7 @@ trait StepSequencer extends BindingDSL:
     lazy val patLength = new SimpleModeLayer("patLength"):
       override def modeBindings: Seq[Binding[?, ?, ?]] = (0 until 64).flatMap { idx =>
         JCB(
-          id,
+          this.id,
           j.matrix(idx / 8)(idx % 8),
           () =>
             Util.println(s"set playStop $idx")
@@ -203,7 +202,7 @@ trait StepSequencer extends BindingDSL:
             if clip.getPlayStop.get() > idx then JamColorState(clipColor, 2)
             else JamColorState.empty
         )
-      } ++ Vector(SupBooleanB(j.solo.light.isOn, () => true))
+      } ++ Vector(SupBooleanB(j.solo.light, () => true))
 
     lazy val gridSelect = ModeButtonLayer(
       "gridSelect",
@@ -305,10 +304,10 @@ trait StepSequencer extends BindingDSL:
         EB(j.dpad.down.st.press, "scroll page down", () => scrollYPage(UpDown.Down)),
         EB(j.dpad.left.st.press, "scroll step left", () => scrollXBy(-1)),
         EB(j.dpad.right.st.press, "scroll step right", () => scrollXBy(1)),
-        SupBooleanB(j.dpad.up.light.isOn, () => canScrollY(UpDown.Up)),
-        SupBooleanB(j.dpad.down.light.isOn, () => canScrollY(UpDown.Down)),
-        SupBooleanB(j.dpad.left.light.isOn, clip.canScrollStepsBackwards()),
-        SupBooleanB(j.dpad.right.light.isOn, clip.canScrollStepsForwards()),
+        SupBooleanB(j.dpad.up.light, () => canScrollY(UpDown.Up)),
+        SupBooleanB(j.dpad.down.light, () => canScrollY(UpDown.Down)),
+        SupBooleanB(j.dpad.left.light, clip.canScrollStepsBackwards()),
+        SupBooleanB(j.dpad.right.light, clip.canScrollStepsForwards()),
       )
     )
 
@@ -329,6 +328,27 @@ trait StepSequencer extends BindingDSL:
       )
     )
 
+    lazy val stepGate = ModeButtonLayer(
+      "stepGate",
+      j.step,
+      Vector(
+        EB(j.clear.st.press, "clear steps", () => clip.clearSteps(), BB.soft),
+        EB(j.duplicate.st.press, "duplicate pattern", () => clip.duplicateContent(), BB.soft),
+        EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
+        SupBooleanB(j.clear.light, () => true, BB.soft),
+        SupBooleanB(j.duplicate.light, () => true, BB.soft),
+        SupBooleanB(
+          j.play.light,
+          () =>
+            if ext.preferences.stepFollow.get() then j.Mod.blink3
+            else !ext.transport.isPlaying().get(),
+          BB.soft
+        )
+      ),
+      gateMode = GateMode.Gate,
+      silent = true
+    )
+
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
@@ -338,6 +358,7 @@ trait StepSequencer extends BindingDSL:
       chanSelect,
       dpadStep,
       tune,
+      stepGate,
     )
 
     override def onStepState(from: StepState, to: StepState): Unit =
@@ -357,10 +378,10 @@ trait StepSequencer extends BindingDSL:
         EB(j.Combo.Shift.solo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
       ) ++ JCB.empty(j.song)
 
-    override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
-      EB(j.step.st.press, "step toggle", () => toggleEvent),
-      SupBooleanB(j.step.light.isOn, () => isOn),
-    )
+    // override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
+    //   EB(j.step.st.press, "step toggle", () => toggleEvent),
+    //   SupBooleanB(j.step.light.isOn, () => isOn),
+    // )
 
     // TODO refactor this already
     // Find the first existing clip on a track

@@ -105,8 +105,8 @@ trait Control:
             super.onActivate()
 
           override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++ Vector(
-            SupBooleanB(j.left.light.isOn, m(() => device.hasPrevious.get(), page.hasPrevious)),
-            SupBooleanB(j.right.light.isOn, m(() => device.hasNext.get(), page.hasNext)),
+            SupBooleanB(j.left.light, m(() => device.hasPrevious.get(), page.hasPrevious)),
+            SupBooleanB(j.right.light, m(() => device.hasNext.get(), page.hasNext)),
             EB(
               j.left.st.release,
               "scroll left",
@@ -173,8 +173,8 @@ trait Control:
             val superBindings = super.modeBindings // cache for dirty check
 
             override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++ Vector(
-              SupBooleanB(j.left.light.isOn, () => true),
-              SupBooleanB(j.right.light.isOn, () => true),
+              SupBooleanB(j.left.light, () => true),
+              SupBooleanB(j.right.light, () => true),
               // must press both and then release to deactivate, so that releases don't end up in remote layer
               EB(j.left.st.press, "slice left press", () => pressL = true),
               EB(j.right.st.press, "slice right press", () => pressR = true),
@@ -222,7 +222,7 @@ trait Control:
           // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")
 
           override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++ Vector(
-            SupBooleanB(j.macroButton.light.isOn, () => true)
+            SupBooleanB(j.macroButton.light, () => true)
           ) ++ EIGHT.flatMap(idx =>
             Vector(
               EB(
@@ -377,8 +377,8 @@ trait Control:
               )
             }
         } ++ Vector(
-          SupBooleanB(j.dpad.up.light.isOn, () => deviceBanks.exists(_.canScrollBackwards.get())),
-          SupBooleanB(j.dpad.down.light.isOn, () => deviceBanks.exists(_.canScrollForwards.get())),
+          SupBooleanB(j.dpad.up.light, () => deviceBanks.exists(_.canScrollBackwards.get())),
+          SupBooleanB(j.dpad.down.light, () => deviceBanks.exists(_.canScrollForwards.get())),
           EB(
             j.dpad.up.st.press,
             "device bank up",
@@ -401,7 +401,7 @@ trait Control:
         j.select.st.press,
         "cycle device selectors",
         () => if j.control.st.isPressed then cycle(),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       // HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
     )

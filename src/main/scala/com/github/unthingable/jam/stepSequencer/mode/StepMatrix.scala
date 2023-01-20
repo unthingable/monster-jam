@@ -29,24 +29,31 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       val pstep = PointStep(Point(x, y), step, Instant.now())
 
       // simple note preview
-      if !ext.transport.isPlaying().get() && ext.preferences.stepNotePreview.get() then
-        selectedClipTrack.playNote(y, ts.velocity)
+      def playMe(): Unit =
+        if !ext.transport.isPlaying().get() && ext.preferences.stepNotePreview.get() then
+          selectedClipTrack.playNote(y, ts.velocity)
 
       localState.stepState.get match
+        // no steps held
         case StepState(Nil, _) =>
+          playMe()
           if step.state == NSState.Empty then
             clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
             StepState(List(PointStep(Point(x, y), stepAt(x, y), Instant.now())), true)
           else StepState(List(pstep), false)
+        // one step already held and this one is blank
         case st @ StepState(p @ PointStep(Point(x0, y0), _, _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
           val step0: NoteStep = stepAt(x0, y0)
           val newDuration     = ts.stepSize * (x - x0 + 1)
           if step0.duration() == newDuration then step0.setDuration(ts.stepSize)
           else step0.setDuration(newDuration)
           st.copy(noRelease = true)
+        // pressing more steps
         case st @ StepState(steps, noRelease) if hasStep =>
+          playMe()
           StepState(steps :+ pstep, noRelease)
         case st => st
+      end match
     end newState
     localState.stepState.set(newState)
     // Util.println(stepState.toString())
