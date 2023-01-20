@@ -107,6 +107,7 @@ object state:
   enum ExpMode derives CanEqual:
     case Exp, Operator
 
+  @SerialVersionUID(12345L)
   case class SeqState(
     val tid: Option[TrackId],
     val channel: Int,
@@ -119,7 +120,7 @@ object state:
     val expMode: ExpMode,
     val scaleIdx: Int,
     val scaleRoot: RealNote // starts at 0
-  ) extends Serializable:
+  ):
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
 
