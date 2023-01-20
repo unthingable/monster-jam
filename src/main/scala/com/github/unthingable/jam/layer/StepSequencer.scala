@@ -397,16 +397,24 @@ trait StepSequencer extends BindingDSL:
       restoreState()
       super.onActivate()
 
-      if !clip.exists().get() then
-        findClip() match
-          case None =>
-            val t = selectedClipTrack.position().get()
-            val c = localState.selectedClips.getOrElse(t, 0)
-            selectedClipTrack.createNewLauncherClip(c)
-            trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
-          case Some(foundClip) =>
-            clip.selectClip(foundClip)
-            clip.clipLauncherSlot().select()
+      if selectedClipTrack.position().get() < 0 then selectedClipTrack.selectFirst()
+
+      ext.host.scheduleTask(
+        () =>
+          if !clip.exists().get() then
+            findClip() match
+              case None =>
+                val t = selectedClipTrack.position().get()
+                val c = localState.selectedClips.getOrElse(t, 0)
+                selectedClipTrack.createNewLauncherClip(c)
+                trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
+              case Some(foundClip) =>
+                clip.selectClip(foundClip)
+                clip.clipLauncherSlot().select()
+        ,
+        30
+      )
+    end onActivate
 
     override def onSeqState(oldSt: SeqState, newSt: SeqState): Unit =
       if modeState._1 == ModeState.Active then
