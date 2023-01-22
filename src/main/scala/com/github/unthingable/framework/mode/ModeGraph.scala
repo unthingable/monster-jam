@@ -57,7 +57,7 @@ object Graph:
 
   trait ModeActivator:
     protected def activate(reason: String)(node: ModeNode): Unit
-    protected def deactivate(reason: String)(node: ModeNode): Unit
+    protected def deactivate(reason: String, byExternalAction: Boolean)(node: ModeNode): Unit
 
   trait GraphHelper:
     this: ModeActivator =>
@@ -78,7 +78,7 @@ object Graph:
         EB(
           layer.selfDeactivateEvent,
           s"${causeId} syn deact",
-          () => deactivate(s"by ${layer.selfDeactivateEvent}")(node)
+          () => deactivate(s"by ${layer.selfDeactivateEvent}", true)(node)
         ),
       )
     end synLoadBindings
@@ -131,18 +131,21 @@ object Graph:
 
     // Build exclusive groups
     // exclusive groups cannot overlap
-    private val exclusiveGroups: Map[ModeNode, (Grouping, Set[ModeNode])] =
+    private val exclusiveGroups: Map[ModeNode, (Grouping, Set[ModeNode], LayerGroup)] =
       edges
         .map(_._2)
         .collect {
           case g: (Exclusive | ExclusiveOn) =>
             val set = g.layers.flatMap(layerMap.get).toSet
             g match
-              case _: Exclusive   => (Grouping.Exclusive, set)
-              case _: ExclusiveOn => (Grouping.ExclusiveOn, set)
+              case _: Exclusive   => (Grouping.Exclusive, set, g)
+              case _: ExclusiveOn => (Grouping.ExclusiveOn, set, g)
         }
-        .flatMap((g, s) => s.map(n => (n, (g, s))))
+        .flatMap((grouping, s, lg) => s.map(n => (n, (grouping, s, lg))))
         .toMap
+
+    // keep track of last bumped ExclusiveOn
+    private val exclusiveLastDeactivated = mutable.Map.empty[LayerGroup, ModeNode]
 
     // Synthesize node bindings
     layerMap.values.foreach { node =>
@@ -185,7 +188,7 @@ object Graph:
       layerMap
         .get(l)
         .map(node =>
-          node.bumpingMe.map(n => n.subAncestor.getOrElse(n)).toSet.foreach(deactivate(s"reactivating ${l.id}"))
+          node.bumpingMe.map(n => n.subAncestor.getOrElse(n)).toSet.foreach(deactivate(s"reactivating ${l.id}", true))
           activate(s"reactivating ${l.id}")(node)
         )
 
@@ -201,7 +204,7 @@ object Graph:
         .get(node)
         .toVector
         // .map(_ ++ node.parents) // also deactivate parents (greedy Exclusive)
-        .flatMap((g, s) =>
+        .flatMap((g, s, lg) =>
           s.filter(_.isActive)
             .filter(
               _ != node
@@ -214,17 +217,20 @@ object Graph:
                 case l: HasSubModes =>
                   l.subModesToDeactivate
                     .flatMap(layerMap.get)
-                    .foreach(deactivate(bumpMsg + s" (sub ${l.id})"))
+                    .foreach(deactivate(bumpMsg + s" (sub ${l.id})", false))
                 case _ => ()
-              deactivate(bumpMsg)(n)
-              g match
-                case Grouping.Exclusive   => None
-                case Grouping.ExclusiveOn => Some(n)
+              deactivate(bumpMsg, false)(n)
+              exclusiveLastDeactivated.update(lg, n)
+              None
+              // g match
+              //   case Grouping.Exclusive   => None
+              //   case Grouping.ExclusiveOn => Some(n)
             }
         )
 
       case class Bumped(bumper: Binding[?, ?, ?], bumped: Set[(Binding[?, ?, ?], ModeNode)])
 
+      // useless val
       val bumpBindings: Iterable[Bumped] =
         node.nodeBindings
           // .trace("incoming bindings before filter\n", _.mkString("\n"))
@@ -246,7 +252,7 @@ object Graph:
           // .filter(!_.node.contains(node))))
           .filter(_.bumped.nonEmpty)
 
-      val bumpedNodesNoExc: Iterable[ModeNode] = bumpBindings
+      val bumpedNodes: Iterable[ModeNode] = bumpBindings
         .filter(_._1.behavior.exclusive == RB.Layer)
         .flatMap(_.bumped.map(_._2))
         // FIXME hack: can't bump own submodes
@@ -254,7 +260,7 @@ object Graph:
         // can't bump self
         .filter(_ != node)
 
-      val bumpedNodes = bumpedNodesNoExc ++ bumpedExc
+      // val bumpedNodes = bumpedNodesNoExc ++ bumpedExc
 
       val bumpedBindings = bumpBindings
         .filter(_._1.behavior.exclusive == RB.Single)
@@ -269,7 +275,7 @@ object Graph:
       node.nodesToRestore.addAll(bumpedNodes)
       node.bindingsToRestore.addAll(bumpedBindings)
 
-      bumpedNodesNoExc.foreach(_.bumpingMe.addOne(node))
+      bumpedNodes.foreach(_.bumpingMe.addOne(node))
 
       // bindings within a layer are allowed to combine non-destructively, so unbind first
       bumpBindings.flatMap(_.bumped.map(_._1)).foreach(ext.binder.unbind)
@@ -285,7 +291,7 @@ object Graph:
       Util.println(s"-- activated ${node.layer.id} ---")
     end activate
 
-    protected def deactivate(reason: String)(node: ModeNode): Unit =
+    protected def deactivate(reason: String, byUserAction: Boolean)(node: ModeNode): Unit =
       node.layer.setModeState(ModeState.Deactivating)
       Util.println(s"deactivating node ${node.layer.id}: $reason")
       node.layer.onDeactivate()
@@ -306,9 +312,16 @@ object Graph:
 
       // restore base
       val baseRestore = node.nodesToRestore.toSeq
-      val toRestore = (baseRestore ++ baseRestore.flatMap(_.bumpingMe)).distinct.filter(n =>
-        n.isActive || exclusiveGroups.get(n).exists(_._1 == Grouping.ExclusiveOn)
-      )
+      val toRestore: Seq[ModeNode] = Seq(
+        (baseRestore ++ baseRestore.flatMap(_.bumpingMe)).distinct.filter(n => n.isActive),
+        if byUserAction then
+          exclusiveGroups
+            .get(node)
+            .flatMap((grouping, _, lg) =>
+              if grouping == Grouping.ExclusiveOn then exclusiveLastDeactivated.get(lg) else None
+            )
+        else Vector.empty
+      ).flatten
       // maybe it's enough to simply rebind, without full on activation?
       ext.events.evalNow(s"from bump by ${node.layer.id} <:< $reason")(
         toRestore.flatMap(_.layer.activateEvent)*
