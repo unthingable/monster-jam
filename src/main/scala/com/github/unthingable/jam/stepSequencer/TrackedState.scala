@@ -95,8 +95,9 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
-    val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
-    val notify    = ext.host.showPopupNotification
+    val stateDiff     = Util.comparator(oldSt, newSt) andThen (_.unary_!)
+    val notifications = mutable.ArrayDeque.empty[String]
+    val notify        = notifications.addOne
     if isOn then
       if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
@@ -110,7 +111,10 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
         notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
       if stateDiff(_.stepString) then notify(s"Step size: ${newSt.stepString}")
       if stateDiff(_.keyPageSize) || stateDiff(_.stepPageSize) then
-        notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
+        notify(s"Step grid: ${newSt.keyPageSize}x${newSt.stepPageSize}")
+
+      if notifications.nonEmpty then ext.host.showPopupNotification(notifications.mkString(" "))
+  end echoStateDiff
 end TrackedState
 
 /** A collection of utility methods useful for working with sequencer steps */
