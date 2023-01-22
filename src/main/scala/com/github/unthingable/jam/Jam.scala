@@ -50,7 +50,7 @@ class Jam(implicit val ext: MonsterJamExt)
   trackBank.followCursorTrack(ext.cursorTrack)
 
   // val superBank: TrackBank = ext.host.createMasterTrack(256).createMainTrackBank(256, 8, 256, true)
-  val superBank: TrackBank = ext.host.createTrackBank(256, 8, 256, true)
+  val superBank: TrackBank = ext.host.createTrackBank(64, 0, 64, true)
   superBank.itemCount().markInterested()
   // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
@@ -60,7 +60,7 @@ class Jam(implicit val ext: MonsterJamExt)
     (idx: Int, selected: Boolean) =>
       if selected then ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
 
-  (0 until 256).foreach { i =>
+  (0 until superBank.getCapacityOfBank()).foreach { i =>
     superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
   }
 
