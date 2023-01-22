@@ -12,6 +12,7 @@ import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.Graph.Coexist
 import com.github.unthingable.framework.mode.Graph.Exclusive
+import com.github.unthingable.framework.mode.Graph.ExclusiveOn
 import com.github.unthingable.framework.mode.Graph.ModeDGraph
 import com.github.unthingable.framework.mode.ModeButtonLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
@@ -86,7 +87,7 @@ class Jam(implicit val ext: MonsterJamExt)
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
-  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer, stepSequencer.tune)
+  val stripGroup = ExclusiveOn(levelCycle, auxLayer, controlLayer, stepSequencer.noteParam)
 
   // Final assembly of all mode layers
   val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))

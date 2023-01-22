@@ -336,12 +336,14 @@ trait StepSequencer extends BindingDSL:
       gridSelect,
       chanSelect,
       dpadStep,
-      tune,
+      noteParam,
     )
 
     override def onStepState(from: StepState, to: StepState): Unit =
       val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
-      if tune.isOn && stateDiff(_.steps.map(_.step)) then tune.setCurrentSteps(to.steps.map(_.step))
+      if to.steps.nonEmpty && !noteParam.isOn then ext.events.eval("steps selected")(noteParam.activateEvent*)
+      else if to.steps.isEmpty && noteParam.isOn then ext.events.eval("steps unselected")(noteParam.deactivateEvent*)
+      if stateDiff(_.steps.map(_.step)) then noteParam.setCurrentSteps(to.steps.map(_.step))
       // if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
       //   ???
 

@@ -6,9 +6,11 @@ import com.bitwig.extension.controller.api.NoteStep.State as NSState
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.GetSetProxy
+import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.ModeButtonCycleLayer
+import com.github.unthingable.framework.mode.ModeCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.jam.JamParameter
 import com.github.unthingable.jam.SliderBankMode
@@ -21,13 +23,12 @@ import com.github.unthingable.jam.surface.JamSurface
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
 trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
-  object tune
-      extends ModeButtonCycleLayer(
-        "step TUNE",
-        j.tune,
-        CycleMode.Select,
-        gateMode = GateMode.Auto
+  object noteParam
+      extends ModeCycleLayer(
+        "stepNoteParam",
       ):
+
+    override def modeBindings: Seq[Binding[?, ?, ?]] = Vector.empty
 
     case class FineStep(step: NoteStep):
       def offset: Int = step.x % fineRes
@@ -109,7 +110,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       proxies.map(_.map(_.set))
 
     val sliders = new SliderBankMode(
-      "note exp",
+      "noteExp",
       callbacks,
       _.map(JamParameter.Internal.apply).getOrElse(JamParameter.Empty),
       Seq.fill(8)(BarMode.SINGLE),
@@ -123,5 +124,5 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       super.onActivate()
       select(0)
     override val subModes: Vector[ModeLayer] = Vector(sliders)
-  end tune
+  end noteParam
 end NoteParam

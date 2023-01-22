@@ -196,7 +196,6 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 * **GRID**: activate grid selector
 * **SHIFT+SOLO**: activate pattern length selector
 * **NOTES**: activate Note/Velocity mode
-* **TUNE**: adjust step parameters with sliders (see **Parameter adjustments**)
 * **PERFORM (hold)**: change current MIDI channel, scale
 
 The button grid is bottom-focused. Note mode will push the grid up. When using note pages, the first note in the page will be the bottom-most visible note on the grid.
@@ -321,9 +320,7 @@ The 16 scale buttons are laid out as follows, Chromatic scale is the default. No
 
 ## Parameter adjustments (WIP)
 
-Press **TUNE** to access various note step parameters via sliders. (WIP: have to manually press one of LEVEL/AUX/CONTROL to reactivate after deactivating TUNE)
-
-To edit parameter of one or more steps, hold them. When multiple steps are held, last pressed step takes precedence.
+Press and hold existing step(s) to access various note step parameters via sliders. When multiple steps are held, last pressed step takes precedence.
 
 Fine adjustments with SHIFT are available.
 
