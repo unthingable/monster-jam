@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.deriving.Mirror
 import scala.util.Try
 
 transparent trait Util:
@@ -93,7 +94,8 @@ object Util extends Util:
       val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
-  val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow   = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow16 = (0 until 16).map(i => (i + 1) * 4).toVector
 
   def serialize[A](o: A): String =
     val bos = new ByteArrayOutputStream
@@ -110,6 +112,14 @@ object Util extends Util:
       ois.close()
       obj.asInstanceOf[A]
     }.toEither
+
+  def fillNull[A <: Product](value: A, default: A)(using m: Mirror.ProductOf[A]): A =
+    given CanEqual[Any, Null] = CanEqual.derived
+    val arr = value.productIterator
+      .zip(default.productIterator)
+      .map((a, b) => if a == null then b else a)
+      .toArray
+    m.fromProduct(Tuple.fromArray(arr))
 
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
     given CanEqual[B, B] = CanEqual.derived

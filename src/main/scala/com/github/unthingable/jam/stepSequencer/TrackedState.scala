@@ -62,7 +62,9 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
-        stateCache.addAll(data)
+        stateCache.addAll(
+          data.map((tid, st) => (tid, Util.fillNull(st, SeqState.empty(Some(tid)))))
+        )
         ext.host.scheduleTask(() => updateState(_tid), 30)
       )
 
