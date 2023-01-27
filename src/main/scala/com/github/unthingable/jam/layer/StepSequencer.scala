@@ -83,7 +83,7 @@ trait StepSequencer extends BindingDSL:
 
     // clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
 
-    devices.itemCount().addValueObserver(v => Util.println(v.toString))
+    // devices.itemCount().addValueObserver(v => Util.println(v.toString))
     // clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
     // clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
@@ -127,11 +127,7 @@ trait StepSequencer extends BindingDSL:
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
 
-    clip.setStepSize(ts.stepSize)
     clip.scrollToStep(ts.stepScrollOffset)
-    fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
-
-    // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
 
     // page follower
     clip
@@ -397,11 +393,17 @@ trait StepSequencer extends BindingDSL:
     end onActivate
 
     override def onSeqState(oldSt: SeqState, newSt: SeqState): Unit =
+      val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
+
       if modeState._1 == ModeState.Active then
         (newSt.noteVelVisible, velAndNote.isOn) match
           case (true, false) => ext.events.eval("sync track SeqState")(velAndNote.activateEvent*)
           case (false, true) => ext.events.eval("sync track SeqState")(velAndNote.deactivateEvent*)
           case _             => ()
+
+      if stateDiff(_.stepSize) then
+        clip.setStepSize(newSt.stepSize)
+        fineClip.setStepSize(newSt.stepSize / fineRes.toDouble)
 
     override lazy val extraOperated = stepGate.modeBindings
 

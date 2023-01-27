@@ -79,6 +79,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
         .foreach(stateCache.update(_, st))
       storeState()
       echoStateDiff(old, st)
+      onSeqState(old, st)
     else st.trace(s"setState mismatch, tid is now $_tid")
 
   /** When switching to a new track, pull its SeqState from cache and make it current */
