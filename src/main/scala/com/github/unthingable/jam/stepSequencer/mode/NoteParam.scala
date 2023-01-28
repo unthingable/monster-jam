@@ -29,7 +29,7 @@ import com.github.unthingable.jam.surface.JamSurface
 
 import scala.collection.mutable
 
-import Util.trace
+import Util.{popup, trace}
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
@@ -63,7 +63,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       StepParam.RelVel -> P(_.releaseVelocity(), (s, v, _) => s.setReleaseVelocity(v)),
       StepParam.Spread -> P(_.velocitySpread(), (s, v, _) => s.setVelocitySpread(v)),
       // note start
-      StepParam.Spread -> P(
+      StepParam.Nudge -> P(
         toFine(_).map(_.offset).getOrElse(0) / 128.0,
         (s, _, d) => toFine(s).foreach(_.moveFineBy(fineClip, (d * 128).toInt))
       ),
@@ -71,6 +71,19 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       StepParam.Pan      -> P(_.pan(), (s, v, _) => s.setPan(v)),
       StepParam.Timbre   -> P(_.timbre(), (s, v, _) => s.setTimbre(v)),
       StepParam.Pressure -> P(_.pressure(), (s, v, _) => s.setPressure(v)),
+    )
+
+    val proxyListNotify = proxyList.map((param, getset) =>
+      (
+        param,
+        P(
+          getset.getf,
+          (s, v, d) =>
+            getset.setf(s, v, d)
+            // will fire for each selected step, a little heavy but ok
+            popup(f"$param: $v%.2f")
+        )
+      )
     )
 
     val proxyMap = proxyList.toMap
@@ -132,7 +145,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
             rowSelected = None
 
             // set sliders to one parameter each, consecutive from proxyList
-            proxyList.map(_._2).zip(proxies).foreach((getset, p) => p.update(getset))
+            proxyListNotify.map(_._2).zip(proxies).foreach((getset, p) => p.update(getset))
             // target them all at current steps
             proxies.foreach(_.setTarget(currentSteps.map(_.step)))
 
@@ -199,7 +212,12 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   object noteParamGate extends SimpleModeLayer("noteParamGate"):
     def toggle(idx: Int): Unit =
       val param = StepParam.fromOrdinal(idx)
-      val newv  = if ts.stepParam.contains(param) then None else Some(param)
+      val newv = if ts.stepParam.contains(param) then
+        popup("Note params: all")
+        None
+      else
+        popup(s"Note params: row $param")
+        Some(param)
       setState(ts.copy(stepParam = newv))
       noteParam.setCurrentSteps()
 

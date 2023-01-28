@@ -127,4 +127,7 @@ object Util extends Util:
 
   def schedule(f: => Unit, delay: Int)(using ext: MonsterJamExt): Unit =
     ext.host.scheduleTask(() => f, delay)
+
+  inline def popup(s: String)(using ext: MonsterJamExt): Unit =
+    ext.host.showPopupNotification(s)
 end Util
