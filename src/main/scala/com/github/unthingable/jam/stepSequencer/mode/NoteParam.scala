@@ -47,7 +47,8 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       def offset: Int = step.x % fineRes
       def moveFineBy(clip: Clip, dx: Int): Unit =
         // ensure no crossings
-        if step.x / 128 == (step.x + dx) / 128 then clip.moveStep(ts.channel, step.x, step.y, dx, 0)
+        val x = step.x
+        if x / 128 == (x + dx) / 128 then clip.moveStep(ts.channel, x, step.y, dx.max(0 - x), 0)
 
     def toFine(step: NoteStep): Option[FineStep] =
       (0 until fineRes).view
