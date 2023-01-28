@@ -45,10 +45,13 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
     case class FineStep(step: NoteStep):
       def offset: Int = step.x % fineRes
-      def moveFineBy(clip: Clip, dx: Int): Unit =
-        // ensure no crossings
-        val x = step.x
-        if x / 128 == (x + dx) / 128 then clip.moveStep(ts.channel, x, step.y, dx.max(0 - x), 0)
+
+      def moveFineTo(clip: Clip, offset: Int): Unit =
+        val x          = step.x
+        val lowerBound = (x / fineRes) * fineRes
+        val newx       = lowerBound + offset
+        val dx         = (newx - x).max(lowerBound - x).min(lowerBound + fineRes - 1 - x)
+        clip.moveStep(ts.channel, x, step.y, dx, 0)
 
     def toFine(step: NoteStep): Option[FineStep] =
       (0 until fineRes).view
@@ -66,7 +69,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       // note start
       StepParam.Nudge -> P(
         toFine(_).map(_.offset).getOrElse(0) / 128.0,
-        (s, _, d) => toFine(s).foreach(_.moveFineBy(fineClip, (d * 128).toInt))
+        (s, v, _) => toFine(s).trace("toFine").foreach(_.moveFineTo(fineClip, (v * 128).toInt))
       ),
       StepParam.Duration -> P(_.duration(), (s, v, _) => s.setDuration(v)),
       StepParam.Pan      -> P(_.pan(), (s, v, _) => s.setPan(v)),
