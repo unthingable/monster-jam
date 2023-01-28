@@ -56,6 +56,8 @@ import java.time.Instant
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
 
+import Util.{trace, schedule}
+
 trait StepSequencer extends BindingDSL:
   this: Jam =>
   val stepModeMap = Map(
@@ -133,7 +135,9 @@ trait StepSequencer extends BindingDSL:
     clip
       .playingStep()
       .addValueObserver(step =>
-        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
+        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow
+            .get() && localState.stepState.get.steps.nonEmpty
+        then
           val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
           val playingPage: Int = step / ts.stepPageSize
           if currentPage != playingPage then setStepPage(playingPage)
@@ -337,11 +341,13 @@ trait StepSequencer extends BindingDSL:
 
     override def onStepState(from: StepState, to: StepState): Unit =
       val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
+
       if to.steps.nonEmpty && !noteParam.isOn then ext.events.eval("steps selected")(noteParam.activateEvent*)
       else if to.steps.isEmpty && noteParam.isOn then ext.events.eval("steps unselected")(noteParam.deactivateEvent*)
-      if stateDiff(_.steps.map(_.step)) then noteParam.setCurrentSteps(to.steps.map(_.step))
-      // if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
-      //   ???
+
+      if to.steps.nonEmpty && stateDiff(_.steps) then
+        schedule(if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps(), 10)
+    end onStepState
 
     override def subModesToActivate =
       (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ (subModes :+ velAndNote).filter(m =>
@@ -353,11 +359,6 @@ trait StepSequencer extends BindingDSL:
         EB(j.Combo.Shift.solo.press, "shift-solo pressed", () => patLength.activateEvent),
         EB(j.Combo.Shift.solo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
       ) ++ JCB.empty(j.song)
-
-    // override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
-    //   EB(j.step.st.press, "step toggle", () => toggleEvent),
-    //   SupBooleanB(j.step.light.isOn, () => isOn),
-    // )
 
     // TODO refactor this already
     // Find the first existing clip on a track

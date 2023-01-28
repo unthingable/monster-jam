@@ -129,6 +129,8 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   val fineClip                 = selectedClipTrack.createLauncherCursorClip(gridWidth * fineRes, gridHeight)
   val secondClip               = selectedClipTrack.createLauncherCursorClip(1, 1)
 
+  protected var rowSelected: Option[Int] = None
+
   val devices: DeviceBank = selectedClipTrack.createDeviceBank(1)
   lazy val colorManager   = ColorManager(clipColor)
 
@@ -137,7 +139,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
 
-  /** Overrideable function to handle state transformations */
+  /** Overrideable function to handle changes to selected steps */
   def onStepState(from: StepState, to: StepState): Unit
 
   def clipColor: Color =
@@ -167,9 +169,6 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   def incStepSize(inc: Short): Unit =
     setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
-    // should probably to this in onStepState
-    clip.setStepSize(ts.stepSize)
-    fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
 
   inline def scrollYTo(y: ScaledNote) =
     setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))

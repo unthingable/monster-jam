@@ -124,4 +124,7 @@ object Util extends Util:
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
     given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
+
+  def schedule(f: => Unit, delay: Int)(using ext: MonsterJamExt): Unit =
+    ext.host.scheduleTask(() => f, delay)
 end Util

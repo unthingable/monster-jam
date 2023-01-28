@@ -35,7 +35,7 @@ class RefSub[A: SelfEqual](init: A) extends Ref[A](init):
 
   override val onChange: (A, A) => Unit = (_, v) => listeners.foreach(_(v))
 
-/* like Watched, but with selective notifications */
+/** Like Watched, but with selective notifications */
 abstract class RefSubSelective[Token, A]:
   type Listener = (Option[Token], A => Unit)
   def init: (A, Token)
@@ -51,10 +51,11 @@ abstract class RefSubSelective[Token, A]:
     // if (value._1 != old._1)
     push()
 
+  /** Notify listeners of a value update */
   inline def push(): Unit =
     listeners.foreach((listenerToken, f) => if !listenerToken.contains(value._2) then f(value._1))
 
-class GetSetProxyBase[A]:
+trait MultiTarget[A]:
   protected val target = mutable.ListBuffer.empty[A]
   def setTarget(v: Iterable[A]): Unit =
     target.clear()
@@ -64,14 +65,26 @@ class GetSetProxyBase[A]:
 trait Delta[A]:
   def apply(a: A, b: A): A
 
-case class GetSetProxy[A, B](default: B)(getf: A => B, setf: (A, B, B) => Unit)(using delta: Delta[B])
-    extends GetSetProxyBase[A]:
-  protected var value: B = default
-  def get: B             = target.map(getf).lastOption.getOrElse(default)
+case class GetSetContainer[A, B: Delta](default: B, getf: A => B, setf: (A, B, B) => Unit)
+
+object GetSetContainer:
+  def empty[A, B: Delta](default: B) = GetSetContainer[A, B](default, _ => default, (_, _, _) => ())
+
+  given Delta[Double] with
+    def apply(a: Double, b: Double) = b - a
+
+class GetSetProxy[A, B](init: GetSetContainer[A, B])(using delta: Delta[B]) extends MultiTarget[A]:
+  protected var default: B              = init.default
+  protected var value: B                = init.default
+  protected var getf: A => B            = init.getf
+  protected var setf: (A, B, B) => Unit = init.setf
+
+  def get: B = target.map(getf).lastOption.getOrElse(default)
   def set(v: B) =
     target.foreach(setf(_, v, delta(value, v)))
     value = v
 
-object GetSetProxy:
-  given Delta[Double] with
-    def apply(a: Double, b: Double) = b - a
+  def update(getset: GetSetContainer[A, B]): Unit =
+    value = getset.default
+    getf = getset.getf
+    setf = getset.setf

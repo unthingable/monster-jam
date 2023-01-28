@@ -21,12 +21,12 @@ import com.github.unthingable.jam.surface.JamSurface
 import java.time.Instant
 
 trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
-  def stepPress(x: Int, y: Int): Unit =
+  def stepPress(x: Int, y: Int, row: Int, col: Int): Unit =
     inline def hasStep: Boolean = stepAt(x, y).state == NSState.NoteOn
 
     val newState: StepState =
-      val step  = stepAt(x, y)
-      val pstep = PointStep(Point(x, y), step, Instant.now())
+      def step  = stepAt(x, y)
+      val pstep = PointStep(Point(row, col), step, Instant.now())
 
       // simple note preview
       def playMe(): Unit =
@@ -39,14 +39,14 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
           playMe()
           if step.state == NSState.Empty then
             clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
-            StepState(List(PointStep(Point(x, y), stepAt(x, y), Instant.now())), true)
+            StepState(List(pstep), true)
           else StepState(List(pstep), false)
         // one step already held and this one is blank
-        case st @ StepState(p @ PointStep(Point(x0, y0), _, _) :: Nil, _) if y == y0 && x > x0 && !hasStep =>
-          val step0: NoteStep = stepAt(x0, y0)
-          val newDuration     = ts.stepSize * (x - x0 + 1)
-          if step0.duration() == newDuration then step0.setDuration(ts.stepSize)
-          else step0.setDuration(newDuration)
+        case st @ StepState(p @ PointStep(_, s0, _) :: Nil, _) if y == s0.y && x > s0.x && !hasStep =>
+          // val step0: NoteStep = stepAt(s0.x, s0.y)
+          val newDuration = ts.stepSize * (x - s0.x + 1)
+          if s0.duration() == newDuration then s0.setDuration(ts.stepSize)
+          else s0.setDuration(newDuration)
           st.copy(noRelease = true)
         // pressing more steps
         case st @ StepState(steps, noRelease) if hasStep =>
@@ -59,17 +59,16 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     // Util.println(stepState.toString())
   end stepPress
 
-  def stepRelease(X: Int, Y: Int): Unit =
+  def stepRelease(X: Int, Y: Int, Row: Int, Col: Int): Unit =
     val newState = localState.stepState.get match
-      case StepState(PointStep(Point(X, Y), _, pressed) :: Nil, noRelease) =>
+      case StepState(PointStep(Point(Row, Col), step, pressed) :: Nil, noRelease) =>
         if !noRelease && !pressed.isBefore(Instant.now().minusMillis(200)) then
-          val step = stepAt(X, Y)
           step.state match
-            case NSState.NoteOn => clip.clearStep(ts.channel, X, Y)
+            case NSState.NoteOn => clip.clearStep(ts.channel, step.x, step.y)
             case NSState.Empty | NSState.NoteSustain =>
-              clip.setStep(ts.channel, X, Y, ts.velocity, ts.stepSize)
+              clip.setStep(ts.channel, step.x, step.y, ts.velocity, ts.stepSize)
         StepState(List.empty, false)
-      case st => st.copy(steps = st.steps.filter(_.point != Point(X, Y)))
+      case st => st.copy(steps = st.steps.filter(_.point != Point(Row, Col)))
     localState.stepState.set(newState)
     // Util.println(stepState.toString())
 
@@ -90,10 +89,16 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
                       .get() && clip.playingStep().get() - ts.stepScrollOffset == xy._1
                   then colorManager.stepPad.playing
                   else colorManager.stepPad.padColor(xy._2, clip.getStep(ts.channel, xy._1, xy._2))
-                case _ => JamColorState.empty
+                case _ =>
+                  JamColorState.empty
+                // FiXME
+                // rowSelected
+                //   .filter(_ == xy.get._2)
+                //   .map(_ => colorManager.stepPad.rowSelected)
+                //   .getOrElse(JamColorState.empty)
           ),
-          EB(j.matrix(row)(col).st.press, "", () => xy.foreach(stepPress.tupled)),
-          EB(j.matrix(row)(col).st.release, "", () => xy.foreach(stepRelease.tupled))
+          EB(j.matrix(row)(col).st.press, "", () => xy.foreach((x, y) => stepPress(x, y, row, col))),
+          EB(j.matrix(row)(col).st.release, "", () => xy.foreach((x, y) => stepRelease(x, y, row, col)))
         )
       ).flatten
 end StepMatrix

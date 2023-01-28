@@ -4,6 +4,7 @@ import com.bitwig.extension.controller.api.NoteStep
 import com.github.unthingable.Util
 import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.TrackId
+import com.github.unthingable.jam.stepSequencer.mode.StepParam
 
 import java.time.Instant
 import scala.annotation.targetName
@@ -39,6 +40,7 @@ object state:
     lazy val length = fullScale.length
 
     def isInScale(note: RealNote): Boolean =
+      // Scala native % gives negative modulos for negative numbers
       intervals.contains(java.lang.Math.floorMod(note - root, 12))
 
     def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
@@ -91,7 +93,7 @@ object state:
   /** A step in the clip grid.
     *
     * @param point
-    *   Grid location of the step
+    *   Jam grid location of the step (row, col)
     * @param _step
     *   is allowed to be by-name, created steps are not reported back immediately
     * @param pressed
@@ -119,7 +121,8 @@ object state:
     val noteVelVisible: Boolean,
     val expMode: ExpMode,
     val scaleIdx: Int,
-    val scaleRoot: RealNote // starts at 0
+    val scaleRoot: RealNote,          // starts at 0
+    val stepParam: Option[StepParam], // single-row mode if not None
   ):
 
     lazy val stepViewPort = if noteVelVisible then ViewPort(0, 0, 4, 8) else ViewPort(0, 0, 8, 8)
@@ -171,6 +174,7 @@ object state:
       expMode = ExpMode.Exp,
       scaleIdx = scales.length - 1, // chromatic
       scaleRoot = 0,
+      stepParam = None,
     )
 
     enum NoteName:

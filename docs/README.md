@@ -50,7 +50,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 ## Global
 
-* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
+* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust in finer increments (e.g. in TEMPO mode).
 * **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view)
 * **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
@@ -216,7 +216,7 @@ Scene button color guide:
 
 * Press empty step (dark button) to create a step
 * Press an existing step to clear (and release quickly)
-* Press and hold step to select it for editing (long press will not delete it)
+* Press and hold step to select it for editing. Releasing after a long press will not delete it.
 * **SHIFT+NOTES** to toggle alternating note row colors
 
 If a note spans more than one step, consecutive steps are lit in dim white.
@@ -318,13 +318,11 @@ The 16 scale buttons are laid out as follows, Chromatic scale is the default. No
 1. Whole Tone               
 1. Chromatic                
 
-## Parameter adjustments (WIP)
+## Parameter/expressions adjustments (WIP)
 
-Press and hold existing step(s) to access various note step parameters via sliders. When multiple steps are held, last pressed step takes precedence.
+Press and hold existing step(s) to access note step parameters via sliders. When multiple steps are held, last pressed step's value is used as a starting point but all are adjusted together. Make fine adjustments by holding SHIFT.
 
-Fine adjustments with SHIFT are available.
-
-Sliders:
+8 parameters are available for adjustment (more TBA later):
 
 1. Note velocity
 1. Note release velocity
@@ -334,6 +332,24 @@ Sliders:
 1. Pan
 1. Timbre
 1. Pressure
+
+Parameter adjustment mode has two submodes, controlled via track/group buttons (above sliders). MonsterJam will 
+
+### Note mode (default)
+
+In this mode each of the 8 parameters is controlled by a corresponding slider (1: velocity, 3: spread, etc.). When holding multiple steps, the value of the last  pressed step will be shown on the LED strip. Moving a slider applies the parameter change to all held steps (absolute, not relative).
+
+### Row mode
+
+Press any of the track buttons to activate single row mode. The buttons correspond to each of the 8 parameters, the currently selected parameter will be **WHITE**. Press it again to deactivate and return to Note mode (above).
+
+In Row mode each slider controls one specific parameter for the corresponding step on that row (if it has a step) — exactly like the expressions view in Bitwig clip editor.
+
+Example: say you have 4 active steps (1,1,1,1,0,0,0,0) on a given row and you want to quickly adjust velocities:
+1. Hold down any one of the active steps
+1. If track/group A (single-row velocity) if not selected already, press it
+1. First 4 sliders will show current velocities, second 4 will be blank
+1. Move sliders to change note velocities
 
 ## Clip creation/selection behavior
 
@@ -514,6 +530,15 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b15
+
+* Note expressions editor
+  * Now self-activated when steps are held, no longer need to press TUNE
+  * Added single row mode, control one parameter for all notes in a row
+* Pattern page follow disabled when holding steps
+* Previous slider mode auto-restores after expressions editor
+* Fixed: step size could be set impromperly when switching tracks
 
 ## 8.0b14
 * Step: multi-row notes were wrapping incorrectly
