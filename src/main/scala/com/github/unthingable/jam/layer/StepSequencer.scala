@@ -371,7 +371,11 @@ trait StepSequencer extends BindingDSL:
       if secondClip.exists().get() then Some(secondClip) else None
 
     override def onActivate(): Unit =
-      restoreState()
+      // restoreState()
+      // updateCurrentState()
+      clip.setStepSize(ts.stepSize)
+      fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
+
       super.onActivate()
 
       if selectedClipTrack.position().get() < 0 then selectedClipTrack.selectFirst()
