@@ -327,13 +327,15 @@ Press and hold existing step(s) to access note step parameters via sliders. When
 1. Note velocity
 1. Note release velocity
 1. Note velocity spread
-1. Note start offset (between the start of this step and the next one, in 128 increments)
-1. Note duration
+1. Note start offset, within one step, in 128 increments
+1. Duration, within a step (if a note spans mutliple steps, this is duration of the last occupied step)
 1. Pan
 1. Timbre
 1. Pressure
 
-Parameter adjustment mode has two submodes, controlled via track/group buttons (above sliders). MonsterJam will 
+Parameter adjustment mode has two submodes, controlled via track/group buttons (above sliders). Submode selections are stored per track in the project.
+
+It is useful to have the clip editor open, especially when working with nudge and duration, so see how changes are affecting the notes.
 
 ### Note mode (default)
 
@@ -536,9 +538,12 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Note expressions editor
   * Now self-activated when steps are held, no longer need to press TUNE
   * Added single row mode, control one parameter for all notes in a row
+  * Nudging a note will shorten it if it bumps into the next note, instead of bumping the next note
+  * Duration adjustments are limited to a single step (so it won't clobber the next note)
 * Pattern page follow disabled when holding steps
 * Previous slider mode auto-restores after expressions editor
 * Fixed: step size could be set impromperly when switching tracks
+* Fixed: it was possible for STEP mode to misconfigure step size
 
 ## 8.0b14
 * Step: multi-row notes were wrapping incorrectly

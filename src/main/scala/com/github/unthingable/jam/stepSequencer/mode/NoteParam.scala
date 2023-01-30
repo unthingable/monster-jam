@@ -47,17 +47,62 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       def offset: Int = step.x % fineRes
 
       def moveFineTo(clip: Clip, offset: Int): Unit =
-        val x          = step.x
-        val lowerBound = (x / fineRes) * fineRes
-        val newx       = lowerBound + offset
-        val dx         = (newx - x).max(lowerBound - x).min(lowerBound + fineRes - 1 - x)
+        val x: Int          = step.x
+        val lowerBound: Int = (x / fineRes) * fineRes
+        val newx: Int       = lowerBound + offset
+        val dx: Int         = (newx - x).max(lowerBound - x).min(lowerBound + fineRes - 1 - x)
+
+        // bracket duration
+        val stepSize   = ts.stepSize / fineRes
+        val duration   = step.duration / stepSize
+        val currentEnd = x + duration.toInt
+        val newEnd     = newx + duration.toInt
+        if dx > 0 then
+          // next note to be clobbered
+          val nextNote: Option[Int] =
+            (currentEnd to newEnd).find(clip.getStep(ts.channel, _, step.y).state() == NSState.NoteOn)
+          nextNote match
+            case None => ()
+            case Some(value) =>
+              val newDuration = step.duration - ((newEnd - value) * stepSize)
+              step.setDuration(newDuration)
+
         clip.moveStep(ts.channel, x, step.y, dx, 0)
+      end moveFineTo
+    end FineStep
 
     def toFine(step: NoteStep): Option[FineStep] =
       (0 until fineRes).view
         .map(i => fineClip.getStep(ts.channel, step.x * fineRes + i, step.y))
         .find(_.state() == NSState.NoteOn)
         .map(s => FineStep(s))
+
+    /** Treat duration as length of last grid step occupied by note */
+    extension (step: NoteStep)
+      private inline def stepBounds: (Double, Double, Double) =
+        val duration               = step.duration()
+        val scaledDuration: Double = duration / ts.stepSize
+        val complete               = scaledDuration.floor
+        val incomplete             = scaledDuration.ceil
+        (complete, incomplete, scaledDuration)
+
+      inline def tail: Double =
+        val (complete, incomplete, scaledDuration) = stepBounds
+        if complete == incomplete then 1.0
+        else scaledDuration - complete
+
+      /** Calculate new duration given tail */
+      inline def fromTail(newTail: Double): Double =
+        val (complete, incomplete, _) = stepBounds
+        ( // if complete == 0.0 then newTail
+          // else
+          if complete == incomplete then complete - 1 + newTail
+          else complete + newTail
+        ) * ts.stepSize
+
+      inline def setTail(newTail: Double): Unit =
+        step.setDuration(fromTail(newTail.max(0.001)))
+    end extension
 
     import GetSetContainer.given
     val P = GetSetContainer[NoteStep, Double](0, _, _)
@@ -69,9 +114,11 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       // note start
       StepParam.Nudge -> P(
         toFine(_).map(_.offset).getOrElse(0) / 128.0,
-        (s, v, _) => toFine(s).trace("toFine").foreach(_.moveFineTo(fineClip, (v * 128).toInt))
+        (s, v, _) =>
+          toFine(s).foreach(_.moveFineTo(fineClip, (v * 128).toInt))
+          // Util.wait(20, "repeat setCurrent", () => setCurrentSteps()) // update duration slider
       ),
-      StepParam.Duration -> P(_.duration(), (s, v, _) => s.setDuration(v)),
+      StepParam.Duration -> P(_.tail, (s, v, _) => s.setTail(v)),
       StepParam.Pan      -> P(_.pan(), (s, v, _) => s.setPan(v)),
       StepParam.Timbre   -> P(_.timbre(), (s, v, _) => s.setTimbre(v)),
       StepParam.Pressure -> P(_.pressure(), (s, v, _) => s.setPressure(v)),
@@ -137,6 +184,7 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       proxies
         .zip(sliders.sliderOps)
         .foreach((p, s) => s.set(p.get, SliderOp.Source.Internal))
+      // j.stripBank.flushValues()
 
     /** (Re)configure sliders when selected steps change */
     def setCurrentSteps(): Unit =

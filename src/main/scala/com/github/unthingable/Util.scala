@@ -25,8 +25,10 @@ import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import javax.swing.Timer
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.Try
 
@@ -130,4 +132,20 @@ object Util extends Util:
 
   inline def popup(s: String)(using ext: MonsterJamExt): Unit =
     ext.host.showPopupNotification(s)
+
+  private val timers: mutable.Map[String, Timer] = mutable.HashMap.empty[String, Timer]
+
+  def wait(ms: Int, key: String, f: () => Unit): Unit =
+    timers.get(key) match
+      case None =>
+        val timer = new Timer(
+          ms,
+          (_: ActionEvent) =>
+            f()
+            timers.remove(key)
+        )
+        timer.setRepeats(false)
+        timers.update(key, timer)
+      case Some(timer) => timer.restart()
+
 end Util
