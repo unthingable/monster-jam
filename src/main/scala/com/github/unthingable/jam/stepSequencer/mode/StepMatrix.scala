@@ -35,12 +35,14 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
       localState.stepState.get match
         // no steps held
-        case StepState(Nil, _) =>
+        case st @ StepState(Nil, _) =>
           playMe()
-          if step.state == NSState.Empty then
-            clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
-            StepState(List(pstep), true)
-          else StepState(List(pstep), false)
+          step.state match
+            case NSState.NoteOn => StepState(List(pstep), false)
+            case NSState.Empty =>
+              clip.setStep(ts.channel, x, y, ts.velocity, ts.stepSize)
+              StepState(List(pstep), true)
+            case NSState.NoteSustain => st
         // one step already held and this one is blank
         case st @ StepState(p @ PointStep(_, s0, _) :: Nil, _) if y == s0.y && x > s0.x && !hasStep =>
           // val step0: NoteStep = stepAt(s0.x, s0.y)
