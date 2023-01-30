@@ -188,7 +188,7 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 
 ## Default layout
 
-* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white.
+* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white. Hold **SHIFT** to select between banks of 8 pages.
 * **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
 * **DPAD** arrows up/down: scroll notes up or down by pages, left/right: by one step
 * **KNOB**: scroll notes up or down by one
@@ -540,10 +540,10 @@ After changing preferences it may be necessary to reinitialize the extension (tu
   * Added single row mode, control one parameter for all notes in a row
   * Nudging a note will shorten it if it bumps into the next note, instead of bumping the next note
   * Duration adjustments are limited to a single step (so it won't clobber the next note)
+  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
 * Pattern page follow disabled when holding steps
 * Previous slider mode auto-restores after expressions editor
-* Fixed: step size could be set impromperly when switching tracks
-* Fixed: it was possible for STEP mode to misconfigure step size
+* Fixed: step size and pattern scroll position could be set impromperly when switching tracks
 
 ## 8.0b14
 * Step: multi-row notes were wrapping incorrectly

@@ -216,7 +216,7 @@ end ModeButtonLayer
 object ModeButtonLayer:
   inline def apply(
     name: String,
-    modeButton: JamOnOffButton,
+    modeButton: HasButtonState,
     modeBindings: Seq[Binding[?, ?, ?]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false

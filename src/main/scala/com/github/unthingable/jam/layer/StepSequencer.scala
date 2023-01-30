@@ -129,8 +129,6 @@ trait StepSequencer extends BindingDSL:
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
 
-    clip.scrollToStep(ts.stepScrollOffset)
-
     // page follower
     clip
       .playingStep()
@@ -146,22 +144,51 @@ trait StepSequencer extends BindingDSL:
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
       j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-        def hasContent = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize
+        inline def hasContent  = clip.getLoopLength().get() > currentBank * 8 + i * ts.stepSize * ts.stepPageSize
+        inline def currentPage = ts.stepScrollOffset / ts.stepPageSize
+        inline def currentBank = currentPage / 8
         Vector(
-          EB(btn.st.press, "", () => if hasContent then setStepPage(i)),
+          EB(btn.st.press, "", () => if hasContent then setStepPage(i + currentBank * 8)),
           SupColorStateB(
             btn.light,
             () =>
               if hasContent then
                 if ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i then
                   colorManager.stepScene.playing
-                else if i == ts.stepScrollOffset / ts.stepPageSize then colorManager.stepScene.selected
+                else if i == currentPage % 8 then colorManager.stepScene.selected
                 else colorManager.stepScene.nonEmpty
               else colorManager.stepScene.empty
           ),
         )
       }
     )
+
+    lazy val stepShiftPages = ModeButtonLayer(
+      "stepShiftPages",
+      j.Mod.Shift,
+      j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
+        inline def hasContent  = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize * 8
+        inline def currentPage = ts.stepScrollOffset / ts.stepPageSize
+        inline def currentBank = currentPage / 8
+
+        Vector(
+          EB(btn.st.press, "", () => if hasContent then setStepPage(i * 8)),
+          SupColorStateB(
+            btn.light,
+            () =>
+              if hasContent then
+                if ext.transport.isPlaying().get() && clip.playingStep().get() / (ts.stepPageSize * 8) == i then
+                  colorManager.stepScene.playing
+                else if i == currentBank then colorManager.stepScene.selected
+                else colorManager.stepScene.nonEmpty
+              else colorManager.stepScene.empty
+          ),
+        )
+
+      },
+      GateMode.Gate
+    )
+    end stepShiftPages
 
     // Circuit-like note mode
     // lazy val noteMatrix = new SimpleModeLayer("noteMatrix") {
@@ -331,6 +358,7 @@ trait StepSequencer extends BindingDSL:
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
+      stepShiftPages,
       stepRegular,
       patLength,
       gridSelect,
@@ -376,6 +404,9 @@ trait StepSequencer extends BindingDSL:
       clip.setStepSize(ts.stepSize)
       fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
 
+      clip.scrollToStep(ts.stepScrollOffset)
+      fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
+
       super.onActivate()
 
       if selectedClipTrack.position().get() < 0 then selectedClipTrack.selectFirst()
@@ -409,6 +440,10 @@ trait StepSequencer extends BindingDSL:
       if stateDiff(_.stepSize) then
         clip.setStepSize(newSt.stepSize)
         fineClip.setStepSize(newSt.stepSize / fineRes.toDouble)
+
+      if stateDiff(_.stepScrollOffset) then
+        clip.scrollToStep(newSt.stepScrollOffset)
+        fineClip.scrollToStep(newSt.stepScrollOffset * fineRes)
 
     override lazy val extraOperated = stepGate.modeBindings
 

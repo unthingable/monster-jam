@@ -36,7 +36,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
 
   ext.application.projectName().addValueObserver(_ => restoreState())
   selectedClipTrack.position.addValueObserver(pos =>
-    val tid = tracker.trackId(selectedClipTrack).trace(s"TrackedState: caching id for $pos")
+    val tid = tracker.trackId(selectedClipTrack) // .trace(s"TrackedState: caching id for $pos")
     _tid = tid
     updateState(tid)
   )
@@ -49,7 +49,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
 
   /** Serialize and save current sequencer states in project */
   def storeState(): Unit =
-    val data = Util.serialize(stateCache.toSeq.trace("Serializing data"))
+    val data = Util.serialize(stateCache.toSeq)
     stateStore.set(data)
 
   /** Deserialize and materialize sequencer states from project (when switching) */
@@ -59,13 +59,13 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
       .left
       .map(_.trace("Failed to deserialize step states:"))
-      .map(_.trace("Deserialized state"))
+      // .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
         stateCache.addAll(
           data.map((tid, st) => (tid, Util.fillNull(st, SeqState.empty(Some(tid)))))
         )
-        ext.host.scheduleTask(() => updateState(_tid), 30)
+        ext.host.scheduleTask(() => updateState(_tid), 20)
       )
 
   /** Commit SeqState of the currently selected track and save it */
@@ -75,7 +75,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       val old = _ts
       _ts = st
       _tid
-        .map(_.trace(s => s"setState for $s $st"))
+        // .map(_.trace(s => s"setState for $s $st"))
         .foreach(stateCache.update(_, st))
       storeState()
       echoStateDiff(old, st)
@@ -198,8 +198,6 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   def scrollXTo(offset: Int) =
     setState(ts.copy(stepScrollOffset = offset))
-    clip.scrollToStep(ts.stepScrollOffset)
-    fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
 
   def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
