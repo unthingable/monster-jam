@@ -25,8 +25,11 @@ import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import javax.swing.Timer
 import scala.annotation.targetName
 import scala.collection.IndexedSeqView
+import scala.collection.mutable
+import scala.deriving.Mirror
 import scala.util.Try
 
 transparent trait Util:
@@ -61,12 +64,19 @@ object Util extends Util:
 
     @targetName("tracem")
     transparent inline def trace(inline msg: String): A =
-      Util.println(s"$msg $obj")
+      if msg.nonEmpty then Util.println(s"$msg $obj")
+      obj
+
+    @targetName("tracef")
+    transparent inline def trace(inline msg: A => String): A =
+      val s = msg(obj)
+      if s.nonEmpty then Util.println(msg(obj))
       obj
 
     @targetName("tracefm")
-    transparent inline def trace(inline msg: A => String): A =
-      Util.println(msg(obj))
+    transparent inline def trace(inline msg: String, inline f: A => String): A =
+      val s = f(obj)
+      if s.nonEmpty || msg.nonEmpty then Util.println(s"$msg ${f(obj)}")
       obj
 
     inline def safeCast[B]: Option[B] =
@@ -86,7 +96,8 @@ object Util extends Util:
       val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
-  val rainbow = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow   = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow16 = (0 until 16).map(i => (i + 1) * 4).toVector
 
   def serialize[A](o: A): String =
     val bos = new ByteArrayOutputStream
@@ -104,7 +115,37 @@ object Util extends Util:
       obj.asInstanceOf[A]
     }.toEither
 
+  def fillNull[A <: Product](value: A, default: A)(using m: Mirror.ProductOf[A]): A =
+    given CanEqual[Any, Null] = CanEqual.derived
+    val arr = value.productIterator
+      .zip(default.productIterator)
+      .map((a, b) => if a == null then b else a)
+      .toArray
+    m.fromProduct(Tuple.fromArray(arr))
+
   def comparator[A, B](a: A, b: A)(f: A => B): Boolean =
     given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
+
+  def schedule(f: => Unit, delay: Int)(using ext: MonsterJamExt): Unit =
+    ext.host.scheduleTask(() => f, delay)
+
+  inline def popup(s: String)(using ext: MonsterJamExt): Unit =
+    ext.host.showPopupNotification(s)
+
+  private val timers: mutable.Map[String, Timer] = mutable.HashMap.empty[String, Timer]
+
+  def wait(ms: Int, key: String, f: () => Unit): Unit =
+    timers.get(key) match
+      case None =>
+        val timer = new Timer(
+          ms,
+          (_: ActionEvent) =>
+            f()
+            timers.remove(key)
+        )
+        timer.setRepeats(false)
+        timers.update(key, timer)
+      case Some(timer) => timer.restart()
+
 end Util

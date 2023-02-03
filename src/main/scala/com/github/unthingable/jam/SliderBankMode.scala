@@ -47,8 +47,11 @@ object JamParameter:
   case class UserControl(p: Parameter)          extends WithParam
   case object Empty                             extends JamParameter
 
+/** A single wrapper around slider, internal value and (optional) host parameter, with operations for sync and update */
 sealed trait SliderOp extends RefSubSelective[SliderOp.Source, Double] with Bindable:
   def reset(): Unit
+
+  /** Update internal value from bound parameter */
   def pull(): Unit
 
 object SliderOp:
@@ -297,37 +300,37 @@ class SliderBankMode[Proxy, P <: JamParameter](
         j.clear.btn.pressedAction,
         s"clear $idx pressed",
         () => engage(ClearP),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.clear.btn.releasedAction,
         s"clear $idx released",
         () => engage(ClearR),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.Mod.Shift.btn.pressedAction,
         s"shift $idx pressed",
         () => engage(ShiftP),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         j.Mod.Shift.btn.releasedAction,
         s"shift $idx released",
         () => engage(ShiftR),
-        BB(tracked = false, exclusive = false)
+        BB.omni
       ),
       HB(
         strip.slider.beginTouchAction,
         s"strip $idx pressed",
         () => engage(StripP),
-        BB(tracked = true, exclusive = false)
+        BB.omni
       ),
       HB(
         strip.slider.endTouchAction,
         s"strip $idx released",
         () => engage(StripR),
-        BB(tracked = true, exclusive = false)
+        BB.omni
       ),
     )
   }
@@ -335,7 +338,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
   private def sync(idx: Int, flush: Boolean = true): Unit =
     sliderOps(idx).pull()
 
-  override def onActivate(): Unit =
+  def flushColors(): Unit =
     j.stripBank.barMode = barMode
 
     j.stripBank.strips.forindex {
@@ -368,17 +371,38 @@ class SliderBankMode[Proxy, P <: JamParameter](
     }
 
     j.stripBank.flushColors()
+  end flushColors
 
+  override def onActivate(): Unit =
+    flushColors()
     super.onActivate()
 
     sliderOps.foreach(_.pull())
     j.stripBank.strips.indices.foreach(bindWithRange(_))
 
     // sliderParams.indices.foreach(sync(_, false))
-    if barMode.contains(BarMode.DUAL) then j.stripBank.flushValues()
+    // if barMode.contains(BarMode.DUAL) then j.stripBank.flushValues()
+    j.stripBank.flushValues()
   end onActivate
 
+  // keeping it here while tuning slider bank transitions
+  // override def onActivate(): Unit =
+  //   super.onActivate()
+
+  //   j.stripBank.strips.indices.foreach(bindWithRange(_))
+
+  //   // sliderParams.indices.foreach(sync(_, false))
+  //   // if barMode.contains(BarMode.DUAL) then j.stripBank.flushValues()
+  //   (0 until 8).map(j.stripBank.setValue(_, 0, false))
+  //   flushColors()
+  //   sliderOps.foreach(_.pull())
+  //   j.stripBank.flushValues()
+  // end onActivate
+
   override def onDeactivate(): Unit =
+    j.stripBank.setActive(_ => false)
+    (0 until 8).map(j.stripBank.setValue(_, 0, false))
+    j.stripBank.flushValues()
     super.onDeactivate()
     j.stripBank.strips.foreach(_.slider.clearBindings())
 end SliderBankMode

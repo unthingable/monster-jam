@@ -229,7 +229,7 @@ trait SceneL:
       pressedAt = None
 
     override val modeBindings: Seq[Binding[?, ?, ?]] = Vector(
-      SupBooleanB(j.song.light.isOn, () => superSceneSub.isOn),
+      SupBooleanB(j.song.light, () => superSceneSub.isOn),
       // taken over by experimental home mode
       // EB(j.song.st.press, "sceneCycle pressed", () => press()),
       EB(j.song.st.release, "sceneCycle released", () => if pressedAt.nonEmpty then release()),

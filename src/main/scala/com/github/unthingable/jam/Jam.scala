@@ -12,6 +12,7 @@ import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.Graph.Coexist
 import com.github.unthingable.framework.mode.Graph.Exclusive
+import com.github.unthingable.framework.mode.Graph.ExclusiveOn
 import com.github.unthingable.framework.mode.Graph.ModeDGraph
 import com.github.unthingable.framework.mode.ModeButtonLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
@@ -49,7 +50,7 @@ class Jam(implicit val ext: MonsterJamExt)
   trackBank.followCursorTrack(ext.cursorTrack)
 
   // val superBank: TrackBank = ext.host.createMasterTrack(256).createMainTrackBank(256, 8, 256, true)
-  val superBank: TrackBank = ext.host.createTrackBank(256, 8, 256, true)
+  val superBank: TrackBank = ext.host.createTrackBank(64, 0, 64, true)
   superBank.itemCount().markInterested()
   // superBank.itemCount().addValueObserver(i => Util.println(s"superbank now $i"), 0)
   superBank.scrollPosition().markInterested()
@@ -59,9 +60,8 @@ class Jam(implicit val ext: MonsterJamExt)
     (idx: Int, selected: Boolean) =>
       if selected then ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
 
-  (0 until 256).foreach { i =>
+  for i <- 0 until superBank.getCapacityOfBank() do
     superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
-  }
 
   given tracker: TrackTracker = UnsafeTracker(superBank)
 
@@ -86,7 +86,7 @@ class Jam(implicit val ext: MonsterJamExt)
     masterTrack.addVuMeterObserver(128, 1, true, j.levelMeter.uR)
   }
 
-  val stripGroup = Exclusive(levelCycle, auxLayer, controlLayer, stepSequencer.tune)
+  val stripGroup = ExclusiveOn(levelCycle, auxLayer, controlLayer, stepSequencer.noteParam)
 
   // Final assembly of all mode layers
   val top       = Coexist(SimpleModeLayer("-^-", modeBindings = Vector.empty))
@@ -127,7 +127,7 @@ class Jam(implicit val ext: MonsterJamExt)
     bottom       -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
     bottom       -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup   -> Exclusive(solo, mute, record),
-    bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer),
+    bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer, stepSequencer.stepGate),
     bottom       -> stripGroup,
     bottom       -> Coexist(auxGate, deviceSelector, macroLayer),
     trackGroup   -> Exclusive(EIGHT.map(trackGate)*),

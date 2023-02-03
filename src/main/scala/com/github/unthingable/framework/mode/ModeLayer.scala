@@ -80,6 +80,9 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   final inline def isOlderThan(inline instant: Instant): Boolean =
     activeAt.exists(act => instant.isAfter(act))
 
+  /** Override if mode needs to consider additional bindings when making deactivation decisions */
+  def extraOperated: Iterable[Binding[?, ?, ?]] = Seq.empty
+
   // called when layer is activated/deactivated by the container
   def onActivate(): Unit = activeAt = activeAt.orElse(Some(Instant.now()))
 
@@ -90,7 +93,7 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
     val ml = JamControl.maybeLight(b)
     Util.println(s"$id light: $ml $silent")
-    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l.isOn, () => isOn))
+    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l, () => isOn))
 
   // let's just say we're too lazy to import cats and make a proper Show instance
   override def toString(): String = s"ML:$id"
@@ -193,7 +196,7 @@ trait ModeButtonLayer(
 
   private def released: Seq[ModeCommand[?]] =
     inline def isHeldLongEnough = Instant.now().isAfter(pressedAt.plus(Duration.ofMillis(500)))
-    inline def operated         = modeBindings.hasOperatedAfter(pressedAt)
+    inline def operated         = (modeBindings.view ++ extraOperated.view).hasOperatedAfter(pressedAt)
     inline def isAlreadyOn      = activeAt.map(pressedAt.isAfter).getOrElse(false)
 
     if noRelease then Vector.empty
@@ -213,7 +216,7 @@ end ModeButtonLayer
 object ModeButtonLayer:
   inline def apply(
     name: String,
-    modeButton: JamOnOffButton,
+    modeButton: HasButtonState,
     modeBindings: Seq[Binding[?, ?, ?]],
     gateMode: GateMode = GateMode.Auto,
     silent: Boolean = false
@@ -322,7 +325,7 @@ abstract class ModeButtonCycleLayer(
 
   // bindings to inspect when unsticking
   def operatedBindings: Iterable[Binding[?, ?, ?]] =
-    (selected.map(subModes) ++ siblingOperatedModes).flatMap(_.modeBindings)
+    (selected.map(subModes) ++ siblingOperatedModes).flatMap(_.modeBindings) ++ extraOperated
 
   def stickyRelease: Vector[ModeCommand[?]] =
     (isOn, cycleMode: CycleMode) match
@@ -345,7 +348,7 @@ abstract class ModeButtonCycleLayer(
   def modeBindings: Seq[Binding[?, ?, ?]] = cycleMode match
     case CycleMode.Cycle =>
       Vector(
-        EB(modeButton.st.press, s"$id cycle", () => cycle(), BB(tracked = false, exclusive = false))
+        EB(modeButton.st.press, s"$id cycle", () => cycle(), BB.omni)
       )
     case CycleMode.Gate | CycleMode.Sticky =>
       Vector(
@@ -353,13 +356,13 @@ abstract class ModeButtonCycleLayer(
           modeButton.st.press,
           s"$id gate on",
           () => stickyPress,
-          BB(tracked = false, exclusive = false)
+          BB.omni
         ),
         EB(
           modeButton.st.release,
           s"$id gate off",
           () => stickyRelease,
-          BB(tracked = false, exclusive = false)
+          BB.omni
         )
       )
     case _ => Vector.empty

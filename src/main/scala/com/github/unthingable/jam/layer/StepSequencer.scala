@@ -1,7 +1,9 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
+import com.bitwig.extension.controller.api.BooleanValue
 import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.ClipLauncherSlot
 import com.bitwig.extension.controller.api.CursorTrack
 import com.bitwig.extension.controller.api.Device
 import com.bitwig.extension.controller.api.DeviceBank
@@ -27,12 +29,11 @@ import com.github.unthingable.framework.binding.JCB
 import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
+import com.github.unthingable.framework.binding.BindingBehavior as BB
 import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.ListeningLayer
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
 import com.github.unthingable.framework.mode.ModeButtonLayer
-import com.github.unthingable.framework.mode.ModeCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.ModeState
 import com.github.unthingable.framework.mode.MultiModeLayer
@@ -51,11 +52,14 @@ import com.github.unthingable.jam.stepSequencer.state.*
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamRgbButton
 import com.github.unthingable.jam.surface.KeyMaster.JC
 
 import java.time.Instant
 import scala.collection.mutable
 import scala.collection.mutable.ArraySeq
+
+import Util.{trace, schedule}
 
 trait StepSequencer extends BindingDSL:
   this: Jam =>
@@ -71,20 +75,20 @@ trait StepSequencer extends BindingDSL:
   trait StepModes extends TrackedState, ModeLayer, StepMatrix, VelNote, NoteParam
 
   object stepSequencer
-      extends ModeCycleLayer("STEP"),
+      extends ModeButtonLayer("STEP", j.step, GateMode.AutoInverse),
+        MultiModeLayer,
         ListeningLayer,
         TrackedState(selectedClipTrack),
         StepCap,
         StepModes:
-
     // a mirror of the bitwig clip, channel / x / y
 
-    val steps =
-      ArraySeq.fill(16)(ArraySeq.fill(gridWidth)(ArraySeq.fill(gridHeight)(null: NoteStep)))
+    // val steps =
+    //   ArraySeq.fill(16)(ArraySeq.fill(gridWidth)(ArraySeq.fill(gridHeight)(null: NoteStep)))
 
-    clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
+    // clip.addNoteStepObserver(ns => steps(ns.channel())(ns.x()).update(ns.y(), ns))
 
-    devices.itemCount().addValueObserver(v => Util.println(v.toString))
+    // devices.itemCount().addValueObserver(v => Util.println(v.toString))
     // clip.getPlayStop.addValueObserver(v => Util.println(s"beats $v"))
     // clip.playingStep().addValueObserver(v => Util.println(s"playing step $v"))
 
@@ -100,12 +104,12 @@ trait StepSequencer extends BindingDSL:
     // follow clip selection
     ext.events.addSub((e: ClipSelected) =>
       Util.println(s"received $e")
-      // if (isOn)
-      // selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
+      if isOn then selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
       localState.selectedClips.update(e.globalTrack, e.globalClip)
     )
 
     Vector(
+      clip.clipLauncherSlot().isPlaying(),
       secondClip.exists,
       secondClip.clipLauncherSlot.sceneIndex,
       clip.exists,
@@ -128,17 +132,13 @@ trait StepSequencer extends BindingDSL:
       devices.itemCount(), // hopefully this gets updated
     ).foreach(_.markInterested())
 
-    clip.setStepSize(ts.stepSize)
-    clip.scrollToStep(ts.stepScrollOffset)
-    fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
-
-    // def detectDrum(): Option[Device] = (0 until devices.itemCount().get()).map(devices.getDevice).find(_.hasDrumPads.get())
-
     // page follower
     clip
       .playingStep()
       .addValueObserver(step =>
-        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow.get() then
+        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow
+            .get() && localState.stepState.get.steps.nonEmpty
+        then
           val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
           val playingPage: Int = step / ts.stepPageSize
           if currentPage != playingPage then setStepPage(playingPage)
@@ -147,22 +147,53 @@ trait StepSequencer extends BindingDSL:
     lazy val stepPages = SimpleModeLayer(
       "stepPages",
       j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
-        def hasContent = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize
+        inline def hasContent  = clip.getLoopLength().get() > currentBank * 8 + i * ts.stepSize * ts.stepPageSize
+        inline def currentPage = ts.stepScrollOffset / ts.stepPageSize
+        inline def currentBank = currentPage / 8
         Vector(
-          EB(btn.st.press, "", () => if hasContent then setStepPage(i)),
+          EB(btn.st.press, "", () => if hasContent then setStepPage(i + currentBank * 8)),
           SupColorStateB(
             btn.light,
             () =>
               if hasContent then
-                if ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i then
-                  colorManager.stepScene.playing
-                else if i == ts.stepScrollOffset / ts.stepPageSize then colorManager.stepScene.selected
+                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() && clip
+                    .playingStep()
+                    .get() / ts.stepPageSize == i
+                then colorManager.stepScene.playing
+                else if i == currentPage % 8 then colorManager.stepScene.selected
                 else colorManager.stepScene.nonEmpty
               else colorManager.stepScene.empty
           ),
         )
       }
     )
+
+    lazy val stepShiftPages = ModeButtonLayer(
+      "stepShiftPages",
+      j.Mod.Shift,
+      j.sceneButtons.zipWithIndex.flatMap { (btn, i) =>
+        inline def hasContent  = clip.getLoopLength().get() > i * ts.stepSize * ts.stepPageSize * 8
+        inline def currentPage = ts.stepScrollOffset / ts.stepPageSize
+        inline def currentBank = currentPage / 8
+
+        Vector(
+          EB(btn.st.press, "", () => if hasContent then setStepPage(i * 8)),
+          SupColorStateB(
+            btn.light,
+            () =>
+              if hasContent then
+                if ext.transport.isPlaying().get() && clip.playingStep().get() / (ts.stepPageSize * 8) == i then
+                  colorManager.stepScene.playing
+                else if i == currentBank then colorManager.stepScene.selected
+                else colorManager.stepScene.nonEmpty
+              else colorManager.stepScene.empty
+          ),
+        )
+
+      },
+      GateMode.Gate
+    )
+    end stepShiftPages
 
     // Circuit-like note mode
     // lazy val noteMatrix = new SimpleModeLayer("noteMatrix") {
@@ -190,7 +221,7 @@ trait StepSequencer extends BindingDSL:
     lazy val patLength = new SimpleModeLayer("patLength"):
       override def modeBindings: Seq[Binding[?, ?, ?]] = (0 until 64).flatMap { idx =>
         JCB(
-          id,
+          this.id,
           j.matrix(idx / 8)(idx % 8),
           () =>
             Util.println(s"set playStop $idx")
@@ -203,7 +234,7 @@ trait StepSequencer extends BindingDSL:
             if clip.getPlayStop.get() > idx then JamColorState(clipColor, 2)
             else JamColorState.empty
         )
-      } ++ Vector(SupBooleanB(j.solo.light.isOn, () => true))
+      } ++ Vector(SupBooleanB(j.solo.light, () => true))
 
     lazy val gridSelect = ModeButtonLayer(
       "gridSelect",
@@ -305,10 +336,10 @@ trait StepSequencer extends BindingDSL:
         EB(j.dpad.down.st.press, "scroll page down", () => scrollYPage(UpDown.Down)),
         EB(j.dpad.left.st.press, "scroll step left", () => scrollXBy(-1)),
         EB(j.dpad.right.st.press, "scroll step right", () => scrollXBy(1)),
-        SupBooleanB(j.dpad.up.light.isOn, () => canScrollY(UpDown.Up)),
-        SupBooleanB(j.dpad.down.light.isOn, () => canScrollY(UpDown.Down)),
-        SupBooleanB(j.dpad.left.light.isOn, clip.canScrollStepsBackwards()),
-        SupBooleanB(j.dpad.right.light.isOn, clip.canScrollStepsForwards()),
+        SupBooleanB(j.dpad.up.light, () => canScrollY(UpDown.Up)),
+        SupBooleanB(j.dpad.down.light, () => canScrollY(UpDown.Down)),
+        SupBooleanB(j.dpad.left.light, clip.canScrollStepsBackwards()),
+        SupBooleanB(j.dpad.right.light, clip.canScrollStepsForwards()),
       )
     )
 
@@ -332,19 +363,25 @@ trait StepSequencer extends BindingDSL:
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
+      // stepGate,
+      stepShiftPages,
       stepRegular,
       patLength,
       gridSelect,
       chanSelect,
       dpadStep,
-      tune,
+      noteParam,
     )
 
     override def onStepState(from: StepState, to: StepState): Unit =
       val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
-      if tune.isOn && stateDiff(_.steps.map(_.step)) then tune.setCurrentSteps(to.steps.map(_.step))
-      // if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
-      //   ???
+
+      if to.steps.nonEmpty && !noteParam.isOn then ext.events.eval("steps selected")(noteParam.activateEvent*)
+      else if to.steps.isEmpty && noteParam.isOn then ext.events.eval("steps unselected")(noteParam.deactivateEvent*)
+
+      if to.steps.nonEmpty && stateDiff(_.steps) then
+        schedule(if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps(), 10)
+    end onStepState
 
     override def subModesToActivate =
       (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ (subModes :+ velAndNote).filter(m =>
@@ -357,11 +394,6 @@ trait StepSequencer extends BindingDSL:
         EB(j.Combo.Shift.solo.releaseAll, "shift-solo released", () => patLength.deactivateEvent),
       ) ++ JCB.empty(j.song)
 
-    override val loadBindings: Seq[Binding[?, ?, ?]] = Vector(
-      EB(j.step.st.press, "step toggle", () => toggleEvent),
-      SupBooleanB(j.step.light.isOn, () => isOn),
-    )
-
     // TODO refactor this already
     // Find the first existing clip on a track
     def findClip(): Option[Clip] =
@@ -373,27 +405,96 @@ trait StepSequencer extends BindingDSL:
       if secondClip.exists().get() then Some(secondClip) else None
 
     override def onActivate(): Unit =
-      restoreState()
+      // restoreState()
+      // updateCurrentState()
+      clip.setStepSize(ts.stepSize)
+      fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
+
+      clip.scrollToStep(ts.stepScrollOffset)
+      fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
+
       super.onActivate()
 
-      if !clip.exists().get() then
-        findClip() match
-          case None =>
-            val t = selectedClipTrack.position().get()
-            val c = localState.selectedClips.getOrElse(t, 0)
-            selectedClipTrack.createNewLauncherClip(c)
-            trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
-          case Some(foundClip) =>
-            clip.selectClip(foundClip)
-            clip.clipLauncherSlot().select()
+      if selectedClipTrack.position().get() < 0 then selectedClipTrack.selectFirst()
+
+      ext.host.scheduleTask(
+        () =>
+          if !clip.exists().get() && selectedClipTrack.position().get() >= 0 then
+            findClip() match
+              case None =>
+                val t = selectedClipTrack.position().get()
+                val c = localState.selectedClips.getOrElse(t, 0)
+                selectedClipTrack.createNewLauncherClip(c)
+                trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
+              case Some(foundClip) =>
+                clip.selectClip(foundClip)
+                clip.clipLauncherSlot().select()
+        ,
+        30
+      )
+    end onActivate
 
     override def onSeqState(oldSt: SeqState, newSt: SeqState): Unit =
+      val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
+
       if modeState._1 == ModeState.Active then
         (newSt.noteVelVisible, velAndNote.isOn) match
           case (true, false) => ext.events.eval("sync track SeqState")(velAndNote.activateEvent*)
           case (false, true) => ext.events.eval("sync track SeqState")(velAndNote.deactivateEvent*)
           case _             => ()
 
+      if stateDiff(_.stepSize) then
+        clip.setStepSize(newSt.stepSize)
+        fineClip.setStepSize(newSt.stepSize / fineRes.toDouble)
+
+      if stateDiff(_.stepScrollOffset) then
+        clip.scrollToStep(newSt.stepScrollOffset)
+        fineClip.scrollToStep(newSt.stepScrollOffset * fineRes)
+
+    override lazy val extraOperated = stepGate.modeBindings
+
+    /** Clip selector, page follow, CLEAR/DUPLICATE */
+    lazy val stepGate = ModeButtonLayer(
+      "stepGate",
+      j.step,
+      Vector(
+        EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
+        EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
+        EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
+        SupBooleanB(j.clear.light, () => true, BB.soft),
+        SupBooleanB(j.duplicate.light, () => true, BB.soft),
+        SupBooleanB(
+          j.play.light,
+          () =>
+            if ext.preferences.stepFollow.get() then j.Mod.blink3
+            else !ext.transport.isPlaying().get(),
+          BB.soft
+        )
+      ) ++ (for row <- EIGHT; col <- EIGHT yield
+        val btn: JamRgbButton        = j.matrix(row)(col)
+        val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
+        val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
+        clipEq.markInterested()
+        target.isPlaying().markInterested()
+        Vector(
+          EB(btn.st.press, "", () => target.select()),
+          SupColorStateB(
+            btn.light,
+            () =>
+              if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
+              else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
+            behavior = BB.soft
+          ),
+        )
+      ).flatten ++ Vector(
+        EB(j.dpad.left.st.press, "", () => ()),
+        EB(j.dpad.right.st.press, "", () => ()),
+        EB(j.dpad.up.st.press, "", () => ()),
+        EB(j.dpad.down.st.press, "", () => ())
+      ),
+      gateMode = GateMode.Gate,
+      silent = true
+    )
   end stepSequencer
 end StepSequencer
 

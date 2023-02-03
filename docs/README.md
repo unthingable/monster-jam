@@ -50,7 +50,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 
 ## Global
 
-* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust tempo in finer increments.
+* **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust in finer increments (e.g. in TEMPO mode).
 * **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view)
 * **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
@@ -178,6 +178,10 @@ Same goes for remote control pages within a device. You can use Device Selector 
 # Step Sequencer (WIP)
 
 * **STEP**: Toggle sequencer mode
+* **STEP+CLEAR**: Clear current clip
+* **STEP+DUPLICATE**: Duplicate content of current clip
+* **STEP+PLAY**: Toggle pattern follow
+* **STEP (hold)**: Display quick clip selector
 
 Step sequencer settings are stored per track and saved with the project. Most steq sequencer submodes are auto-gating.
 
@@ -185,7 +189,7 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 
 ## Default layout
 
-* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white.
+* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white. Hold **SHIFT** to select between banks of 8 pages.
 * **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
 * **DPAD** arrows up/down: scroll notes up or down by pages, left/right: by one step
 * **KNOB**: scroll notes up or down by one
@@ -193,10 +197,13 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 * **GRID**: activate grid selector
 * **SHIFT+SOLO**: activate pattern length selector
 * **NOTES**: activate Note/Velocity mode
-* **TUNE**: adjust step parameters with sliders (see **Parameter adjustments**)
 * **PERFORM (hold)**: change current MIDI channel, scale
 
 The button grid is bottom-focused. Note mode will push the grid up. When using note pages, the first note in the page will be the bottom-most visible note on the grid.
+
+### Quick clip selector
+
+Hold **STEP** to see the clip matrix. Currently selected clip will be bright WHITE. Press any other clip to focus the step sequencer on it.
 
 ### Scene buttons 
 
@@ -214,7 +221,7 @@ Scene button color guide:
 
 * Press empty step (dark button) to create a step
 * Press an existing step to clear (and release quickly)
-* Press and hold step to select it for editing (long press will not delete it)
+* Press and hold step to select it for editing. Releasing after a long press will not delete it.
 * **SHIFT+NOTES** to toggle alternating note row colors
 
 If a note spans more than one step, consecutive steps are lit in dim white.
@@ -316,24 +323,40 @@ The 16 scale buttons are laid out as follows, Chromatic scale is the default. No
 1. Whole Tone               
 1. Chromatic                
 
-## Parameter adjustments (WIP)
+## Parameter/expressions adjustments (WIP)
 
-Press **TUNE** to access various note step parameters via sliders. (WIP: have to manually press one of LEVEL/AUX/CONTROL to reactivate after deactivating TUNE)
+Press and hold existing step(s) to access note step parameters via sliders. When multiple steps are held, last pressed step's value is used as a starting point but all are adjusted together. Make fine adjustments by holding SHIFT.
 
-To edit parameter of one or more steps, hold them. When multiple steps are held, last pressed step takes precedence.
-
-Fine adjustments with SHIFT are available.
-
-Sliders:
+8 parameters are available for adjustment (more TBA later):
 
 1. Note velocity
 1. Note release velocity
 1. Note velocity spread
-1. Note start offset (between the start of this step and the next one, in 128 increments)
-1. Note duration
+1. Note start offset, within one step, in 128 increments
+1. Duration, within a step (if a note spans mutliple steps, this is duration of the last occupied step)
 1. Pan
 1. Timbre
 1. Pressure
+
+Parameter adjustment mode has two submodes, controlled via track/group buttons (above sliders). Submode selections are stored per track in the project.
+
+It is useful to have the clip editor open, especially when working with nudge and duration, so see how changes are affecting the notes.
+
+### Note mode (default)
+
+In this mode each of the 8 parameters is controlled by a corresponding slider (1: velocity, 3: spread, etc.). When holding multiple steps, the value of the last  pressed step will be shown on the LED strip. Moving a slider applies the parameter change to all held steps (absolute, not relative).
+
+### Row mode
+
+Press any of the track buttons to activate single row mode. The buttons correspond to each of the 8 parameters, the currently selected parameter will be **WHITE**. Press it again to deactivate and return to Note mode (above).
+
+In Row mode each slider controls one specific parameter for the corresponding step on that row (if it has a step) — exactly like the expressions view in Bitwig clip editor.
+
+Example: say you have 4 active steps (1,1,1,1,0,0,0,0) on a given row and you want to quickly adjust velocities:
+1. Hold down any one of the active steps
+1. If track/group A (single-row velocity) if not selected already, press it
+1. First 4 sliders will show current velocities, second 4 will be blank
+1. Move sliders to change note velocities
 
 ## Clip creation/selection behavior
 
@@ -514,6 +537,23 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b15
+
+* Note expressions editor
+  * Now self-activated when steps are held, no longer need to press TUNE
+  * Added single row mode, control one parameter for all notes in a row
+  * Nudging a note will shorten it if it bumps into the next note, instead of bumping the next note
+  * Duration adjustments are limited to a single step (so it won't clobber the next note)
+  * Added parameter popup notifications
+* Step sequencer
+  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
+  * Added quick clip selector (hold STEP)
+  * Pattern page follow disabled when holding steps
+  * Previous slider mode auto-restores after expressions editor
+
+* Fixed: step size and pattern scroll position could be set impromperly when switching tracks
+* Fixed: currently playing pages no longer blink for non-playing clips
 
 ## 8.0b14
 * Step: multi-row notes were wrapping incorrectly

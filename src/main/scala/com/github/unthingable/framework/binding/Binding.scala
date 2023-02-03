@@ -33,6 +33,13 @@ trait Bindable extends Clearable:
 trait Named:
   def name: String
 
+/** Binding bumping/restoring behavior
+  */
+enum RestoreBehavior derives CanEqual:
+  case None, // no bumping, bindings coexist
+    Single,  // restore bumped binding only
+    Layer    // restore whole bumped layer
+
 /** Unmanaged/exclusive bindings are to be left alone when modes are deactivated
   *
   * @param managed
@@ -43,8 +50,13 @@ trait Named:
 case class BindingBehavior(
   tracked: Boolean = true,
   managed: Boolean = true,
-  exclusive: Boolean = true
+  exclusive: RestoreBehavior = RestoreBehavior.Layer
 )
+
+object BindingBehavior:
+  val classic = BindingBehavior(tracked = true, managed = true, exclusive = RestoreBehavior.Layer)
+  val omni    = BindingBehavior(tracked = false, managed = true, exclusive = RestoreBehavior.None)
+  val soft    = BindingBehavior(tracked = false, managed = true, exclusive = RestoreBehavior.Single)
 
 sealed trait Binding[S, B, T] extends Bindable:
   def source: S // exclusivity object, will be indexed by ModeGraph for bumping calculus
@@ -52,7 +64,7 @@ sealed trait Binding[S, B, T] extends Bindable:
 
   def bindingSource: B // actual thing we're binding to, provided by S
 
-  val behavior: BindingBehavior = BindingBehavior(managed = true, exclusive = true)
+  val behavior: BindingBehavior = BindingBehavior.classic
 
 // Controller <- Bitwig host
 sealed trait InBinding[H, T] extends Binding[H, T, T]:
@@ -144,26 +156,30 @@ object HB extends BindingDSL:
     new HB(source, identity[HBS], name, target, BindingBehavior())
 end HB
 
-case class SupColorB(target: MultiStateHardwareLight, source: Supplier[Color])
-    extends InBinding[Supplier[Color], MultiStateHardwareLight]:
-  override def bind(): Unit = target.setColorSupplier(source)
+case class SupColorB(source: MultiStateHardwareLight, target: Supplier[Color])
+    extends InBinding[MultiStateHardwareLight, Supplier[Color]]:
+  override def bind(): Unit = source.setColorSupplier(target)
 
-  override def clear(): Unit = target.setColorSupplier(() => Color.nullColor())
+  override def clear(): Unit = source.setColorSupplier(() => Color.nullColor())
 
 case class SupColorStateB[A <: InternalHardwareLightState](
-  target: MultiStateHardwareLight,
-  source: Supplier[A],
-  empty: A = JamColorState.empty
-) extends InBinding[Supplier[A], MultiStateHardwareLight]:
-  override def bind(): Unit = target.state.setValueSupplier(source)
+  source: MultiStateHardwareLight,
+  target: Supplier[A],
+  empty: A = JamColorState.empty,
+  override val behavior: BindingBehavior = BindingBehavior.classic,
+) extends InBinding[MultiStateHardwareLight, Supplier[A]]:
+  override def bind(): Unit = source.state.setValueSupplier(target)
 
-  override def clear(): Unit = target.state.setValueSupplier(() => empty)
+  override def clear(): Unit = source.state.setValueSupplier(() => empty)
 
-case class SupBooleanB(target: BooleanHardwareProperty, source: BooleanSupplier)
-    extends InBinding[BooleanSupplier, BooleanHardwareProperty]:
-  override def bind(): Unit = target.setValueSupplier(source)
+case class SupBooleanB(
+  source: OnOffHardwareLight,
+  target: BooleanSupplier,
+  override val behavior: BindingBehavior = BindingBehavior.classic
+) extends InBinding[OnOffHardwareLight, BooleanSupplier]:
+  override def bind(): Unit = source.isOn().setValueSupplier(target)
 
-  override def clear(): Unit = target.setValueSupplier(() => false)
+  override def clear(): Unit = source.isOn().setValueSupplier(() => false)
 
 object JCB extends BindingDSL:
   /*
@@ -190,7 +206,7 @@ object JCB extends BindingDSL:
     isOn: BooleanSupplier
   )(using MonsterJamExt) =
     Vector(
-      SupBooleanB(b.light.isOn, isOn),
+      SupBooleanB(b.light, isOn),
       EB(b.st.press, s"$name press", press),
       EB(b.st.release, s"$name release", release),
     )
@@ -199,7 +215,7 @@ object JCB extends BindingDSL:
     MonsterJamExt
   ) =
     Vector(
-      SupBooleanB(b.light.isOn, isOn),
+      SupBooleanB(b.light, isOn),
       EB(b.st.press, s"${b.id} press noop", () => Seq.empty),
       EB(b.st.release, s"${b.id} release noop", () => Seq.empty),
     )

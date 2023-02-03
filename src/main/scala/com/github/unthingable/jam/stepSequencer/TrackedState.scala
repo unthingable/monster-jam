@@ -36,7 +36,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
 
   ext.application.projectName().addValueObserver(_ => restoreState())
   selectedClipTrack.position.addValueObserver(pos =>
-    val tid = tracker.trackId(selectedClipTrack).trace(s"TrackedState: caching id for $pos")
+    val tid = tracker.trackId(selectedClipTrack) // .trace(s"TrackedState: caching id for $pos")
     _tid = tid
     updateState(tid)
   )
@@ -49,7 +49,7 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
 
   /** Serialize and save current sequencer states in project */
   def storeState(): Unit =
-    val data = Util.serialize(stateCache.toSeq.trace("Serializing data"))
+    val data = Util.serialize(stateCache.toSeq)
     stateStore.set(data)
 
   /** Deserialize and materialize sequencer states from project (when switching) */
@@ -59,11 +59,13 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
       .left
       .map(_.trace("Failed to deserialize step states:"))
-      .map(_.trace("Deserialized state"))
+      // .map(_.trace("Deserialized state"))
       .foreach(data =>
         stateCache.clear()
-        stateCache.addAll(data)
-        ext.host.scheduleTask(() => updateState(_tid), 30)
+        stateCache.addAll(
+          data.map((tid, st) => (tid, Util.fillNull(st, SeqState.empty(Some(tid)))))
+        )
+        ext.host.scheduleTask(() => updateState(_tid), 20)
       )
 
   /** Commit SeqState of the currently selected track and save it */
@@ -73,10 +75,11 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
       val old = _ts
       _ts = st
       _tid
-        .map(_.trace(s => s"setState for $s $st"))
+        // .map(_.trace(s => s"setState for $s $st"))
         .foreach(stateCache.update(_, st))
       storeState()
       echoStateDiff(old, st)
+      onSeqState(old, st)
     else st.trace(s"setState mismatch, tid is now $_tid")
 
   /** When switching to a new track, pull its SeqState from cache and make it current */
@@ -95,8 +98,9 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   def echoStateDiff(oldSt: SeqState, newSt: SeqState) =
     import SeqState.{toNoteName, toNoteNameNoOct}
     // can't show multiple notifications at once, oh well
-    val stateDiff = Util.comparator(oldSt, newSt) andThen (_.unary_!)
-    val notify    = ext.host.showPopupNotification
+    val stateDiff     = Util.comparator(oldSt, newSt) andThen (_.unary_!)
+    val notifications = mutable.ArrayDeque.empty[String]
+    val notify        = notifications.addOne
     if isOn then
       if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
@@ -110,7 +114,10 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
         notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
       if stateDiff(_.stepString) then notify(s"Step size: ${newSt.stepString}")
       if stateDiff(_.keyPageSize) || stateDiff(_.stepPageSize) then
-        notify(s"Step grid: ${newSt.keyPageSize} x ${newSt.stepPageSize}")
+        notify(s"Step grid: ${newSt.keyPageSize}x${newSt.stepPageSize}")
+
+      if notifications.nonEmpty then ext.host.showPopupNotification(notifications.mkString(" "))
+  end echoStateDiff
 end TrackedState
 
 /** A collection of utility methods useful for working with sequencer steps */
@@ -122,6 +129,8 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   val fineClip                 = selectedClipTrack.createLauncherCursorClip(gridWidth * fineRes, gridHeight)
   val secondClip               = selectedClipTrack.createLauncherCursorClip(1, 1)
 
+  protected var rowSelected: Option[Int] = None
+
   val devices: DeviceBank = selectedClipTrack.createDeviceBank(1)
   lazy val colorManager   = ColorManager(clipColor)
 
@@ -130,7 +139,7 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     var stepState: Watched[StepState] = Watched(StepState(List.empty, false), onStepState)
     val selectedClips                 = mutable.HashMap.empty[Int, Int]
 
-  /** Overrideable function to handle state transformations */
+  /** Overrideable function to handle changes to selected steps */
   def onStepState(from: StepState, to: StepState): Unit
 
   def clipColor: Color =
@@ -160,9 +169,6 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   def incStepSize(inc: Short): Unit =
     setState(ts.copy(stepSizeIdx = (ts.stepSizeIdx + inc).min(quant.stepSizes.size - 1).max(0)))
-    // should probably to this in onStepState
-    clip.setStepSize(ts.stepSize)
-    fineClip.setStepSize(ts.stepSize / fineRes.toDouble)
 
   inline def scrollYTo(y: ScaledNote) =
     setState(ts.copy(keyScaledOffset = ts.guardYScaled(y)))
@@ -192,8 +198,6 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
 
   def scrollXTo(offset: Int) =
     setState(ts.copy(stepScrollOffset = offset))
-    clip.scrollToStep(ts.stepScrollOffset)
-    fineClip.scrollToStep(ts.stepScrollOffset * fineRes)
 
   def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 

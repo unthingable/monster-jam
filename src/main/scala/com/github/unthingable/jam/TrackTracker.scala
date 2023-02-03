@@ -12,6 +12,7 @@ import java.nio.ByteBuffer
 import java.util.UUID
 import scala.collection.mutable
 
+@SerialVersionUID(-2378758515367024156L)
 case class TrackId(value: Int) extends AnyVal derives CanEqual
 
 trait TrackTracker:

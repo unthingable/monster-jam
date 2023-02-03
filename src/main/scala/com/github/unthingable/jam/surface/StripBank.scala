@@ -29,11 +29,13 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util:
     // some more NI magic for you, white is not the same for strips. Also we can't really show black tracks.
     colors.update(idx, if color == 68 || color == 0 then 120 else color)
     if flush then flushColors()
+
   inline def setValue(idx: Int, value: Int, inline flush: Boolean = true): Unit =
     if barMode(idx) == BarMode.DUAL then
       values.update(idx, value)
       inline if flush then flushValues()
     else strips(idx).update(value)
+
   inline def setActive(inline idx: Int, inline value: Boolean, inline flush: Boolean = true): Unit =
     active.update(idx, value)
     inline if flush then flushColors()
