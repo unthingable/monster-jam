@@ -1,7 +1,9 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
+import com.bitwig.extension.controller.api.BooleanValue
 import com.bitwig.extension.controller.api.Clip
+import com.bitwig.extension.controller.api.ClipLauncherSlot
 import com.bitwig.extension.controller.api.CursorTrack
 import com.bitwig.extension.controller.api.Device
 import com.bitwig.extension.controller.api.DeviceBank
@@ -50,6 +52,7 @@ import com.github.unthingable.jam.stepSequencer.state.*
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamRgbButton
 import com.github.unthingable.jam.surface.KeyMaster.JC
 
 import java.time.Instant
@@ -101,8 +104,7 @@ trait StepSequencer extends BindingDSL:
     // follow clip selection
     ext.events.addSub((e: ClipSelected) =>
       Util.println(s"received $e")
-      // if (isOn)
-      // selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
+      if isOn then selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
       localState.selectedClips.update(e.globalTrack, e.globalClip)
     )
 
@@ -361,6 +363,7 @@ trait StepSequencer extends BindingDSL:
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
+      // stepGate,
       stepShiftPages,
       stepRegular,
       patLength,
@@ -450,28 +453,49 @@ trait StepSequencer extends BindingDSL:
 
     override lazy val extraOperated = stepGate.modeBindings
 
+    /** Clip selector, page follow, CLEAR/DUPLICATE */
+    lazy val stepGate = ModeButtonLayer(
+      "stepGate",
+      j.step,
+      Vector(
+        EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
+        EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
+        EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
+        SupBooleanB(j.clear.light, () => true, BB.soft),
+        SupBooleanB(j.duplicate.light, () => true, BB.soft),
+        SupBooleanB(
+          j.play.light,
+          () =>
+            if ext.preferences.stepFollow.get() then j.Mod.blink3
+            else !ext.transport.isPlaying().get(),
+          BB.soft
+        )
+      ) ++ (for row <- EIGHT; col <- EIGHT yield
+        val btn: JamRgbButton        = j.matrix(row)(col)
+        val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
+        val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
+        clipEq.markInterested()
+        target.isPlaying().markInterested()
+        Vector(
+          EB(btn.st.press, "", () => target.select()),
+          SupColorStateB(
+            btn.light,
+            () =>
+              if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
+              else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
+            behavior = BB.soft
+          ),
+        )
+      ).flatten ++ Vector(
+        EB(j.dpad.left.st.press, "", () => ()),
+        EB(j.dpad.right.st.press, "", () => ()),
+        EB(j.dpad.up.st.press, "", () => ()),
+        EB(j.dpad.down.st.press, "", () => ())
+      ),
+      gateMode = GateMode.Gate,
+      silent = true
+    )
   end stepSequencer
-
-  lazy val stepGate = ModeButtonLayer(
-    "stepGate",
-    j.step,
-    Vector(
-      EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
-      EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
-      EB(j.play.st.press, "toggle pattern follow", () => ext.preferences.stepFollow.toggle(), BB.soft),
-      SupBooleanB(j.clear.light, () => true, BB.soft),
-      SupBooleanB(j.duplicate.light, () => true, BB.soft),
-      SupBooleanB(
-        j.play.light,
-        () =>
-          if ext.preferences.stepFollow.get() then j.Mod.blink3
-          else !ext.transport.isPlaying().get(),
-        BB.soft
-      )
-    ),
-    gateMode = GateMode.Gate,
-    silent = true
-  )
 end StepSequencer
 
 /* todos and ideas

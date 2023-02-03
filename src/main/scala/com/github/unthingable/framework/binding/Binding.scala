@@ -165,7 +165,8 @@ case class SupColorB(source: MultiStateHardwareLight, target: Supplier[Color])
 case class SupColorStateB[A <: InternalHardwareLightState](
   source: MultiStateHardwareLight,
   target: Supplier[A],
-  empty: A = JamColorState.empty
+  empty: A = JamColorState.empty,
+  override val behavior: BindingBehavior = BindingBehavior.classic,
 ) extends InBinding[MultiStateHardwareLight, Supplier[A]]:
   override def bind(): Unit = source.state.setValueSupplier(target)
 

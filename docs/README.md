@@ -181,6 +181,7 @@ Same goes for remote control pages within a device. You can use Device Selector 
 * **STEP+CLEAR**: Clear current clip
 * **STEP+DUPLICATE**: Duplicate content of current clip
 * **STEP+PLAY**: Toggle pattern follow
+* **STEP (hold)**: Display quick clip selector
 
 Step sequencer settings are stored per track and saved with the project. Most steq sequencer submodes are auto-gating.
 
@@ -199,6 +200,10 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 * **PERFORM (hold)**: change current MIDI channel, scale
 
 The button grid is bottom-focused. Note mode will push the grid up. When using note pages, the first note in the page will be the bottom-most visible note on the grid.
+
+### Quick clip selector
+
+Hold **STEP** to see the clip matrix. Currently selected clip will be bright WHITE. Press any other clip to focus the step sequencer on it.
 
 ### Scene buttons 
 
@@ -538,9 +543,10 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Note expressions editor
   * Now self-activated when steps are held, no longer need to press TUNE
   * Added single row mode, control one parameter for all notes in a row
+  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
+  * Added quick clip selector (hold STEP)
   * Nudging a note will shorten it if it bumps into the next note, instead of bumping the next note
   * Duration adjustments are limited to a single step (so it won't clobber the next note)
-  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
   * Added parameter popup notifications
 * Pattern page follow disabled when holding steps
 * Previous slider mode auto-restores after expressions editor

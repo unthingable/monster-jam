@@ -14,6 +14,7 @@ import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
+import com.github.unthingable.jam.surface.JamRgbButton
 import com.github.unthingable.jam.surface.KeyMaster.JC
 
 import java.time.Duration
@@ -46,8 +47,8 @@ trait ClipMatrix:
       val pressedAt: mutable.Seq[PressedAt] = mutable.ArraySeq.fill(8)(PressedAt(Instant.now()))
 
       EIGHT.flatMap { row =>
-        val btn  = j.matrix(row)(col)
-        val clip = clips.getItemAt(row)
+        val btn: JamRgbButton      = j.matrix(row)(col)
+        val clip: ClipLauncherSlot = clips.getItemAt(row)
         clip.color().markInterested()
         clip.hasContent.markInterested()
         clip.isPlaying.markInterested()
