@@ -1,10 +1,11 @@
 package com.github.unthingable
 
-import java.util.UUID
 import com.bitwig.extension.api.PlatformType
 import com.bitwig.extension.controller.AutoDetectionMidiPortNamesList
 import com.bitwig.extension.controller.ControllerExtensionDefinition
 import com.bitwig.extension.controller.api.ControllerHost
+
+import java.util.UUID
 
 object MonsterJamExtensionDefinition:
   private val DRIVER_ID = UUID.fromString("b4b8b16c-5855-4943-a8c6-45cbdaf9aee1")
@@ -14,7 +15,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
 
   override def getAuthor = "unthingable"
 
-  override def getVersion = "8.0-b14"
+  override def getVersion = "8.0-b15"
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 

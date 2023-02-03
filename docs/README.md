@@ -543,13 +543,14 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Note expressions editor
   * Now self-activated when steps are held, no longer need to press TUNE
   * Added single row mode, control one parameter for all notes in a row
-  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
-  * Added quick clip selector (hold STEP)
   * Nudging a note will shorten it if it bumps into the next note, instead of bumping the next note
   * Duration adjustments are limited to a single step (so it won't clobber the next note)
   * Added parameter popup notifications
-* Pattern page follow disabled when holding steps
-* Previous slider mode auto-restores after expressions editor
+* Step sequencer
+  * Added pattern page bank selectors for accessing up to 64 pages (via SHIFT-SCENE)
+  * Added quick clip selector (hold STEP)
+  * Pattern page follow disabled when holding steps
+  * Previous slider mode auto-restores after expressions editor
 
 * Fixed: step size and pattern scroll position could be set impromperly when switching tracks
 * Fixed: currently playing pages no longer blink for non-playing clips
