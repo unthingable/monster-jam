@@ -136,8 +136,9 @@ trait StepSequencer extends BindingDSL:
     clip
       .playingStep()
       .addValueObserver(step =>
-        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow
-            .get() && localState.stepState.get.steps.nonEmpty
+        if isOn && ext.transport.isPlaying().get() &&
+          ext.preferences.stepFollow
+            .get() && !localState.stepState.get.steps.nonEmpty
         then
           val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
           val playingPage: Int = step / ts.stepPageSize
@@ -156,7 +157,8 @@ trait StepSequencer extends BindingDSL:
             btn.light,
             () =>
               if hasContent then
-                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() && clip
+                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() &&
+                  clip
                     .playingStep()
                     .get() / ts.stepPageSize == i
                 then colorManager.stepScene.playing
@@ -256,10 +258,11 @@ trait StepSequencer extends BindingDSL:
                   else JamColorState(clipColor, 2)
               )
             )
-      } ++ Vector(
-        HB(j.encoder.touch.pressedAction, "", () => incStepSize(0)),
-        HB(j.encoder.turn, "", stepTarget(() => incStepSize(1), () => incStepSize(-1)))
-      ),
+      } ++
+        Vector(
+          HB(j.encoder.touch.pressedAction, "", () => incStepSize(0)),
+          HB(j.encoder.turn, "", stepTarget(() => incStepSize(1), () => incStepSize(-1)))
+        ),
     )
 
     def setChannel(ch: Int) =
@@ -384,9 +387,8 @@ trait StepSequencer extends BindingDSL:
     end onStepState
 
     override def subModesToActivate =
-      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ (subModes :+ velAndNote).filter(m =>
-        m.isOn || (m == velAndNote && ts.noteVelVisible)
-      )).distinct
+      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++
+        (subModes :+ velAndNote).filter(m => m.isOn || (m == velAndNote && ts.noteVelVisible))).distinct
 
     override val modeBindings: Seq[Binding[?, ?, ?]] =
       Vector(
@@ -470,28 +472,30 @@ trait StepSequencer extends BindingDSL:
             else !ext.transport.isPlaying().get(),
           BB.soft
         )
-      ) ++ (for row <- EIGHT; col <- EIGHT yield
-        val btn: JamRgbButton        = j.matrix(row)(col)
-        val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
-        val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
-        clipEq.markInterested()
-        target.isPlaying().markInterested()
+      ) ++
+        (for row <- EIGHT; col <- EIGHT yield
+          val btn: JamRgbButton        = j.matrix(row)(col)
+          val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
+          val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
+          clipEq.markInterested()
+          target.isPlaying().markInterested()
+          Vector(
+            EB(btn.st.press, "", () => target.select()),
+            SupColorStateB(
+              btn.light,
+              () =>
+                if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
+                else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
+              behavior = BB.soft
+            ),
+          )
+        ).flatten ++
         Vector(
-          EB(btn.st.press, "", () => target.select()),
-          SupColorStateB(
-            btn.light,
-            () =>
-              if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
-              else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
-            behavior = BB.soft
-          ),
-        )
-      ).flatten ++ Vector(
-        EB(j.dpad.left.st.press, "", () => ()),
-        EB(j.dpad.right.st.press, "", () => ()),
-        EB(j.dpad.up.st.press, "", () => ()),
-        EB(j.dpad.down.st.press, "", () => ())
-      ),
+          EB(j.dpad.left.st.press, "", () => ()),
+          EB(j.dpad.right.st.press, "", () => ()),
+          EB(j.dpad.up.st.press, "", () => ()),
+          EB(j.dpad.down.st.press, "", () => ())
+        ),
       gateMode = GateMode.Gate,
       silent = true
     )
