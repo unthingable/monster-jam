@@ -107,6 +107,7 @@ trait StepSequencer extends BindingDSL:
     )
 
     Vector(
+      clip.clipLauncherSlot().isPlaying(),
       secondClip.exists,
       secondClip.clipLauncherSlot.sceneIndex,
       clip.exists,
@@ -153,8 +154,10 @@ trait StepSequencer extends BindingDSL:
             btn.light,
             () =>
               if hasContent then
-                if ext.transport.isPlaying().get() && clip.playingStep().get() / ts.stepPageSize == i then
-                  colorManager.stepScene.playing
+                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() && clip
+                    .playingStep()
+                    .get() / ts.stepPageSize == i
+                then colorManager.stepScene.playing
                 else if i == currentPage % 8 then colorManager.stepScene.selected
                 else colorManager.stepScene.nonEmpty
               else colorManager.stepScene.empty
