@@ -110,6 +110,7 @@ trait StepSequencer extends BindingDSL:
 
     Vector(
       clip.clipLauncherSlot().isPlaying(),
+      clip.clipLauncherSlot().hasContent(),
       secondClip.exists,
       secondClip.clipLauncherSlot.sceneIndex,
       clip.exists,
@@ -485,7 +486,9 @@ trait StepSequencer extends BindingDSL:
               btn.light,
               () =>
                 if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
-                else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
+                else if clip.clipLauncherSlot().hasContent.get() then
+                  JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1)
+                else JamColorState.empty,
               behavior = BB.soft
             ),
           )
