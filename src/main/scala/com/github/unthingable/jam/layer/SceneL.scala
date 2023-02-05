@@ -8,6 +8,7 @@ import com.bitwig.extension.controller.api.Setting
 import com.bitwig.`extension`.controller.api.Track
 import com.github.unthingable.Util
 import com.github.unthingable.framework.binding.Binding
+import com.github.unthingable.framework.binding.BindingBehavior
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.HB.BindingOps
 import com.github.unthingable.framework.binding.SupBooleanB
@@ -60,10 +61,9 @@ trait SceneL:
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util:
     val maxTracks =
       superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
-    val maxScenes = superBank.sceneBank().getSizeOfBank
-    val bufferSize =
-      ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
-    var pageIndex              = 0
+    val maxScenes  = superBank.sceneBank().getSizeOfBank
+    val bufferSize = ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
+    var pageIndex  = 0
     var lastScene: Option[Int] = None
 
     val sceneStore: SettableStringValue =
@@ -157,7 +157,7 @@ trait SceneL:
           JamColorState.empty
         ),
       )
-    }
+    } :+ SupBooleanB(j.song.light, () => isOn, BindingBehavior.soft)
   end superSceneSub
 
   lazy val pageMatrix = new SimpleModeLayer("pageMatrix"):
@@ -176,10 +176,11 @@ trait SceneL:
         val btn: JamRgbButton = j.matrix(row)(col)
 
         def hasContent = trackLen >= col && sceneLen >= row
-        def ourPage = Seq(scenePos, scenePos + 7).map(_ / 8).contains(row) && Seq(
-          trackPos,
-          trackPos + 7
-        ).map(_ / 8).contains(col)
+        def ourPage = Seq(scenePos, scenePos + 7).map(_ / 8).contains(row) &&
+          Seq(
+            trackPos,
+            trackPos + 7
+          ).map(_ / 8).contains(col)
 
         Vector(
           SupColorStateB(
@@ -221,8 +222,7 @@ trait SceneL:
       if pageMatrix.isOn then ext.events.eval("sceneL release")(pageMatrix.deactivateEvent*)
 
       if pressedAt.exists(instant =>
-          instant.plusMillis(400).isAfter(Instant.now())
-            || pageMatrix.modeBindings.hasOperatedAfter(instant)
+          instant.plusMillis(400).isAfter(Instant.now()) || pageMatrix.modeBindings.hasOperatedAfter(instant)
         )
       then cycle()
 
