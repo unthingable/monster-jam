@@ -69,7 +69,8 @@ object Graph:
         case x: ListeningLayer => x.loadBindings
         case _                 => Seq.empty
       val causeId = cause.map(c => s"${c.layer.id}->${layer.id}").getOrElse(layer.id)
-      layerBindings ++ Vector(
+      layerBindings ++
+      Vector(
         EB(
           layer.selfActivateEvent,
           s"${causeId} syn act",
@@ -311,7 +312,9 @@ object Graph:
       Util.println(printBumpers(3, 0, node))
 
       // restore base
-      val baseRestore = node.nodesToRestore.toSeq
+      val baseRestore = node.nodesToRestore
+        // .filter(_.isActive)
+        .toSeq
       val toRestore: Seq[ModeNode] = Seq(
         (baseRestore ++ baseRestore.flatMap(_.bumpingMe)).distinct.filter(n => n.isActive),
         if byUserAction then

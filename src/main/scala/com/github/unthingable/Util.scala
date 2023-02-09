@@ -24,6 +24,7 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.time.Instant
 import javax.swing.Timer
 import scala.annotation.targetName
@@ -44,11 +45,9 @@ transparent trait Util:
   case class Timed[A](value: A, instant: Instant)
 
   extension [A <: ObjectProxy](bank: Bank[A])
-    def view: IndexedSeqView[A] =
-      (0 until bank.itemCount().get()).view.map(bank.getItemAt)
+    def view: IndexedSeqView[A] = (0 until bank.itemCount().get()).view.map(bank.getItemAt)
 
-    def fullView: IndexedSeqView[A] =
-      (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
+    def fullView: IndexedSeqView[A] = (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
 
 object Util extends Util:
   val EIGHT: Vector[Int] = (0 to 7).toVector
@@ -148,4 +147,10 @@ object Util extends Util:
         timers.update(key, timer)
       case Some(timer) => timer.restart()
 
+  inline def timed[A](msg: String)(f: => A): A =
+    val now    = Instant.now()
+    val result = f
+    val delta  = Duration.between(now, Instant.now()).toMillis()
+    println(s"$msg: $delta ms")
+    result
 end Util

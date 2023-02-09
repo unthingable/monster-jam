@@ -26,6 +26,7 @@ import com.github.unthingable.framework.binding.GlobalEvent
 import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.JCB
+import com.github.unthingable.framework.binding.ModeCommand
 import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
@@ -367,7 +368,7 @@ trait StepSequencer extends BindingDSL:
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
-      // stepGate,
+      stepGate,
       stepShiftPages,
       stepRegular,
       patLength,
@@ -456,10 +457,12 @@ trait StepSequencer extends BindingDSL:
 
     override lazy val extraOperated = stepGate.modeBindings
 
-    /** Clip selector, page follow, CLEAR/DUPLICATE */
-    lazy val stepGate = ModeButtonLayer(
+    /** Clip selector, page follow, CLEAR/DUPLICATE
+      *
+      * Activated by stepGateActivator.
+      */
+    lazy val stepGate = SimpleModeLayer(
       "stepGate",
-      j.step,
       Vector(
         EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
         EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
@@ -494,15 +497,30 @@ trait StepSequencer extends BindingDSL:
           )
         ).flatten ++
         Vector(
-          EB(j.dpad.left.st.press, "", () => ()),
-          EB(j.dpad.right.st.press, "", () => ()),
-          EB(j.dpad.up.st.press, "", () => ()),
-          EB(j.dpad.down.st.press, "", () => ())
+          EB(j.dpad.left.st.press, "", () => (), BB.soft),
+          EB(j.dpad.right.st.press, "", () => (), BB.soft),
+          EB(j.dpad.up.st.press, "", () => (), BB.soft),
+          EB(j.dpad.down.st.press, "", () => (), BB.soft)
         ),
-      gateMode = GateMode.Gate,
-      silent = true
     )
   end stepSequencer
+
+  /** Sidecar mode to coexist with stepSequencer layer, activates stepGate
+    *
+    * Easier to separate them like this because this both clobbers the mode button and bumps submodes.
+    */
+  object stepGateActivator
+      extends ModeButtonLayer("stepGateActivator", j.step, gateMode = GateMode.Gate, silent = true):
+    override val modeBindings: Seq[Binding[?, ?, ?]] = Vector()
+
+    override def onActivate(): Unit =
+      super.onActivate()
+      ext.events.eval("stepGate activator")(stepSequencer.stepGate.activateEvent*)
+
+    override def onDeactivate(): Unit =
+      ext.events.eval("stepGate deactivator")(stepSequencer.stepGate.deactivateEvent*)
+      super.onDeactivate()
+
 end StepSequencer
 
 /* todos and ideas
