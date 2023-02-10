@@ -51,7 +51,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 ## Global
 
 * **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust in finer increments (e.g. in TEMPO mode).
-* **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view)
+* **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view if not already there)
 * **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
@@ -537,6 +537,20 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b16
+
+Step sequencer fixes and improvements
+
+* Updated color scheme for alternarting note rows: now it's the note itself that gets the color instead of the background, looks much better
+* Fixed regression in quick clip selector activation, could break switching between STEP mode and clip matrix
+* Fixed regression in pattern page follow while holding steps, condition was flipped
+* Fixed quick clip selector colors, was showing empty scene clips as white
+* Fixed SHIFT button forgetting its normal bindings in step mode
+
+Other fixes
+
+* Fixed SONG button indicator for superscene mode, was not lighting up
 
 ## 8.0b15
 

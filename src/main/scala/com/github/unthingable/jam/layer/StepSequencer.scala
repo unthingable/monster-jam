@@ -193,8 +193,9 @@ trait StepSequencer extends BindingDSL:
               else colorManager.stepScene.empty
           ),
         )
-
-      },
+      } ++
+        // workaround to keep SHIFT button doing what it does, because as submode it will bump SHIFT bindings for bottom
+        Vector(shiftMatrix, shiftTransport).map(_.modeBindings).flatten,
       GateMode.Gate
     )
     end stepShiftPages
