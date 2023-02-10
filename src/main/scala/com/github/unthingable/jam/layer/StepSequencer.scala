@@ -26,6 +26,7 @@ import com.github.unthingable.framework.binding.GlobalEvent
 import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.JCB
+import com.github.unthingable.framework.binding.ModeCommand
 import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
@@ -110,6 +111,7 @@ trait StepSequencer extends BindingDSL:
 
     Vector(
       clip.clipLauncherSlot().isPlaying(),
+      clip.clipLauncherSlot().hasContent(),
       secondClip.exists,
       secondClip.clipLauncherSlot.sceneIndex,
       clip.exists,
@@ -136,8 +138,9 @@ trait StepSequencer extends BindingDSL:
     clip
       .playingStep()
       .addValueObserver(step =>
-        if isOn && ext.transport.isPlaying().get() && ext.preferences.stepFollow
-            .get() && localState.stepState.get.steps.nonEmpty
+        if isOn && ext.transport.isPlaying().get() &&
+          ext.preferences.stepFollow
+            .get() && !localState.stepState.get.steps.nonEmpty
         then
           val currentPage: Int = ts.stepScrollOffset / ts.stepPageSize
           val playingPage: Int = step / ts.stepPageSize
@@ -156,7 +159,8 @@ trait StepSequencer extends BindingDSL:
             btn.light,
             () =>
               if hasContent then
-                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() && clip
+                if ext.transport.isPlaying().get() && clip.clipLauncherSlot().isPlaying().get() &&
+                  clip
                     .playingStep()
                     .get() / ts.stepPageSize == i
                 then colorManager.stepScene.playing
@@ -189,8 +193,9 @@ trait StepSequencer extends BindingDSL:
               else colorManager.stepScene.empty
           ),
         )
-
-      },
+      } ++
+        // workaround to keep SHIFT button doing what it does, because as submode it will bump SHIFT bindings for bottom
+        Vector(shiftMatrix, shiftTransport).map(_.modeBindings).flatten,
       GateMode.Gate
     )
     end stepShiftPages
@@ -256,10 +261,11 @@ trait StepSequencer extends BindingDSL:
                   else JamColorState(clipColor, 2)
               )
             )
-      } ++ Vector(
-        HB(j.encoder.touch.pressedAction, "", () => incStepSize(0)),
-        HB(j.encoder.turn, "", stepTarget(() => incStepSize(1), () => incStepSize(-1)))
-      ),
+      } ++
+        Vector(
+          HB(j.encoder.touch.pressedAction, "", () => incStepSize(0)),
+          HB(j.encoder.turn, "", stepTarget(() => incStepSize(1), () => incStepSize(-1)))
+        ),
     )
 
     def setChannel(ch: Int) =
@@ -363,7 +369,7 @@ trait StepSequencer extends BindingDSL:
     override val subModes: Vector[ModeLayer] = Vector(
       stepMain,
       stepPages,
-      // stepGate,
+      stepGate,
       stepShiftPages,
       stepRegular,
       patLength,
@@ -384,9 +390,8 @@ trait StepSequencer extends BindingDSL:
     end onStepState
 
     override def subModesToActivate =
-      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++ (subModes :+ velAndNote).filter(m =>
-        m.isOn || (m == velAndNote && ts.noteVelVisible)
-      )).distinct
+      (Vector(stepRegular, stepMatrix, stepPages, stepEnc, dpadStep, stepMain) ++
+        (subModes :+ velAndNote).filter(m => m.isOn || (m == velAndNote && ts.noteVelVisible))).distinct
 
     override val modeBindings: Seq[Binding[?, ?, ?]] =
       Vector(
@@ -453,10 +458,12 @@ trait StepSequencer extends BindingDSL:
 
     override lazy val extraOperated = stepGate.modeBindings
 
-    /** Clip selector, page follow, CLEAR/DUPLICATE */
-    lazy val stepGate = ModeButtonLayer(
+    /** Clip selector, page follow, CLEAR/DUPLICATE
+      *
+      * Activated by stepGateActivator.
+      */
+    lazy val stepGate = SimpleModeLayer(
       "stepGate",
-      j.step,
       Vector(
         EB(j.clear.st.press, "clear steps", () => stepSequencer.clip.clearSteps(), BB.soft),
         EB(j.duplicate.st.press, "duplicate pattern", () => stepSequencer.clip.duplicateContent(), BB.soft),
@@ -470,32 +477,51 @@ trait StepSequencer extends BindingDSL:
             else !ext.transport.isPlaying().get(),
           BB.soft
         )
-      ) ++ (for row <- EIGHT; col <- EIGHT yield
-        val btn: JamRgbButton        = j.matrix(row)(col)
-        val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
-        val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
-        clipEq.markInterested()
-        target.isPlaying().markInterested()
+      ) ++
+        (for row <- EIGHT; col <- EIGHT yield
+          val btn: JamRgbButton        = j.matrix(row)(col)
+          val target: ClipLauncherSlot = trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(row)
+          val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
+          clipEq.markInterested()
+          target.isPlaying().markInterested()
+          Vector(
+            EB(btn.st.press, "", () => target.select()),
+            SupColorStateB(
+              btn.light,
+              () =>
+                if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
+                else if clip.clipLauncherSlot().hasContent.get() then
+                  JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1)
+                else JamColorState.empty,
+              behavior = BB.soft
+            ),
+          )
+        ).flatten ++
         Vector(
-          EB(btn.st.press, "", () => target.select()),
-          SupColorStateB(
-            btn.light,
-            () =>
-              if clipEq.get() then JamColorState(JamColorBase.WHITE, 3)
-              else JamColorState(target.color().get(), if target.isPlaying().get() then 3 else 1),
-            behavior = BB.soft
-          ),
-        )
-      ).flatten ++ Vector(
-        EB(j.dpad.left.st.press, "", () => ()),
-        EB(j.dpad.right.st.press, "", () => ()),
-        EB(j.dpad.up.st.press, "", () => ()),
-        EB(j.dpad.down.st.press, "", () => ())
-      ),
-      gateMode = GateMode.Gate,
-      silent = true
+          EB(j.dpad.left.st.press, "", () => (), BB.soft),
+          EB(j.dpad.right.st.press, "", () => (), BB.soft),
+          EB(j.dpad.up.st.press, "", () => (), BB.soft),
+          EB(j.dpad.down.st.press, "", () => (), BB.soft)
+        ),
     )
   end stepSequencer
+
+  /** Sidecar mode to coexist with stepSequencer layer, activates stepGate
+    *
+    * Easier to separate them like this because this both clobbers the mode button and bumps submodes.
+    */
+  object stepGateActivator
+      extends ModeButtonLayer("stepGateActivator", j.step, gateMode = GateMode.Gate, silent = true):
+    override val modeBindings: Seq[Binding[?, ?, ?]] = Vector()
+
+    override def onActivate(): Unit =
+      super.onActivate()
+      ext.events.eval("stepGate activator")(stepSequencer.stepGate.activateEvent*)
+
+    override def onDeactivate(): Unit =
+      ext.events.eval("stepGate deactivator")(stepSequencer.stepGate.deactivateEvent*)
+      super.onDeactivate()
+
 end StepSequencer
 
 /* todos and ideas

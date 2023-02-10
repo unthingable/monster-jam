@@ -26,6 +26,7 @@ import com.github.unthingable.jam.surface.WithSource
 import java.time.Duration
 import java.time.Instant
 import java.util.function.BooleanSupplier
+import scala.concurrent.duration.FiniteDuration
 
 enum ModeState derives CanEqual:
   case Inactive, Activating, Active, Deactivating
@@ -73,6 +74,9 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   // because activeAt is hidden now
   final inline def hasDirtyBindings(withBindings: Binding[?, ?, ?]*): Boolean =
     activeAt.map(withBindings.hasOperatedAfter).getOrElse(false)
+
+  final inline def isOlderThan(inline duration: FiniteDuration): Boolean =
+    isOlderThan(Duration.ofNanos(duration.toNanos))
 
   final inline def isOlderThan(inline duration: Duration): Boolean =
     activeAt.exists(act => Instant.now().isAfter(act.plus(duration)))
@@ -264,8 +268,7 @@ abstract class ModeCycleLayer(
   var selected: Option[Int] = Some(0)
 
   override def subModesToActivate: Vector[ModeLayer] =
-    val ret = (selected.map(subModes(_)).toVector ++
-      super.subModesToActivate // in case they were bumped
+    val ret = (selected.map(subModes(_)).toVector ++ super.subModesToActivate // in case they were bumped
     ).distinct
     Util.println(s"debug: for $id submode activators are $ret")
     ret
@@ -324,8 +327,8 @@ abstract class ModeButtonCycleLayer(
       case _          => Vector.empty
 
   // bindings to inspect when unsticking
-  def operatedBindings: Iterable[Binding[?, ?, ?]] =
-    (selected.map(subModes) ++ siblingOperatedModes).flatMap(_.modeBindings) ++ extraOperated
+  def operatedBindings: Iterable[Binding[?, ?, ?]] = (selected.map(subModes) ++ siblingOperatedModes)
+    .flatMap(_.modeBindings) ++ extraOperated
 
   def stickyRelease: Vector[ModeCommand[?]] =
     (isOn, cycleMode: CycleMode) match
