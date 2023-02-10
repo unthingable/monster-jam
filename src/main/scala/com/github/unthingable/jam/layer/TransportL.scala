@@ -25,6 +25,7 @@ import com.github.unthingable.jam.surface.JamOnOffButton
 import com.github.unthingable.jam.surface.JamRgbButton
 
 import java.time.Instant
+import scala.concurrent.duration.*
 
 trait TransportL extends BindingDSL, Util:
   this: Jam =>
@@ -115,7 +116,12 @@ trait TransportL extends BindingDSL, Util:
         BB(tracked = false)
       ),
       SupBooleanB(j.noteRepeat.light, ext.transport.isFillModeActive),
-      EB(j.record.st.press, "record pressed", () => ext.transport.record(), BB.omni),
+      EB(
+        j.record.st.release,
+        "record released",
+        () => if !record.isOlderThan(500.millis) && !record.hasDirtyBindings() then ext.transport.record(),
+        BB.omni
+      ),
       SupBooleanB(j.record.light, ext.transport.isArrangerRecordEnabled),
       EB(
         j.auto.st.press,
@@ -224,9 +230,10 @@ trait TransportL extends BindingDSL, Util:
           JamColorState.empty
         )
       )
-    } ++ Vector(
-      EB(j.clear.st.press, "", () => superBank.view.map(prop).foreach(_.set(false)))
-    ),
+    } ++
+      Vector(
+        EB(j.clear.st.press, "", () => superBank.view.map(prop).foreach(_.set(false)))
+      ),
     gateMode = gateMode,
     silent = silent
   )

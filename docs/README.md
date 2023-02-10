@@ -551,6 +551,7 @@ Step sequencer fixes and improvements
 Other fixes
 
 * Fixed SONG button indicator for superscene mode, was not lighting up
+* REC+GROUP to arm multiple tracks won't trigger transport record unless you mean it (with a single short press of REC)
 
 ## 8.0b15
 
