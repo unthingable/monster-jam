@@ -4,20 +4,8 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.BooleanValue
 import com.bitwig.extension.controller.api.Clip
 import com.bitwig.extension.controller.api.ClipLauncherSlot
-import com.bitwig.extension.controller.api.CursorTrack
-import com.bitwig.extension.controller.api.Device
-import com.bitwig.extension.controller.api.DeviceBank
-import com.bitwig.extension.controller.api.NoteOccurrence
-import com.bitwig.extension.controller.api.NoteStep
-import com.bitwig.extension.controller.api.NoteStep.State as NSState
-import com.bitwig.extension.controller.api.Parameter
-import com.bitwig.extension.controller.api.PinnableCursorClip
-import com.bitwig.extension.controller.api.Setting
-import com.bitwig.extension.controller.api.Track
-import com.github.unthingable.JamSettings.DpadScroll
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
-import com.github.unthingable.framework.GetSetProxy
 import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.BindingDSL
@@ -31,7 +19,6 @@ import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
 import com.github.unthingable.framework.binding.BindingBehavior as BB
-import com.github.unthingable.framework.mode.CycleMode
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.ListeningLayer
 import com.github.unthingable.framework.mode.ModeButtonLayer
@@ -39,28 +26,19 @@ import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.ModeState
 import com.github.unthingable.framework.mode.MultiModeLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
-import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.Jam
-import com.github.unthingable.jam.JamParameter
-import com.github.unthingable.jam.SliderBankMode
-import com.github.unthingable.jam.SliderOp
 import com.github.unthingable.jam.TrackId
-import com.github.unthingable.jam.TrackId.apply
-import com.github.unthingable.jam.TrackTracker
 import com.github.unthingable.jam.stepSequencer.*
 import com.github.unthingable.jam.stepSequencer.mode.*
 import com.github.unthingable.jam.stepSequencer.state.*
-import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.surface.JamRgbButton
 import com.github.unthingable.jam.surface.KeyMaster.JC
 
-import java.time.Instant
 import scala.collection.mutable
-import scala.collection.mutable.ArraySeq
 
-import Util.{trace, schedule}
+import Util.{trace, delay}
 
 trait StepSequencer extends BindingDSL:
   this: Jam =>
@@ -382,11 +360,18 @@ trait StepSequencer extends BindingDSL:
     override def onStepState(from: StepState, to: StepState): Unit =
       val stateDiff = Util.comparator(from, to) andThen (_.unary_!)
 
-      if to.steps.nonEmpty && !noteParam.isOn then ext.events.eval("steps selected")(noteParam.activateEvent*)
+      if to.steps.nonEmpty then
+        // delay because it's a more pleasant experience when buttons aren't flashing all the time during regular edits
+        delay(
+          const.stepLongHold,
+          if localState.stepState.get.steps.nonEmpty && !noteParam.isOn then
+            ext.events.eval("steps selected")(noteParam.activateEvent*)
+        )
+        // if !noteParam.isOn then ext.events.eval("steps selected")(noteParam.activateEvent*)
       else if to.steps.isEmpty && noteParam.isOn then ext.events.eval("steps unselected")(noteParam.deactivateEvent*)
 
       if to.steps.nonEmpty && stateDiff(_.steps) then
-        schedule(if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps(), 10)
+        delay(10, if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps())
     end onStepState
 
     override def subModesToActivate =

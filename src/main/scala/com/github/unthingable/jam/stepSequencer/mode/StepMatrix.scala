@@ -8,10 +8,9 @@ import com.github.unthingable.Util.trace
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.SupColorStateB
-import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.jam.stepSequencer.TrackedState
+import com.github.unthingable.jam.stepSequencer.const
 import com.github.unthingable.jam.stepSequencer.state.Point
 import com.github.unthingable.jam.stepSequencer.state.PointStep
 import com.github.unthingable.jam.stepSequencer.state.StepState
@@ -64,7 +63,7 @@ trait StepMatrix(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
   def stepRelease(X: Int, Y: Int, Row: Int, Col: Int): Unit =
     val newState = localState.stepState.get match
       case StepState(PointStep(Point(Row, Col), step, pressed) :: Nil, noRelease) =>
-        if !noRelease && !pressed.isBefore(Instant.now().minusMillis(200)) then
+        if !noRelease && !pressed.isBefore(Instant.now().minusMillis(const.stepLongHold)) then
           step.state match
             case NSState.NoteOn => clip.clearStep(ts.channel, step.x, step.y)
             case NSState.Empty | NSState.NoteSustain =>

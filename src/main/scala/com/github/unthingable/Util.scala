@@ -2,12 +2,7 @@ package com.github.unthingable
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.Bank
-import com.bitwig.extension.controller.api.CursorRemoteControlsPage
 import com.bitwig.extension.controller.api.ObjectProxy
-import com.bitwig.extension.controller.api.Preferences
-import com.bitwig.extension.controller.api.SettableBooleanValue
-import com.bitwig.extension.controller.api.SettableEnumValue
-import com.bitwig.extension.controller.api.Settings
 import com.github.unthingable.jam.surface.JamColor.JamColorBase.CYAN
 import com.github.unthingable.jam.surface.JamColor.JamColorBase.FUCHSIA
 import com.github.unthingable.jam.surface.JamColor.JamColorBase.GREEN
@@ -23,7 +18,6 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.time.Instant
 import javax.swing.Timer
@@ -126,7 +120,7 @@ object Util extends Util:
     given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
 
-  def schedule(f: => Unit, delay: Int)(using ext: MonsterJamExt): Unit =
+  def delay(delay: Int, f: => Unit)(using ext: MonsterJamExt): Unit =
     ext.host.scheduleTask(() => f, delay)
 
   inline def popup(s: String)(using ext: MonsterJamExt): Unit =
