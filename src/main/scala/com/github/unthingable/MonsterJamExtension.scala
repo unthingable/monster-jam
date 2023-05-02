@@ -3,13 +3,12 @@ package com.github.unthingable
 import com.bitwig.extension.controller.ControllerExtension
 import com.bitwig.extension.controller.api.*
 import com.github.unthingable.JamSettings.EnumSetting
-import com.github.unthingable.JamSettings
 import com.github.unthingable.framework.EventBus
+import com.github.unthingable.framework.binding.Binder
+import com.github.unthingable.framework.binding.Event
 import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.binding.{Binder, Event}
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
-import java.util.EnumSet
 
 case class MonsterPref(
   shiftRow: SettableBooleanValue,

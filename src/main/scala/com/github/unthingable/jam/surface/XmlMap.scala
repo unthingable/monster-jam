@@ -2,7 +2,6 @@ package com.github.unthingable.jam.surface
 
 import com.bitwig.extension.api.PlatformType
 import com.bitwig.extension.controller.api.ControllerHost
-import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.jam.surface.XmlMap.controlInfo
 
@@ -36,8 +35,7 @@ case class XmlMap(e: Elem):
   lazy val touchElems: Node   = (e \\ "touchstripPages" \\ "page")(touchIndex.toInt)
   lazy val allElems: NodeSeq  = mainElems ++ matrixElems ++ masterElems ++ touchElems
 
-  def find(id: String, etype: String, elem: NodeSeq = e): Option[Node] =
-    (elem \\ etype).find(_ \@ "id" == id)
+  def find(id: String, etype: String, elem: NodeSeq = e): Option[Node] = (elem \\ etype).find(_ \@ "id" == id)
 
   def findControl(id: String, etype: String, elem: NodeSeq = e): Option[MidiInfo] =
     find(id, etype, elem).flatMap(controlInfo)

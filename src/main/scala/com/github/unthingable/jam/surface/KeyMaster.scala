@@ -1,7 +1,5 @@
 package com.github.unthingable.jam.surface
 
-import com.bitwig.`extension`.controller.api.HardwareButton
-import com.bitwig.extension.controller.api.HardwareLight
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
@@ -9,12 +7,8 @@ import com.github.unthingable.framework.binding
 import com.github.unthingable.framework.binding.ButtonEvt
 import com.github.unthingable.framework.binding.Clearable
 import com.github.unthingable.framework.binding.Event
-import com.github.unthingable.framework.binding.HB
-import com.github.unthingable.framework.binding.HB.HBS
 import com.github.unthingable.framework.binding.HwEvent
 import com.github.unthingable.jam
-
-import scala.collection.mutable
 
 // key chords
 object KeyMaster:
@@ -104,12 +98,13 @@ object KeyMaster:
           case RawButtonEvent.Release => jc.onRelease(buttonId)
       )
     /* Compromise: let modifier keys through */
-    comboEvents ++ (if comboEvents.isEmpty || lookup.toSeq.contains(KeyType.Modifier)
-                    then
-                      Seq(ev match
-                        case RawButtonEvent.Press   => ButtonEvt.Press(buttonId)
-                        case RawButtonEvent.Release => ButtonEvt.Release(buttonId)
-                      )
-                    else Seq.empty)
+    comboEvents ++
+    (if comboEvents.isEmpty || lookup.toSeq.contains(KeyType.Modifier)
+     then
+       Seq(ev match
+         case RawButtonEvent.Press   => ButtonEvt.Press(buttonId)
+         case RawButtonEvent.Release => ButtonEvt.Release(buttonId)
+       )
+     else Seq.empty)
   end eval
 end KeyMaster

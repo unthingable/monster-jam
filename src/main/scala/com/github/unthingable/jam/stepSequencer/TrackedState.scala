@@ -6,14 +6,12 @@ import com.bitwig.extension.controller.api.DeviceBank
 import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.PinnableCursorClip
 import com.bitwig.extension.controller.api.Setting
-import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.TrackId
-import com.github.unthingable.jam.TrackId.apply
 import com.github.unthingable.jam.TrackTracker
 import com.github.unthingable.jam.stepSequencer.state.*
 
@@ -104,11 +102,12 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
     if isOn then
       if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
-          newSt.keyScaledOffset +: (
-            if newSt.keyPageSize > 1 then
-              Seq((newSt.keyScaledOffset.asInstanceOf[Int] + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote])
-            else Seq()
-          )
+          newSt.keyScaledOffset +:
+            (
+              if newSt.keyPageSize > 1 then
+                Seq((newSt.keyScaledOffset.asInstanceOf[Int] + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote])
+              else Seq()
+            )
         notify(s"Notes: ${notes.map(n => toNoteName(ts.fromScale(n))).mkString(" - ")}")
       if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
         notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
@@ -177,10 +176,13 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
 
   inline def scrollYBy(dir: UpDown, size: => Int): Unit =
-    scrollYBy(size * (inline dir match
-      case UpDown.Up   => 1
-      case UpDown.Down => -1
-    ))
+    scrollYBy(
+      size *
+        (inline dir match
+          case UpDown.Up   => 1
+          case UpDown.Down => -1
+        )
+    )
 
   inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
 
@@ -188,10 +190,11 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     case Up, Down
 
   inline def canScrollY(dir: UpDown): Boolean =
-    clip.exists.get() && (inline dir match
-      case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
-      case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
-    )
+    clip.exists.get() &&
+      (inline dir match
+        case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
+        case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
+      )
 
   inline def setStepPage(page: Int) =
     scrollXTo(ts.stepPageSize * page)
@@ -202,10 +205,13 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
   inline def scrollXBy(dir: UpDown, size: => Int): Unit =
-    scrollXBy(size * (inline dir match
-      case UpDown.Up   => 1
-      case UpDown.Down => -1
-    ))
+    scrollXBy(
+      size *
+        (inline dir match
+          case UpDown.Up   => 1
+          case UpDown.Down => -1
+        )
+    )
 
   inline def stepAt(x: Int, y: Int): NoteStep =
     clip.getStep(ts.channel, x, y)

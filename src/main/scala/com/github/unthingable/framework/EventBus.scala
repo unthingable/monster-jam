@@ -5,7 +5,6 @@ import com.github.unthingable.jam.surface.WithSource
 
 import scala.annotation.targetName
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 class EventBus[BaseE]:
@@ -86,7 +85,6 @@ class EventBus[BaseE]:
           .asInstanceOf[mutable.HashSet[Reactor[E]]]
 
   private def receiversFor[E <: BaseE](e: E): Iterable[Reactor[E]] =
-    (valueSubs.get(e).toSeq.flatten
-      ++ classSubs.get(e.getClass()).toSeq.flatten)
+    (valueSubs.get(e).toSeq.flatten ++ classSubs.get(e.getClass()).toSeq.flatten)
       .asInstanceOf[Iterable[Reactor[E]]]
 end EventBus

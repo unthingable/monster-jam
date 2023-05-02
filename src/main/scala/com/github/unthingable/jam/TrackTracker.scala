@@ -1,6 +1,5 @@
 package com.github.unthingable.jam
 
-import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.Track
 import com.bitwig.extension.controller.api.TrackBank
 import com.github.unthingable.MonsterJamExt
@@ -8,7 +7,6 @@ import com.github.unthingable.Util
 import com.github.unthingable.framework.Ref
 
 import java.lang.reflect.Method
-import java.nio.ByteBuffer
 import java.util.UUID
 import scala.collection.mutable
 

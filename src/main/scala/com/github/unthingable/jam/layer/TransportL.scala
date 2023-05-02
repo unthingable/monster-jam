@@ -1,8 +1,6 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.Channel
-import com.bitwig.extension.controller.api.HardwareActionBindable
 import com.bitwig.extension.controller.api.SettableBooleanValue
 import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.JamSettings

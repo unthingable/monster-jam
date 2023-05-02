@@ -1,7 +1,6 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.BooleanValue
-import com.bitwig.extension.controller.api.HardwareActionBindable
 import com.bitwig.extension.controller.api.Scrollable
 import com.github.unthingable.JamSettings.DpadScroll
 import com.github.unthingable.framework.binding.Binding
@@ -39,8 +38,9 @@ trait Dpad:
       EB(j.dpad.right.st.press, "page right", scroll(true, trackBank)),
       EB(j.dpad.up.st.press, "page up", scroll(false, sceneBank)),
       EB(j.dpad.down.st.press, "page down", scroll(true, sceneBank)),
-    ) ++ actionMap.map {
-      case (b: JamOnOffButton, e: BooleanValue) =>
-        SupBooleanB(b.light, e)
-    }
+    ) ++
+      actionMap.map {
+        case (b: JamOnOffButton, e: BooleanValue) =>
+          SupBooleanB(b.light, e)
+      }
 end Dpad

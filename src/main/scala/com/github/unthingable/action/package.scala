@@ -1,7 +1,6 @@
 package com.github.unthingable
 
 import com.bitwig.extension.controller.api.ControllerHost
-import com.bitwig.extension.controller.api.TrackBank
 
 package object action:
 

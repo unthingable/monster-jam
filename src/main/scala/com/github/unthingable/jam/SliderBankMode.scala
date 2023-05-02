@@ -10,11 +10,8 @@ import com.bitwig.extension.controller.api.RemoteControl
 import com.bitwig.extension.controller.api.Send
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
-import com.github.unthingable.Util.safeCast
 import com.github.unthingable.Util.safeMap
-import com.github.unthingable.framework.Ref
 import com.github.unthingable.framework.RefSubSelective
-import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.binding.Bindable
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.HB
@@ -146,7 +143,6 @@ abstract class SliderOpBase(
   range: => PRange, // lower/upper value limit corresponding to 0/127
   isParentOn: => Boolean
 ) extends SliderOp:
-  import JamParameter.*
   import SliderOp.*
 
   protected var _range: PRange = range // efficiency cache
@@ -156,16 +152,16 @@ abstract class SliderOpBase(
   // assemble listeners
   protected def paramListeners: Seq[Listener]
 
-  override protected val listeners: Iterable[Listener] = paramListeners :+ (
-    None -> ((v: Double) => if isParentOn then updateLed(p2s(v)))
-  )
+  override protected val listeners: Iterable[Listener] = paramListeners :+
+    (
+      None -> ((v: Double) => if isParentOn then updateLed(p2s(v)))
+    )
   // :+ (
   //   None -> (v => Util.println(s"$idx $value"))
   // )
 
   // scale param->slider
-  def p2s(v: Double): Int =
-    (((v - _range.min) / _range.size).min(1).max(0) * 127).toInt
+  def p2s(v: Double): Int = (((v - _range.min) / _range.size).min(1).max(0) * 127).toInt
 
   def s2p(v: Double): Double =
     v * _range.size + _range.min

@@ -6,7 +6,6 @@ import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.EB
-import com.github.unthingable.framework.binding.SupColorB
 import com.github.unthingable.framework.binding.SupColorStateB
 import com.github.unthingable.framework.mode.GateMode
 import com.github.unthingable.framework.mode.ModeButtonLayer
@@ -136,7 +135,8 @@ trait VelNote(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
         val note       = keyOffset.asInstanceOf[Int]
         val pageOffset = notePageOffset(idx).asInstanceOf[Int]
         // detect overlap
-        (note + 16 > pageOffset && note + 16 < pageOffset + 16) || (note < pageOffset + 16 && note > pageOffset)
+        (note + 16 > pageOffset && note + 16 < pageOffset + 16) ||
+        (note < pageOffset + 16 && note > pageOffset)
 
       override def modeBindings: Seq[Binding[?, ?, ?]] =
         j.sceneButtons.zipWithIndex.flatMap((btn, idx) =>
