@@ -371,7 +371,8 @@ trait StepSequencer extends BindingDSL:
       else if to.steps.isEmpty && noteParam.isOn then ext.events.eval("steps unselected")(noteParam.deactivateEvent*)
 
       if to.steps.nonEmpty && stateDiff(_.steps) then
-        delay(10, if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps())
+        // wait for NoteParam to turn on and then update
+        delay(const.stepLongHold + 10, if localState.stepState.get.steps.nonEmpty then noteParam.setCurrentSteps())
     end onStepState
 
     override def subModesToActivate =
