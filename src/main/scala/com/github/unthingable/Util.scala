@@ -27,7 +27,29 @@ import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.Try
 
-transparent trait Util:
+trait Math:
+  import Ordering.Implicits.*
+  import Integral.Implicits.*
+
+  /** Find next and previous multiple of step */
+  trait Steppable[A]:
+    def next(n: A, step: A): A
+    def prev(n: A, step: A): A
+
+  given s_int[A](using int: Integral[A]): Steppable[A] with
+    inline def next(n: A, step: A) = if n % step > int.fromInt(0) then step * ((n / step) + int.fromInt(1)) else n
+    inline def prev(n: A, step: A) = if n % step > int.fromInt(0) then step * (n / step) else n
+
+  given s_frac: Steppable[Double] with
+    inline def next(n: Double, step: Double) = (n / step).ceil * step
+    inline def prev(n: Double, step: Double) = (n / step).floor * step
+
+  extension [A](n: A)(using s: Steppable[A])
+    inline def next(step: A): A = s.next(n, step)
+    inline def prev(step: A): A = s.prev(n, step)
+end Math
+
+transparent trait Util extends Math:
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]):
     def forindex(f: (A, Int) => Unit): S[A] =
       seq.zipWithIndex.foreach(f.tupled)
@@ -50,6 +72,7 @@ object Util extends Util:
 
   type SelfEqual[A] = CanEqual[A, A]
 
+  /** Useful generic stuff like tracing and casting */
   extension [A](obj: A)
     transparent inline def trace(): A =
       Util.println(obj.toString)
