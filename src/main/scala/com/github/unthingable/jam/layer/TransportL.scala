@@ -230,7 +230,7 @@ trait TransportL extends BindingDSL, Util:
       )
     } ++
       Vector(
-        EB(j.clear.st.press, "", () => superBank.view.map(prop).foreach(_.set(false)))
+        EB(j.clear.st.press, "", () => superBank.itemView.map(prop).foreach(_.set(false)))
       ),
     gateMode = gateMode,
     silent = silent

@@ -61,7 +61,7 @@ transparent trait Util extends Math:
   case class Timed[A](value: A, instant: Instant)
 
   extension [A <: ObjectProxy](bank: Bank[A])
-    def view: IndexedSeqView[A] = (0 until bank.itemCount().get()).view.map(bank.getItemAt)
+    def itemView: IndexedSeqView[A] = (0 until bank.itemCount().get()).view.map(bank.getItemAt)
 
     def fullView: IndexedSeqView[A] = (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
 

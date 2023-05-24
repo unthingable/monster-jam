@@ -52,7 +52,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
     .itemCount()
     .addValueObserver(_ =>
       // check for collisions
-      val hashes = bank.view.flatMap(idForBankTrack).toVector
+      val hashes = bank.itemView.flatMap(idForBankTrack).toVector
       if hashes.distinct.size != hashes.size then // && ext.preferences.smartTracker.get())
         ext.host.showPopupNotification("Track ID hash collision detected, superscenes might not work")
         val dups = hashes.zipWithIndex
@@ -82,7 +82,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
     else None
 
   override inline def getItemAt(id: TrackId): Option[Track] =
-    bank.view.find(t => trackId(t).contains(id))
+    bank.itemView.find(t => trackId(t).contains(id))
 
   // cache method references
   private def getOr(mref: MRef, method: => Option[Method]): Option[Method] =
@@ -115,7 +115,7 @@ class UnsafeTracker(val bank: TrackBank)(using ext: MonsterJamExt) extends Track
   end idForBankTrack
 
   inline def idList: Seq[Option[TrackId]] =
-    bank.view.map(idForBankTrack).toVector
+    bank.itemView.map(idForBankTrack).toVector
 
   inline def idMap: Seq[(TrackId, Int)] =
     idList.zipWithIndex.map((a, b) => a.map((_, b))).flatten
