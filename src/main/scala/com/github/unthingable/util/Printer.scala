@@ -1,8 +1,6 @@
 package com.github.unthingable.util
 
 import java.awt.event.ActionEvent
-import java.nio.ByteBuffer
-import java.time.Instant
 
 class Printer(printFun: String => Unit):
   import javax.swing.Timer

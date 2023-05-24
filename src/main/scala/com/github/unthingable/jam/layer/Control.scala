@@ -73,185 +73,190 @@ trait Control:
 
       def isUserSelected: Boolean = selected.exists(_ >= userOffset)
 
-      override val subModes: Vector[ModeLayer] = ((
-        new SliderBankMode(
-          "strips remote",
-          page.c.getParameter,
-          JamParameter.Regular.apply,
-          Seq.fill(8)(BarMode.DUAL)
-        ):
-
-          j.stripBank.strips.forindex {
-            case (strip, idx) =>
-              strip.slider.isBeingTouched.markInterested()
-              strip.slider.isBeingTouched.addValueObserver(v =>
-                if isOn then
-                  touchPage.foreach(tp =>
-                    if idx < tp.getParameterCount then tp.getParameter(idx).value().set(if v then 1 else 0)
-                  )
-              )
-              val param = sliderParams(idx)
-              param.p.modulatedValue().markInterested()
-              param.p
-                .modulatedValue()
-                .addValueObserver(v => if isOn then strip.update((v * 127).toInt))
-          }
-
-          override def onActivate(): Unit =
-            sliderParams.forindex {
-              case (param, idx) =>
-                j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
-            }
-            super.onActivate()
-
-          override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++ Vector(
-            SupBooleanB(j.left.light, m(() => device.hasPrevious.get(), page.hasPrevious)),
-            SupBooleanB(j.right.light, m(() => device.hasNext.get(), page.hasNext)),
-            EB(
-              j.left.st.release,
-              "scroll left",
-              m(() => device.selectPrevious(), page.selectPrevious)
-            ),
-            EB(j.right.st.release, "scroll right", m(() => device.selectNext(), page.selectNext)),
-            // FIXME make combo
-            EB(j.left.st.press, "left", () => if j.right.st.isPressed then select(currentSlice + 1)),
-            EB(j.right.st.press, "right", () => if j.left.st.isPressed then select(currentSlice + 1)),
-          )
-      ) +:
-        EIGHT.map(idx =>
+      override val subModes: Vector[ModeLayer] =
+        ((
           new SliderBankMode(
-            s"strips slice $idx",
-            obj = i => trackBank.getItemAt(i).createCursorDevice(),
-            param = p => JamParameter.Regular(p.createCursorRemoteControlsPage(8).getParameter(idx)),
-            barMode = Seq.fill(8)(BarMode.DUAL),
-            stripColor = Some(_ => Util.rainbow(idx))
+            "strips remote",
+            page.c.getParameter,
+            JamParameter.Regular.apply,
+            Seq.fill(8)(BarMode.DUAL)
           ):
+
             j.stripBank.strips.forindex {
-              case (strip, stripIdx) =>
+              case (strip, idx) =>
                 strip.slider.isBeingTouched.markInterested()
-
-                // find touch pages
-                val cursor = obj(stripIdx).createCursorRemoteControlsPage(touchFX, 8, "")
-                var localTouchPage: Option[CursorRemoteControlsPage] = None
-                cursor.pageNames().markInterested()
-                cursor.selectedPageIndex().markInterested()
-
-                cursor.pageNames().addValueObserver { names =>
-                  localTouchPage = names.zipWithIndex.find(_._1 == touchFX).map {
-                    case (_, page) =>
-                      cursor.selectedPageIndex().set(page)
-                      cursor
-                  }
-                }
-
                 strip.slider.isBeingTouched.addValueObserver(v =>
                   if isOn then
-                    localTouchPage.foreach(tp =>
+                    touchPage.foreach(tp =>
                       if idx < tp.getParameterCount then tp.getParameter(idx).value().set(if v then 1 else 0)
                     )
                 )
-
-                val param = sliderParams(stripIdx)
+                val param = sliderParams(idx)
                 param.p.modulatedValue().markInterested()
                 param.p
                   .modulatedValue()
                   .addValueObserver(v => if isOn then strip.update((v * 127).toInt))
             }
 
-            var (pressL, pressR) = (false, false)
-
             override def onActivate(): Unit =
-              currentSlice = idx
               sliderParams.forindex {
                 case (param, idx) =>
                   j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
               }
-              pressL = false
-              pressR = false
               super.onActivate()
 
-            val superBindings = super.modeBindings // cache for dirty check
-
-            override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++ Vector(
-              SupBooleanB(j.left.light, () => true),
-              SupBooleanB(j.right.light, () => true),
-              // must press both and then release to deactivate, so that releases don't end up in remote layer
-              EB(j.left.st.press, "slice left press", () => pressL = true),
-              EB(j.right.st.press, "slice right press", () => pressR = true),
-              EB(
-                j.left.st.release,
-                "slice left release",
-                () => if pressL && !j.right.st.isPressed then select(0)
-              ),
-              EB(
-                j.right.st.release,
-                "slice right release",
-                () => if pressR && !j.left.st.isPressed then select(0)
-              ),
-            ) ++ EIGHT.flatMap { idx =>
-              val button = j.groupButtons(idx)
+            override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++
               Vector(
-                EB(button.st.press, s"control slice $idx", () => selectSlice(idx)),
+                SupBooleanB(j.left.light, m(() => device.hasPrevious.get(), page.hasPrevious)),
+                SupBooleanB(j.right.light, m(() => device.hasNext.get(), page.hasNext)),
                 EB(
-                  button.st.release,
-                  s"control slice $idx release",
-                  () =>
-                    if isOlderThan(Duration.ofMillis(500))
-                      || hasDirtyBindings(superBindings*)
-                    then selectSlice(previousSlice)
+                  j.left.st.release,
+                  "scroll left",
+                  m(() => device.selectPrevious(), page.selectPrevious)
                 ),
-                SupColorStateB(
-                  button.light,
-                  () =>
-                    JamColorState(
-                      if selected.contains(idx + 1) then JamColorBase.WHITE else Util.rainbow(idx),
-                      if selected.contains(idx + 1) then 3 else 0
+                EB(j.right.st.release, "scroll right", m(() => device.selectNext(), page.selectNext)),
+                // FIXME make combo
+                EB(j.left.st.press, "left", () => if j.right.st.isPressed then select(currentSlice + 1)),
+                EB(j.right.st.press, "right", () => if j.left.st.isPressed then select(currentSlice + 1)),
+              )
+        ) +:
+          EIGHT.map(idx =>
+            new SliderBankMode(
+              s"strips slice $idx",
+              obj = i => trackBank.getItemAt(i).createCursorDevice(),
+              param = p => JamParameter.Regular(p.createCursorRemoteControlsPage(8).getParameter(idx)),
+              barMode = Seq.fill(8)(BarMode.DUAL),
+              stripColor = Some(_ => Util.rainbow8(idx))
+            ):
+              j.stripBank.strips.forindex {
+                case (strip, stripIdx) =>
+                  strip.slider.isBeingTouched.markInterested()
+
+                  // find touch pages
+                  val cursor = obj(stripIdx).createCursorRemoteControlsPage(touchFX, 8, "")
+                  var localTouchPage: Option[CursorRemoteControlsPage] = None
+                  cursor.pageNames().markInterested()
+                  cursor.selectedPageIndex().markInterested()
+
+                  cursor.pageNames().addValueObserver { names =>
+                    localTouchPage = names.zipWithIndex.find(_._1 == touchFX).map {
+                      case (_, page) =>
+                        cursor.selectedPageIndex().set(page)
+                        cursor
+                    }
+                  }
+
+                  strip.slider.isBeingTouched.addValueObserver(v =>
+                    if isOn then
+                      localTouchPage.foreach(tp =>
+                        if idx < tp.getParameterCount then tp.getParameter(idx).value().set(if v then 1 else 0)
+                      )
+                  )
+
+                  val param = sliderParams(stripIdx)
+                  param.p.modulatedValue().markInterested()
+                  param.p
+                    .modulatedValue()
+                    .addValueObserver(v => if isOn then strip.update((v * 127).toInt))
+              }
+
+              var (pressL, pressR) = (false, false)
+
+              override def onActivate(): Unit =
+                currentSlice = idx
+                sliderParams.forindex {
+                  case (param, idx) =>
+                    j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
+                }
+                pressL = false
+                pressR = false
+                super.onActivate()
+
+              val superBindings = super.modeBindings // cache for dirty check
+
+              override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++
+                Vector(
+                  SupBooleanB(j.left.light, () => true),
+                  SupBooleanB(j.right.light, () => true),
+                  // must press both and then release to deactivate, so that releases don't end up in remote layer
+                  EB(j.left.st.press, "slice left press", () => pressL = true),
+                  EB(j.right.st.press, "slice right press", () => pressR = true),
+                  EB(
+                    j.left.st.release,
+                    "slice left release",
+                    () => if pressL && !j.right.st.isPressed then select(0)
+                  ),
+                  EB(
+                    j.right.st.release,
+                    "slice right release",
+                    () => if pressR && !j.left.st.isPressed then select(0)
+                  ),
+                ) ++
+                EIGHT.flatMap { idx =>
+                  val button = j.groupButtons(idx)
+                  Vector(
+                    EB(button.st.press, s"control slice $idx", () => selectSlice(idx)),
+                    EB(
+                      button.st.release,
+                      s"control slice $idx release",
+                      () =>
+                        if isOlderThan(Duration.ofMillis(500)) || hasDirtyBindings(superBindings*)
+                        then selectSlice(previousSlice)
+                    ),
+                    SupColorStateB(
+                      button.light,
+                      () =>
+                        JamColorState(
+                          if selected.contains(idx + 1) then JamColorBase.WHITE else Util.rainbow8(idx),
+                          if selected.contains(idx + 1) then 3 else 0
+                        )
                     )
+                  )
+                }
+          )) ++
+          EIGHT.map { idx =>
+            new SliderBankMode(
+              s"strips user bank $idx",
+              i => userBank.getControl(i + idx),
+              JamParameter.UserControl.apply,
+              barMode = Seq.fill(8)(BarMode.SINGLE),
+            ):
+
+              val superBindings = super.modeBindings // cache for dirty check
+              // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")
+
+              override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++
+                Vector(
+                  SupBooleanB(j.macroButton.light, () => true)
+                ) ++
+                EIGHT.flatMap(idx =>
+                  Vector(
+                    EB(
+                      j.groupButtons(idx).st.press,
+                      s"user bank $idx",
+                      () =>
+                        previousUserPage = currentUserPage
+                        currentUserPage = idx
+                        selectUser()
+                    ),
+                    EB(
+                      j.groupButtons(idx).st.release,
+                      s"user bank $idx release",
+                      () =>
+                        if isOlderThan(Duration.ofMillis(500)) || hasDirtyBindings(superBindings*)
+                        then
+                          currentUserPage = previousUserPage
+                          selectUser()
+                    ),
+                    SupColorStateB(
+                      j.groupButtons(idx).light,
+                      () =>
+                        if currentUserPage == idx then JamColorState(JamColorBase.WHITE, 3)
+                        else JamColorState(JamColorBase.WHITE, 0)
+                    )
+                  )
                 )
-              )
-            }
-        )) ++ EIGHT.map { idx =>
-        new SliderBankMode(
-          s"strips user bank $idx",
-          i => userBank.getControl(i + idx),
-          JamParameter.UserControl.apply,
-          barMode = Seq.fill(8)(BarMode.SINGLE),
-        ):
-
-          val superBindings = super.modeBindings // cache for dirty check
-          // .trace(bb => s"user bank $idx bindings: ${bb.outBindings.map(_.name).mkString(", ")}")
-
-          override val modeBindings: Seq[Binding[?, ?, ?]] = superBindings ++ Vector(
-            SupBooleanB(j.macroButton.light, () => true)
-          ) ++ EIGHT.flatMap(idx =>
-            Vector(
-              EB(
-                j.groupButtons(idx).st.press,
-                s"user bank $idx",
-                () =>
-                  previousUserPage = currentUserPage
-                  currentUserPage = idx
-                  selectUser()
-              ),
-              EB(
-                j.groupButtons(idx).st.release,
-                s"user bank $idx release",
-                () =>
-                  if isOlderThan(Duration.ofMillis(500))
-                    || hasDirtyBindings(superBindings*)
-                  then
-                    currentUserPage = previousUserPage
-                    selectUser()
-              ),
-              SupColorStateB(
-                j.groupButtons(idx).light,
-                () =>
-                  if currentUserPage == idx then JamColorState(JamColorBase.WHITE, 3)
-                  else JamColorState(JamColorBase.WHITE, 0)
-              )
-            )
-          )
-      }
+          }
 
       /* Control mode */
       def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
@@ -304,9 +309,10 @@ trait Control:
 
         def selectDevice(trackIdx: Int, device: Device): Unit =
           Util.println(
-            s"** select/clear/dup " + Seq(GlobalMode.Select, GlobalMode.Clear, GlobalMode.Duplicate)
-              .map(_.isOn)
-              .mkString("/")
+            s"** select/clear/dup " +
+              Seq(GlobalMode.Select, GlobalMode.Clear, GlobalMode.Duplicate)
+                .map(_.isOn)
+                .mkString("/")
           )
           device.exists().get() match
             case true if GlobalMode.Select.isOn => device.isEnabled.toggle()
@@ -376,33 +382,35 @@ trait Control:
                 ),
               )
             }
-        } ++ Vector(
-          SupBooleanB(j.dpad.up.light, () => deviceBanks.exists(_.canScrollBackwards.get())),
-          SupBooleanB(j.dpad.down.light, () => deviceBanks.exists(_.canScrollForwards.get())),
-          EB(
-            j.dpad.up.st.press,
-            "device bank up",
-            () => deviceBanks.foreach(_.scrollPageBackwards())
-          ),
-          EB(
-            j.dpad.down.st.press,
-            "device bank down",
-            () => deviceBanks.foreach(_.scrollPageForwards())
-          ),
-        )
+        } ++
+          Vector(
+            SupBooleanB(j.dpad.up.light, () => deviceBanks.exists(_.canScrollBackwards.get())),
+            SupBooleanB(j.dpad.down.light, () => deviceBanks.exists(_.canScrollForwards.get())),
+            EB(
+              j.dpad.up.st.press,
+              "device bank up",
+              () => deviceBanks.foreach(_.scrollPageBackwards())
+            ),
+            EB(
+              j.dpad.down.st.press,
+              "device bank down",
+              () => deviceBanks.foreach(_.scrollPageForwards())
+            ),
+          )
       ,
       // noop mode (disable device selector)
       new SimpleModeLayer("device noopSelector"):
         override val modeBindings: Seq[Binding[?, ?, ?]] = Vector.empty
       ,
     )
-    override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++ Vector(
-      EB(
-        j.select.st.press,
-        "cycle device selectors",
-        () => if j.control.st.isPressed then cycle(),
-        BB.omni
-      ),
-      // HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
-    )
+    override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++
+      Vector(
+        EB(
+          j.select.st.press,
+          "cycle device selectors",
+          () => if j.control.st.isPressed then cycle(),
+          BB.omni
+        ),
+        // HB(j.macroButton.pressedAction, "control userbank cycle", () => deviceLayer.cycle()),
+      )
 end Control

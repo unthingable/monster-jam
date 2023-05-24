@@ -2,20 +2,8 @@ package com.github.unthingable
 
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.Bank
-import com.bitwig.extension.controller.api.CursorRemoteControlsPage
 import com.bitwig.extension.controller.api.ObjectProxy
-import com.bitwig.extension.controller.api.Preferences
-import com.bitwig.extension.controller.api.SettableBooleanValue
-import com.bitwig.extension.controller.api.SettableEnumValue
-import com.bitwig.extension.controller.api.Settings
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.CYAN
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.FUCHSIA
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.GREEN
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.LIME
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.MAGENTA
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.ORANGE
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.RED
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.YELLOW
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.*
 
 import java.awt.event.ActionEvent
 import java.io.ByteArrayInputStream
@@ -23,7 +11,6 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.time.Instant
 import javax.swing.Timer
@@ -33,7 +20,29 @@ import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.Try
 
-transparent trait Util:
+trait Math:
+  import Ordering.Implicits.*
+  import Integral.Implicits.*
+
+  /** Find next and previous multiple of step */
+  trait Steppable[A]:
+    def next(n: A, step: A): A
+    def prev(n: A, step: A): A
+
+  given s_int[A](using int: Integral[A]): Steppable[A] with
+    inline def next(n: A, step: A) = if n % step > int.fromInt(0) then step * ((n / step) + int.fromInt(1)) else n
+    inline def prev(n: A, step: A) = if n % step > int.fromInt(0) then step * (n / step) else n
+
+  given s_frac: Steppable[Double] with
+    inline def next(n: Double, step: Double) = (n / step).ceil * step
+    inline def prev(n: Double, step: Double) = (n / step).floor * step
+
+  extension [A](n: A)(using s: Steppable[A])
+    inline def next(step: A): A = s.next(n, step)
+    inline def prev(step: A): A = s.prev(n, step)
+end Math
+
+transparent trait Util extends Math:
   implicit class SeqOps[A, S[B] <: Iterable[B]](seq: S[A]):
     def forindex(f: (A, Int) => Unit): S[A] =
       seq.zipWithIndex.foreach(f.tupled)
@@ -45,7 +54,7 @@ transparent trait Util:
   case class Timed[A](value: A, instant: Instant)
 
   extension [A <: ObjectProxy](bank: Bank[A])
-    def view: IndexedSeqView[A] = (0 until bank.itemCount().get()).view.map(bank.getItemAt)
+    def itemView: IndexedSeqView[A] = (0 until bank.itemCount().get()).view.map(bank.getItemAt)
 
     def fullView: IndexedSeqView[A] = (0 until bank.getCapacityOfBank()).view.map(bank.getItemAt)
 
@@ -56,6 +65,7 @@ object Util extends Util:
 
   type SelfEqual[A] = CanEqual[A, A]
 
+  /** Useful generic stuff like tracing and casting */
   extension [A](obj: A)
     transparent inline def trace(): A =
       Util.println(obj.toString)
@@ -95,7 +105,7 @@ object Util extends Util:
       val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
-  val rainbow   = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow8  = Vector(RED, LIGHT_ORANGE, YELLOW, LIME, MINT, BLUE, PLUM, PURPLE)
   val rainbow16 = (0 until 16).map(i => (i + 1) * 4).toVector
 
   def serialize[A](o: A): String =
@@ -126,7 +136,7 @@ object Util extends Util:
     given CanEqual[B, B] = CanEqual.derived
     f(a) == f(b)
 
-  def schedule(f: => Unit, delay: Int)(using ext: MonsterJamExt): Unit =
+  def delay(delay: Int, f: => Unit)(using ext: MonsterJamExt): Unit =
     ext.host.scheduleTask(() => f, delay)
 
   inline def popup(s: String)(using ext: MonsterJamExt): Unit =

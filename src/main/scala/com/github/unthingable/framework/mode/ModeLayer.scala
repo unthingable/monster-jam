@@ -1,6 +1,5 @@
 package com.github.unthingable.framework.mode
 
-import com.bitwig.`extension`.controller.api.HardwareButton
 import com.bitwig.extension.controller.api.OnOffHardwareLight
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
@@ -13,14 +12,8 @@ import com.github.unthingable.framework.binding.ModeCommand
 import com.github.unthingable.framework.binding.OutBinding
 import com.github.unthingable.framework.binding.SupBooleanB
 import com.github.unthingable.framework.binding.BindingBehavior as BB
-import com.github.unthingable.jam.surface.FakeAction
-import com.github.unthingable.jam.surface.FakeButton
 import com.github.unthingable.jam.surface.HasButtonState
-import com.github.unthingable.jam.surface.HasHwButton
-import com.github.unthingable.jam.surface.HasLight
-import com.github.unthingable.jam.surface.HasOnOffLight
 import com.github.unthingable.jam.surface.JamControl
-import com.github.unthingable.jam.surface.JamOnOffButton
 import com.github.unthingable.jam.surface.WithSource
 
 import java.time.Duration

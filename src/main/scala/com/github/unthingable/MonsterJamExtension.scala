@@ -3,19 +3,20 @@ package com.github.unthingable
 import com.bitwig.extension.controller.ControllerExtension
 import com.bitwig.extension.controller.api.*
 import com.github.unthingable.JamSettings.EnumSetting
-import com.github.unthingable.JamSettings
 import com.github.unthingable.framework.EventBus
+import com.github.unthingable.framework.binding.Binder
+import com.github.unthingable.framework.binding.Event
 import com.github.unthingable.jam.Jam
-import com.github.unthingable.framework.binding.{Binder, Event}
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
-import java.util.EnumSet
 
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
+  stepNoteInterlace: SettableBooleanValue,
   altNoteRow: SettableBooleanValue,
   stepFollow: SettableBooleanValue,
   stepNotePreview: SettableBooleanValue,
+  stepKeepEnd: SettableBooleanValue,
   shiftGroup: SettableBooleanValue,
   shiftDpad: EnumSetting[JamSettings.DpadScroll],
   limitLevel: EnumSetting[JamSettings.LimitLevels],
@@ -98,15 +99,17 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createApplication(),
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Display", true),
-        preferences.getBooleanSetting("Alternating note row colors", "Display: step sequencer", true),
-        preferences.getBooleanSetting("Step sequencer pattern follow", "Behavior", false),
-        preferences.getBooleanSetting("Step sequencer note preview", "Behavior", false),
+        preferences.getBooleanSetting("Note interlace", "Step Sequencer", true),
+        preferences.getBooleanSetting("Alternating note row colors", "Step Sequencer", true),
+        preferences.getBooleanSetting("Step sequencer pattern follow", "Step Sequencer", false),
+        preferences.getBooleanSetting("Step sequencer note preview", "Step Sequencer", false),
+        preferences.getBooleanSetting("Keep note end", "Step Sequencer", true),
         preferences.getBooleanSetting("SHIFT-TRACK selects track page", "Behavior", true),
         EnumSetting(preferences, "DPAD scroll (regular/SHIFT)", "Behavior", JamSettings.DpadScroll.`page/single`),
         EnumSetting(preferences, "Limit level sliders", "Behavior", JamSettings.LimitLevels.None),
         EnumSetting(preferences, "SHIFT+PLAY", "Behavior", JamSettings.ShiftPlay.`Pause/Resume`),
-        preferences.getNumberSetting("Launch Q forgiveness", "Behaviour", 0, 1, 0.1, "beats", 0.5),
-        preferences.getNumberSetting("Launch Q lookahead", "Behaviour", 0, .5, 0.02, "beats", 0.1),
+        preferences.getNumberSetting("Launch Q forgiveness", "Launcher", 0, 1, 0.1, "beats", 0.5),
+        preferences.getNumberSetting("Launch Q lookahead", "Launcher", 0, .5, 0.02, "beats", 0.1),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
       ),
       MonsterDocPrefs(

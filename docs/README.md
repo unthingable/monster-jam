@@ -203,7 +203,7 @@ The button grid is bottom-focused. Note mode will push the grid up. When using n
 
 ### Quick clip selector
 
-Hold **STEP** to see the clip matrix. Currently selected clip will be bright WHITE. Press any other clip to focus the step sequencer on it.
+Hold **STEP** to see the clip matrix. Currently selected clip will be bright WHITE. Press any other clip to focus the step sequencer on it. If a slot is empty, new clip will be created. If transport is playing, newly created clips will play automatically.
 
 ### Scene buttons 
 
@@ -245,6 +245,35 @@ The step sequencer matrix is a windowed view of a clip, showing up to 64 steps a
   * 3: 4 notes per 8 rows (2 rows per note)
   * 4: 8 notes per 8 rows (1 row per note)
 * **KNOB**: change step size
+
+## Note interlace
+
+With nontrivial grid sizes (i.e. not 8x8 or 1x64) you can choose between different wrapping modes and pick what works for you. The toggle is in controller settings.
+
+For example, if Grid is 4x16 (showing 4 notes, 16 steps each), the different modes might look as follows, with `-` being the currently playing step:
+
+Interlaced:
+```
+11-11111
+11111111
+22-22222
+22222222
+33-33333
+33333333
+44-44444
+44444444
+```
+Non-interlaced (whole pattern wrap):
+```
+11-11111
+22-22222
+33-33333
+44-44444
+11111111
+22222222
+33333333
+44444444
+```
 
 ## Note/Velocity submode
 
@@ -511,22 +540,31 @@ The 64 controls are grouped in 8 pages. To select a page use the track buttons, 
 
 ## Global
 
-* **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
-will change the colors of the top row of the clip matrix buttons to indicate that they are special.
-* **Step sequencer: Alternating row colors**: in step sequencer, each note row gets a different color
-* **Behavior: Step sequencer pattern follow**: active step sequencer pattern page will automatically follow playing position
-* **Behavior: Step sequencer note preview**: pressing steps in sequencer will play corresponding notes
-* **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
-* **DPAD scroll (regular/SHIFT)**: Flip **DPAD** function with and without **SHIFT**: arrows scroll by page/SHIFT-arrow by single row, or vice versa.
-* **Limit level sliders**: slider range when controlling track levels
-  * _None_: sliders behave as shown in the app (i.e., +6 dB is maximum)
-  * _0 dB_: slider maximum is 0 dB for all tracks
-  * _-10 dB_: slider maximum is -10 dB for all tracks
-  * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
-* **SHIFT+PLAY**: Toggle between restart and pause/continue
-* **Launch Q forgiveness**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
-* **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
-* **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
+* **Display**
+    * **Show pretty shift commands in matrix**: when enabled, holding **SHIFT**
+will change the colors of the top row of the clip matrix buttons to indicate that they are special (like in DbM)
+* **Step Sequencer**
+  * **Note interlace**: control how long note rows are wrapped, depending on Grid settings
+    * On: rows grouped by note (each note row wrapped individually)
+    * Off: single row per note (the whole pattern is wrapped)
+  * **Alternating row colors**: in step sequencer, each note row gets a different color
+  * **Step sequencer pattern follow**: active step sequencer pattern page will automatically follow playing position
+  * **Step sequencer note preview**: pressing steps in sequencer will play corresponding notes
+  * **Keep note end**: when nudging steps right, automatically reduce note duration keep the note from extending into next empty step
+* **Behavior**
+  * **SHIFT-TRACK selects track page**: **SHIFT** turns track group row into page selectors, see **Page navigation**
+  * **DPAD scroll (regular/SHIFT)**: Flip **DPAD** function with and without **SHIFT**: arrows scroll by page/SHIFT-arrow by single row, or vice versa.
+  * **Limit level sliders**: slider range when controlling track levels
+    * _None_: sliders behave as shown in the app (i.e., +6 dB is maximum)
+    * _0 dB_: slider maximum is 0 dB for all tracks
+    * _-10 dB_: slider maximum is -10 dB for all tracks
+    * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
+  * **SHIFT+PLAY**: Toggle between restart and pause/continue
+* **Launcher**
+  * **Launch Q forgiveness**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
+  * **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
+* **Debug**
+  * **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
 
@@ -537,6 +575,18 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b17
+
+Step sequencer fixes and improvements
+
+* Added small delay between step press and note param activation (sliders) for less flashy sequence editing. Delay is equal to when the step press becomes long press.
+* Added a setting to keep notes within their original steps when nudging
+* In "Quick Clip Selector" (hold STEP), pressing an empty slot will create a new clip and select it
+* When transport is playing, newly created clips will play too
+* Added "note interlace" setting
+* Changed alternating note colors to 8 rainbow colors, for better visual separation
+* Refactored controller settings: re-add MonsterJam in your Bitwig 
 
 ## 8.0b16
 

@@ -6,14 +6,12 @@ import com.bitwig.extension.controller.api.DeviceBank
 import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.PinnableCursorClip
 import com.bitwig.extension.controller.api.Setting
-import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.Watched
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.quant
 import com.github.unthingable.jam.TrackId
-import com.github.unthingable.jam.TrackId.apply
 import com.github.unthingable.jam.TrackTracker
 import com.github.unthingable.jam.stepSequencer.state.*
 
@@ -104,11 +102,12 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
     if isOn then
       if stateDiff(_.keyScaledOffset) || stateDiff(_.keyPageSize) then
         val notes =
-          newSt.keyScaledOffset +: (
-            if newSt.keyPageSize > 1 then
-              Seq((newSt.keyScaledOffset.asInstanceOf[Int] + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote])
-            else Seq()
-          )
+          newSt.keyScaledOffset +:
+            (
+              if newSt.keyPageSize > 1 then
+                Seq((newSt.keyScaledOffset.asInstanceOf[Int] + 1 + newSt.keyPageSize).asInstanceOf[ScaledNote])
+              else Seq()
+            )
         notify(s"Notes: ${notes.map(n => toNoteName(ts.fromScale(n))).mkString(" - ")}")
       if stateDiff(_.scaleIdx) || stateDiff(_.scaleRoot) then
         notify(s"Scale: ${toNoteNameNoOct(newSt.scaleRoot)} ${newSt.scale.name}")
@@ -147,22 +146,28 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     else selectedClipTrack.color().get
 
   /* Translate from matrix grid (row, col) to clip grid (x, y) */
-  def m2clip(row: Int, col: Int): Option[(Int, Int)] =
+  def m2clip(row: Int, col: Int)(using ext: MonsterJamExt): Option[(Int, Int)] =
     val port = ts.stepViewPort
     if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
-      val offsetRow = row - port.rowTop
-      val offsetCol = col - port.colLeft
-      val offset    = offsetRow * port.width + offsetCol // unrolled sequence
+      val offsetRow: Int = row - port.rowTop
+      val offsetCol: Int = col - port.colLeft
+      val offset: Int    = offsetRow * port.width + offsetCol // unrolled sequence
+      val (step, note) =
+        if ext.preferences.stepNoteInterlace.get() then
+          // interlace by note
+          (
+            offset % ts.stepPageSize,
+            ts.keyPageSize - offset / ts.stepPageSize
+          )
+        else
+          val subpage: Int       = offsetRow / ts.keyPageSize
+          val subpageOffset: Int = subpage * port.width
+          (subpageOffset + offsetCol, ts.keyPageSize - offsetRow % ts.keyPageSize)
       Some(
-        (
-          offset % ts.stepPageSize,
-          ts.fromScale(
-            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (ts.keyPageSize - offset / ts.stepPageSize) - 1)
-              .asInstanceOf[ScaledNote]
-          ).value
-        )
+        (step, ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + note - 1).asInstanceOf[ScaledNote]).value)
       )
+  end m2clip
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
@@ -177,10 +182,13 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     scrollYTo((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + offset).asInstanceOf[ScaledNote])
 
   inline def scrollYBy(dir: UpDown, size: => Int): Unit =
-    scrollYBy(size * (inline dir match
-      case UpDown.Up   => 1
-      case UpDown.Down => -1
-    ))
+    scrollYBy(
+      size *
+        (inline dir match
+          case UpDown.Up   => 1
+          case UpDown.Down => -1
+        )
+    )
 
   inline def scrollYPage(dir: UpDown): Unit = scrollYBy(dir, ts.keyPageSize)
 
@@ -188,10 +196,11 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     case Up, Down
 
   inline def canScrollY(dir: UpDown): Boolean =
-    clip.exists.get() && (inline dir match
-      case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
-      case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
-    )
+    clip.exists.get() &&
+      (inline dir match
+        case UpDown.Up   => ts.scale.length - ts.keyScrollOffsetGuarded.asInstanceOf[Int] > ts.stepViewPort.height
+        case UpDown.Down => ts.keyScrollOffsetGuarded.asInstanceOf[Int] > 0
+      )
 
   inline def setStepPage(page: Int) =
     scrollXTo(ts.stepPageSize * page)
@@ -202,10 +211,13 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
   def scrollXBy(inc: Int) = scrollXTo(ts.stepScrollOffset + inc)
 
   inline def scrollXBy(dir: UpDown, size: => Int): Unit =
-    scrollXBy(size * (inline dir match
-      case UpDown.Up   => 1
-      case UpDown.Down => -1
-    ))
+    scrollXBy(
+      size *
+        (inline dir match
+          case UpDown.Up   => 1
+          case UpDown.Down => -1
+        )
+    )
 
   inline def stepAt(x: Int, y: Int): NoteStep =
     clip.getStep(ts.channel, x, y)

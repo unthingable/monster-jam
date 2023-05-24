@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>8.0-b16</version>
+    <version>8.0-b17</version>
 
     <repositories>
         <repository>
@@ -32,13 +32,27 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala3-library_3</artifactId>
-            <version>3.2.1</version>
+            <version>3.3.0-RC5</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-xml -->
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-xml_3</artifactId>
             <version>2.1.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.specs2/specs2-core -->
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-core_3</artifactId>
+            <version>5.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.specs2/specs2-junit -->
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-junit_3</artifactId>
+            <version>5.2.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -85,17 +99,18 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>4.8.0</version>
+                <version>4.8.1</version>
                 <configuration>
                     <args>
                         <arg>-language:strictEquality</arg>
+                        <arg>-Wunused:imports</arg>
                     </args>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>compile</goal>
-                            <!--							<goal>testCompile</goal>-->
+                            <goal>testCompile</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -1,6 +1,5 @@
 package com.github.unthingable.framework
 
-import com.bitwig.extension.controller.api.BeatTimeValue
 import com.github.unthingable.MonsterJamExt
 
 package object quant:

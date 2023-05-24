@@ -9,6 +9,10 @@ import com.github.unthingable.jam.stepSequencer.mode.StepParam
 import java.time.Instant
 import scala.annotation.targetName
 
+object const:
+  /** Time when step hold becomes long hold */
+  val stepLongHold = 100
+
 object state:
   /** Note number in scale (scaled notes are always consecutive) */
   opaque type ScaledNote           = Int
@@ -43,11 +47,9 @@ object state:
       // Scala native % gives negative modulos for negative numbers
       intervals.contains(java.lang.Math.floorMod(note - root, 12))
 
-    def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
-      (note + skip until 128).view.find(isInScale(_))
+    def nextInScale(note: RealNote, skip: Int = 0): Option[RealNote] = (note + skip until 128).view.find(isInScale(_))
 
-    def prevInScale(note: RealNote, skip: Int = 0): Option[RealNote] =
-      (note - skip).to(0, -1).view.find(isInScale(_))
+    def prevInScale(note: RealNote, skip: Int = 0): Option[RealNote] = (note - skip).to(0, -1).view.find(isInScale(_))
 
     inline def notesRemainingUp(note: RealNote): Option[Int] =
       nextInScale(note).flatMap(inverseMap.get).map(fullScale.size - 1 - _)

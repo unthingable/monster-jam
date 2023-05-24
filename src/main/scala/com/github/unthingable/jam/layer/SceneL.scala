@@ -1,11 +1,8 @@
 package com.github.unthingable.jam.layer
 
-import com.bitwig.extension.api.Color
-import com.bitwig.extension.controller.api.Bank
 import com.bitwig.extension.controller.api.Scene
 import com.bitwig.extension.controller.api.SettableStringValue
 import com.bitwig.extension.controller.api.Setting
-import com.bitwig.`extension`.controller.api.Track
 import com.github.unthingable.Util
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.BindingBehavior
@@ -24,7 +21,6 @@ import com.github.unthingable.jam.surface.JamRgbButton
 
 import java.time.Instant
 import scala.collection.mutable
-import scala.util.Try
 
 trait SceneL:
   this: Jam =>

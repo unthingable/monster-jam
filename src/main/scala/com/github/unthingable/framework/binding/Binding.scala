@@ -6,22 +6,16 @@ import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.HasId
 import com.github.unthingable.framework.binding.HB.HBS
-import com.github.unthingable.framework.mode.Graph
 import com.github.unthingable.jam.surface.HasButtonState
-import com.github.unthingable.jam.surface.HasHwButton
 import com.github.unthingable.jam.surface.HasOnOffLight
 import com.github.unthingable.jam.surface.HasRgbLight
 import com.github.unthingable.jam.surface.JamColorState
-import com.github.unthingable.jam.surface.JamOnOffButton
-import com.github.unthingable.jam.surface.JamRgbButton
 import com.github.unthingable.jam.surface.WithSource
 
 import java.time.Instant
 import java.util.function.BooleanSupplier
 import java.util.function.Supplier
 import scala.collection.mutable
-
-import reflect.Selectable.reflectiveSelectable
 
 trait Clearable:
   // stop the binding from doing its thing
@@ -99,11 +93,12 @@ class HB[S](
       bindings.addAll(
         Vector(
           bindingSource.addBinding(target)
-        ) ++ (if behavior.tracked then
-                operatedActions
-                  .find(bindingSource.canBindTo)
-                  .map(bindingSource.addBinding)
-              else Seq.empty)
+        ) ++
+          (if behavior.tracked then
+             operatedActions
+               .find(bindingSource.canBindTo)
+               .map(bindingSource.addBinding)
+           else Seq.empty)
       )
     isActive = true
 

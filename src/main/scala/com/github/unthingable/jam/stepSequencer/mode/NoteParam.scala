@@ -10,10 +10,6 @@ import com.github.unthingable.framework.GetSetProxy
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.SupColorStateB
-import com.github.unthingable.framework.mode.CycleMode
-import com.github.unthingable.framework.mode.GateMode
-import com.github.unthingable.framework.mode.ModeButtonCycleLayer
-import com.github.unthingable.framework.mode.ModeCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.MultiModeLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
@@ -21,7 +17,6 @@ import com.github.unthingable.jam.JamParameter
 import com.github.unthingable.jam.SliderBankMode
 import com.github.unthingable.jam.SliderOp
 import com.github.unthingable.jam.stepSequencer.StepCap
-import com.github.unthingable.jam.stepSequencer.state.ExpMode
 import com.github.unthingable.jam.surface.BlackSysexMagic.BarMode
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
@@ -29,7 +24,7 @@ import com.github.unthingable.jam.surface.JamSurface
 
 import scala.collection.mutable
 
-import Util.{popup, trace}
+import Util.{popup, trace, next}
 
 given Util.SelfEqual[NoteStep.State] = CanEqual.derived
 
@@ -43,39 +38,46 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
 
     override def modeBindings: Seq[Binding[?, ?, ?]] = Vector.empty
 
-    case class FineStep(step: NoteStep):
-      def offset: Int = step.x % fineRes
+    case class FineStep(fineStep: NoteStep):
+      def offset: Int = fineStep.x % fineRes
 
-      def moveFineTo(clip: Clip, offset: Int): Unit =
-        val x: Int          = step.x
+      def moveFineTo(fineClip: Clip, offset: Int): Unit =
+        val x: Int          = fineStep.x
         val lowerBound: Int = (x / fineRes) * fineRes
         val newx: Int       = lowerBound + offset
         val dx: Int         = (newx - x).max(lowerBound - x).min(lowerBound + fineRes - 1 - x)
 
         // bracket duration
-        val stepSize   = ts.stepSize / fineRes
-        val duration   = step.duration / stepSize
-        val currentEnd = x + duration.toInt
-        val newEnd     = newx + duration.toInt
+        val fineStepSize: Double = ts.stepSize / fineRes
+        val fineDuration: Double = fineStep.duration / fineStepSize
+        val currentEnd: Int      = x + fineDuration.toInt
+        val newEnd: Int          = newx + fineDuration.toInt
         if dx > 0 then
-          // next note to be clobbered
-          val nextNote: Option[Int] =
-            (currentEnd to newEnd).find(clip.getStep(ts.channel, _, step.y).state() == NSState.NoteOn)
-          nextNote match
+          // next note in fine steps, if we're about to clobber it
+          val nextNote: Option[Int] = (currentEnd to newEnd).find(
+            fineClip.getStep(ts.channel, _, fineStep.y).state() == NSState.NoteOn
+          )
+          val nextStep: Int = currentEnd.next(fineRes)
+          // correction for a limit past which we cannot extend, in fine steps
+          val clobberOffset: Option[Int] =
+            if ext.preferences.stepKeepEnd.get && newEnd > nextStep then
+              nextNote.map(_.min(nextStep)).orElse(Some(nextStep))
+            else nextNote
+          clobberOffset match
             case None => ()
             case Some(value) =>
-              val newDuration = step.duration - ((newEnd - value) * stepSize)
-              step.setDuration(newDuration)
+              val newDuration = fineStep.duration - ((newEnd - value) * fineStepSize)
+              fineStep.setDuration(newDuration)
+        end if
 
-        clip.moveStep(ts.channel, x, step.y, dx, 0)
+        fineClip.moveStep(ts.channel, x, fineStep.y, dx, 0)
       end moveFineTo
     end FineStep
 
-    def toFine(step: NoteStep): Option[FineStep] =
-      (0 until fineRes).view
-        .map(i => fineClip.getStep(ts.channel, step.x * fineRes + i, step.y))
-        .find(_.state() == NSState.NoteOn)
-        .map(s => FineStep(s))
+    def toFine(step: NoteStep): Option[FineStep] = (0 until fineRes).view
+      .map(i => fineClip.getStep(ts.channel, step.x * fineRes + i, step.y))
+      .find(_.state() == NSState.NoteOn)
+      .map(s => FineStep(s))
 
     /** Treat duration as length of last grid step occupied by note */
     extension (step: NoteStep)
@@ -112,19 +114,20 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
       StepParam.RelVel -> P(_.releaseVelocity(), (s, v, _) => s.setReleaseVelocity(v)),
       StepParam.Spread -> P(_.velocitySpread(), (s, v, _) => s.setVelocitySpread(v)),
       // note start
-      StepParam.Nudge -> P(
-        toFine(_).map(_.offset).getOrElse(0) / 128.0,
-        (s, v, _) =>
-          toFine(s).foreach(_.moveFineTo(fineClip, (v * 128).toInt))
-          // Util.wait(20, "repeat setCurrent", () => setCurrentSteps()) // update duration slider
-      ),
+      StepParam.Nudge ->
+        P(
+          toFine(_).map(_.offset).getOrElse(0) / 128.0,
+          (s, v, _) =>
+            toFine(s).foreach(_.moveFineTo(fineClip, (v * 128).toInt))
+            // Util.wait(20, "repeat setCurrent", () => setCurrentSteps()) // update duration slider
+        ),
       StepParam.Duration -> P(_.tail, (s, v, _) => s.setTail(v)),
       StepParam.Pan      -> P(_.pan(), (s, v, _) => s.setPan(v)),
       StepParam.Timbre   -> P(_.timbre(), (s, v, _) => s.setTimbre(v)),
       StepParam.Pressure -> P(_.pressure(), (s, v, _) => s.setPressure(v)),
     )
 
-    val proxyListNotify = proxyList.map((param, getset) =>
+    val proxyListNotify: Vector[(StepParam, GetSetContainer[NoteStep, Double])] = proxyList.map((param, getset) =>
       (
         param,
         P(
@@ -254,8 +257,8 @@ trait NoteParam(using ext: MonsterJamExt, j: JamSurface) extends StepCap:
     ):
       override def onActivate(): Unit =
         // zero out to reduce flashing (setCurrentSteps will update)
-        (0 until 8).foreach(sliderOps(_).set(0, SliderOp.Source.Internal))
-        super.onActivate()
+          (0 until 8).foreach(sliderOps(_).set(0, SliderOp.Source.Internal))
+          super.onActivate()
 
     override val subModes: Vector[ModeLayer]           = Vector(sliders, noteParamGate)
     override val subModesToActivate: Vector[ModeLayer] = subModes
