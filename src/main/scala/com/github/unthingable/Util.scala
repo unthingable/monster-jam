@@ -3,14 +3,7 @@ package com.github.unthingable
 import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.Bank
 import com.bitwig.extension.controller.api.ObjectProxy
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.CYAN
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.FUCHSIA
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.GREEN
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.LIME
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.MAGENTA
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.ORANGE
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.RED
-import com.github.unthingable.jam.surface.JamColor.JamColorBase.YELLOW
+import com.github.unthingable.jam.surface.JamColor.JamColorBase.*
 
 import java.awt.event.ActionEvent
 import java.io.ByteArrayInputStream
@@ -112,7 +105,7 @@ object Util extends Util:
       val arr = ByteBuffer.allocate(4).putFloat(v.toFloat).array()
       Util.println(arr.toSeq.map(_ & 0xff).map(s => f"$s%02x").mkString(" "))
     }
-  val rainbow   = Vector(RED, ORANGE, YELLOW, GREEN, LIME, CYAN, MAGENTA, FUCHSIA)
+  val rainbow8  = Vector(RED, LIGHT_ORANGE, YELLOW, LIME, MINT, BLUE, PLUM, PURPLE)
   val rainbow16 = (0 until 16).map(i => (i + 1) * 4).toVector
 
   def serialize[A](o: A): String =

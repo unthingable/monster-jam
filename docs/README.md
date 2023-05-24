@@ -585,6 +585,7 @@ Step sequencer fixes and improvements
 * In "Quick Clip Selector" (hold STEP), pressing an empty slot will create a new clip and select it
 * When transport is playing, newly created clips will play too
 * Added "note interlace" setting
+* Changed alternating note colors to 8 rainbow colors, for better visual separation
 * Refactored controller settings: re-add MonsterJam in your Bitwig 
 
 ## 8.0b16

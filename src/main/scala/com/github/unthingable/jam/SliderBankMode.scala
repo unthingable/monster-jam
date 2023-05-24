@@ -349,7 +349,7 @@ class SliderBankMode[Proxy, P <: JamParameter](
             case send: Send =>
               Some(JamColorState.toColorIndex(send.sendChannelColor().get()))
             case _: RemoteControl =>
-              Some(Util.rainbow(idx))
+              Some(Util.rainbow8(idx))
             case _ =>
               // a random parameter we know nothing about (probably from UserControlBank)
               Some(JamColorBase.RED)
