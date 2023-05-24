@@ -4,6 +4,8 @@ import com.bitwig.extension.api.Color
 import com.bitwig.extension.controller.api.BooleanValue
 import com.bitwig.extension.controller.api.Clip
 import com.bitwig.extension.controller.api.ClipLauncherSlot
+import com.bitwig.extension.controller.api.ClipLauncherSlotBank
+import com.bitwig.extension.controller.api.Track
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.Watched
@@ -395,6 +397,14 @@ trait StepSequencer extends BindingDSL:
         secondClip.selectNext()
       if secondClip.exists().get() then Some(secondClip) else None
 
+    def newClip(trackNum: Int, slotNum: Int): Unit =
+      val track: Track                = trackBank.getItemAt(trackNum)
+      val slots: ClipLauncherSlotBank = track.clipLauncherSlotBank()
+      val slot: ClipLauncherSlot      = slots.getItemAt(slotNum)
+      track.createNewLauncherClip(slotNum)
+      slots.select(slotNum)
+      if ext.transport.isPlaying().get() then slot.launchWithOptions("default", "continue_with_quantization")
+
     override def onActivate(): Unit =
       // restoreState()
       // updateCurrentState()
@@ -415,8 +425,7 @@ trait StepSequencer extends BindingDSL:
               case None =>
                 val t = selectedClipTrack.position().get()
                 val c = localState.selectedClips.getOrElse(t, 0)
-                selectedClipTrack.createNewLauncherClip(c)
-                trackBank.getItemAt(t).clipLauncherSlotBank().select(c)
+                newClip(t, c)
               case Some(foundClip) =>
                 clip.selectClip(foundClip)
                 clip.clipLauncherSlot().select()
@@ -470,8 +479,16 @@ trait StepSequencer extends BindingDSL:
           val clipEq: BooleanValue     = clip.clipLauncherSlot().createEqualsValue(target)
           clipEq.markInterested()
           target.isPlaying().markInterested()
+          target.hasContent().markInterested()
+          target.exists().markInterested()
           Vector(
-            EB(btn.st.press, "", () => target.select()),
+            EB(
+              btn.st.press,
+              "",
+              () =>
+                if !target.hasContent().get then newClip(col, row)
+                else target.select()
+            ),
             SupColorStateB(
               btn.light,
               () =>
