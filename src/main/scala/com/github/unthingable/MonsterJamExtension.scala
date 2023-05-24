@@ -12,6 +12,7 @@ import com.github.unthingable.jam.surface.XmlMap.loadMap
 
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
+  stepNoteInterlace: SettableBooleanValue,
   altNoteRow: SettableBooleanValue,
   stepFollow: SettableBooleanValue,
   stepNotePreview: SettableBooleanValue,
@@ -98,6 +99,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
       host.createApplication(),
       MonsterPref(
         preferences.getBooleanSetting("Show pretty shift commands in matrix", "Display", true),
+        preferences.getBooleanSetting("Note interlace", "Step Sequencer", true),
         preferences.getBooleanSetting("Alternating note row colors", "Step Sequencer", true),
         preferences.getBooleanSetting("Step sequencer pattern follow", "Step Sequencer", false),
         preferences.getBooleanSetting("Step sequencer note preview", "Step Sequencer", false),

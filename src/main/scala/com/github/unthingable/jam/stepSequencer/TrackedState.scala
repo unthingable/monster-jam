@@ -146,22 +146,28 @@ transparent trait StepCap(using MonsterJamExt, TrackTracker) extends TrackedStat
     else selectedClipTrack.color().get
 
   /* Translate from matrix grid (row, col) to clip grid (x, y) */
-  def m2clip(row: Int, col: Int): Option[(Int, Int)] =
+  def m2clip(row: Int, col: Int)(using ext: MonsterJamExt): Option[(Int, Int)] =
     val port = ts.stepViewPort
     if row < port.rowTop || row >= port.rowBottom || col < port.colLeft || col >= port.colRight then None
     else
-      val offsetRow = row - port.rowTop
-      val offsetCol = col - port.colLeft
-      val offset    = offsetRow * port.width + offsetCol // unrolled sequence
+      val offsetRow: Int = row - port.rowTop
+      val offsetCol: Int = col - port.colLeft
+      val offset: Int    = offsetRow * port.width + offsetCol // unrolled sequence
+      val (step, note) =
+        if ext.preferences.stepNoteInterlace.get() then
+          // interlace by note
+          (
+            offset % ts.stepPageSize,
+            ts.keyPageSize - offset / ts.stepPageSize
+          )
+        else
+          val subpage: Int       = offsetRow / ts.keyPageSize
+          val subpageOffset: Int = subpage * port.width
+          (subpageOffset + offsetCol, ts.keyPageSize - offsetRow % ts.keyPageSize)
       Some(
-        (
-          offset % ts.stepPageSize,
-          ts.fromScale(
-            (ts.keyScrollOffsetGuarded.asInstanceOf[Int] + (ts.keyPageSize - offset / ts.stepPageSize) - 1)
-              .asInstanceOf[ScaledNote]
-          ).value
-        )
+        (step, ts.fromScale((ts.keyScrollOffsetGuarded.asInstanceOf[Int] + note - 1).asInstanceOf[ScaledNote]).value)
       )
+  end m2clip
 
   def setGrid(mode: StepMode): Unit =
     setState(ts.copy(stepMode = mode))
