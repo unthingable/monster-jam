@@ -25,11 +25,13 @@ class ColorManager(clipColor: => Color)(using ext: MonsterJamExt):
     private def custom         = ext.preferences.altNoteRow.get()
     val playing                = C(WHITE, 1)
     val rowSelected            = C(WHITE, 1)
+
     def noteColor(noteIdx: Int): Int | Color =
       if custom then
         val rainbow = Util.rainbow8
-        Util.rainbow8(noteIdx % rainbow.size)
+        rainbow(noteIdx % rainbow.size)
       else clipColor
+
     def padColor(noteIdx: Int, step: NoteStep) =
       step.state() match
         case State.NoteOn      => C(noteColor(noteIdx), 2)

@@ -103,7 +103,7 @@
                 <configuration>
                     <args>
                         <arg>-language:strictEquality</arg>
-                        <arg>-Wunused:imports</arg>
+                        <arg>-Wunused:imports,privates,locals,explicits</arg>
                     </args>
                 </configuration>
                 <executions>

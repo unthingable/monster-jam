@@ -31,7 +31,7 @@ trait MacroL:
           controlToggleSub = controlLayer.selected
           controlLayer.selectUser()
         else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
-      else {
+      else
         bumpedStrip = stripGroup.layers
           .find(_.isOn)
           .collect { case x: IntActivatedLayer => x }
@@ -40,7 +40,6 @@ trait MacroL:
           bumpedSubMode = controlLayer.selected
           controlLayer.selectUser()
         if !controlLayer.isOn then ext.events.eval("macroL activate")(controlLayer.activateEvent*)
-      }
     end onActivate
 
     override def onDeactivate(): Unit =
@@ -50,8 +49,8 @@ trait MacroL:
       bumpedSubMode = None
       super.onDeactivate()
 
-    override val modeBindings: Seq[Binding[?, ?, ?]] =
-      (0 until superBank.getCapacityOfBank.min(64)).flatMap { superIdx =>
+    override val modeBindings: Seq[Binding[?, ?, ?]] = (0 until superBank.getCapacityOfBank.min(64)).flatMap {
+      superIdx =>
         val track      = superBank.getItemAt(superIdx)
         val row        = superIdx / 8
         val col        = superIdx % 8
@@ -67,11 +66,7 @@ trait MacroL:
 
         def select(track: Track): Unit =
           val now = Instant.now()
-          if lastPress.exists(v =>
-              v.value == track &&
-                v.instant.isAfter(now.minusMillis(200))
-            )
-            && track.isGroup.get()
+          if lastPress.exists(v => v.value == track && v.instant.isAfter(now.minusMillis(200))) && track.isGroup.get()
           then track.isGroupExpanded.toggle()
           else ext.cursorTrack.selectChannel(track)
           lastPress = Some(Timed(track, now))
@@ -86,5 +81,5 @@ trait MacroL:
           EB(btn.st.press, "direct select track", () => select(track)),
           EB(btn.st.release, "direct select release", () => ()),
         )
-      }
+    }
 end MacroL
