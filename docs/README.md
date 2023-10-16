@@ -465,9 +465,11 @@ If this happens, try duplicating the offending track and deleting the original, 
 
 ## Device Selector
 
-Note: there is currently a bug in the API that will cause Device Selector display to freak out when adding new devices. In the meantime, scroll the track bank back and forth to clear.
-
 Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
+
+* **PAD**: select device
+* **SCENE(1-8)**: select track remotes
+* **MST**: select project remotes
 
 Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
 it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
@@ -575,6 +577,11 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.0b18
+
+* Added support for non-classic color schemes
+* API 18, Scala 3.3.1, Java 17
 
 ## 8.0b17
 
