@@ -48,7 +48,7 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   protected var activeAt: Option[Instant] = None
 
   import ModeState.*
-  protected var modeState = (Inactive, Instant.now())
+  protected var modeState: (ModeState, Instant) = (Inactive, Instant.now())
 
   /** Current mode state, set externally by ModeGraph, read by mode implementations. For when mode needs to know when
     * it's being activated or shut down.

@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>8.0-b17</version>
+    <version>8.0-b18</version>
 
     <repositories>
         <repository>
@@ -27,12 +27,12 @@
         <dependency>
             <groupId>com.bitwig</groupId>
             <artifactId>extension-api</artifactId>
-            <version>17</version>
+            <version>18</version>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala3-library_3</artifactId>
-            <version>3.3.0-RC5</version>
+            <version>3.3.1</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-xml -->
         <dependency>
@@ -103,7 +103,7 @@
                 <configuration>
                     <args>
                         <arg>-language:strictEquality</arg>
-                        <arg>-Wunused:imports</arg>
+                        <arg>-Wunused:imports,privates,locals,explicits</arg>
                     </args>
                 </configuration>
                 <executions>
@@ -152,8 +152,8 @@
                 <configuration>
                     <optimize>true</optimize>
                     <fork>true</fork>
-                    <source>12</source>
-                    <target>12</target>
+                    <source>17</source>
+                    <target>17</target>
                     <encoding>UTF-8</encoding>
                     <maxmem>1024m</maxmem>
                 </configuration>

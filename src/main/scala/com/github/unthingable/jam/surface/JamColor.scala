@@ -25,8 +25,7 @@ object JamColor:
     val FUCHSIA      = 64 // 16
     val WHITE        = 68 // 17
 
-    inline def next(c: Int, inc: Int): Int =
-      ((c / 4 + (inc - 1)) % 15 + 1) * 4
+    inline def next(c: Int, inc: Int): Int = ((c / 4 + (inc - 1)) % 15 + 1) * 4
   end JamColorBase
 end JamColor
 
@@ -42,4 +41,4 @@ object JamColorState:
   val empty: JamColorState = JamColorState(0, 0)
 
   def toColorIndex(color: Color): Int =
-    NIColorUtil.convertColor(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)
+    NIColorUtil.convertColorX(color.getRed.toFloat, color.getGreen.toFloat, color.getBlue.toFloat)

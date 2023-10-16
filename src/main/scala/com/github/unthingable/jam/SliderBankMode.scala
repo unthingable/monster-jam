@@ -279,12 +279,12 @@ class SliderBankMode[Proxy, P <: JamParameter](
         channel.color().markInterested()
         channel
           .color()
-          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColorX(r, g, b)))
       case send: Send =>
         send.sendChannelColor().markInterested()
         send
           .sendChannelColor()
-          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColor(r, g, b)))
+          .addValueObserver((r, g, b) => if isOn then j.stripBank.setColor(idx, NIColorUtil.convertColorX(r, g, b)))
       case _: RemoteControl =>
       case _: Parameter     => ()
       case _: Device        => ()
