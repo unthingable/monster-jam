@@ -1,6 +1,7 @@
 package com.github.unthingable.util
 
 import com.bitwig.extension.controller.api.*
+
 case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean):
   c.pageNames().markInterested()
   c.selectedPageIndex().markInterested()
@@ -20,3 +21,4 @@ case class FilteredPage(c: CursorRemoteControlsPage, f: String => Boolean):
   def prev: Option[Int] =
     val current = c.selectedPageIndex().get()
     c.pageNames().get().zipWithIndex.findLast { case (name, idx) => idx < current && f(name) }.map(_._2)
+end FilteredPage

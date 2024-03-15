@@ -47,6 +47,23 @@ trait Control:
       page.c.pageNames().markInterested()
       page.c.selectedPageIndex().markInterested()
 
+      // experimenting with remotes
+      // page.c
+      //   .getName()
+      //   .addValueObserver(s => Util.println(s"XXX cursor remote page name now $s, ${trackPage.equals(page.c)}"))
+      // device.name().addValueObserver(s => Util.println(s"XXX cursor device now $s"))
+      // device.isNested().addValueObserver(b => Util.println(s"XXX cursor device enabled: $b"))
+      // val trackPage: CursorRemoteControlsPage = ext.cursorTrack.createCursorRemoteControlsPage(8)
+      // trackPage
+      //   .getName()
+      //   .addValueObserver(s => Util.println(s"XXX TRACK remote page name now $s, ${trackPage.equals(page.c)}"))
+      // trackPage
+      //   .pageCount()
+      //   .addValueObserver(s => Util.println(s"XXX TRACK remote page COUNT now $s"))
+      // trackPage
+      //   .selectedPageIndex()
+      //   .addValueObserver(s => Util.println(s"XXX TRACK remote page INDEX now $s"))
+
       val secondCursor: CursorRemoteControlsPage =
         device.createCursorRemoteControlsPage(touchFX, 8, "")
       var touchPage: Option[CursorRemoteControlsPage] = None
@@ -361,6 +378,7 @@ trait Control:
 
               val isSelected = device.createEqualsValue(cursorDevice)
               isSelected.markInterested()
+              // def isSelected = isSelectedEV.get() &&
 
               Vector(
                 EB(mButton.st.press, s"select device $col:$row", () => selectDevice(col, device)),

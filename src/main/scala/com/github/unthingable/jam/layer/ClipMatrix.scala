@@ -74,16 +74,17 @@ trait ClipMatrix:
           ),
         )
       }
-    } ++ Vector(
-      // FIXME: last released combo button needs to be handled as combo, not single - fixed?
-      EB(
-        j.duplicate.st.release,
-        "dup clips: clear source",
-        () => source = None,
-        BB(tracked = false, managed = false)
-      ),
-      EB(j.Combo.Shift.duplicate.press, "dup clips: duplicate content", () => cursorClip.duplicateContent)
-    )
+    } ++
+      Vector(
+        // FIXME: last released combo button needs to be handled as combo, not single - fixed?
+        EB(
+          j.duplicate.st.release,
+          "dup clips: clear source",
+          () => source = None,
+          BB(tracked = false, managed = false)
+        ),
+        EB(j.Combo.Shift.duplicate.press, "dup clips: duplicate content", () => cursorClip.duplicateContent)
+      )
 
     // for duplication
     private var source: Option[ClipLauncherSlot] = None

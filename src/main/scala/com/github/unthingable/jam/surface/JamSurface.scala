@@ -20,6 +20,11 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util:
     val led    = JamControl.onOffLight(info)
     JamOnOffButton(id, button, led)
 
+  private def footswitch(id: String) =
+    val info   = ext.xmlMap.footswitch(id)
+    val button = JamControl.button(info)
+    JamButton(id, button)
+
   object Mod:
     object Shift extends HasButtonState, HasId, HasFakeButton:
       val id  = "SHIFT"
@@ -173,6 +178,8 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util:
   val solo   = b("BtnSolo")
   val mute   = b("BtnMute")
 
+  val pedalTip  = footswitch("FswTip")
+  val pedalRing = footswitch("FswRing")
   {
     // wire sysex
     import com.github.unthingable.jam.surface.BlackSysexMagic.*

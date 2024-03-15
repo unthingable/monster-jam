@@ -158,20 +158,22 @@ object JamButton:
  * These are declared once in JamSurface and IDs are unique, which is why we can hash them.
  * */
 
-abstract class JamButtonLight[L <: HardwareLight](id: String, btn: HardwareButton, light: L)
-    extends HasButtonState,
-      HasLight[L],
-      HasHwButton,
-      HasId:
+abstract class JamButtonBase(id: String, btn: HardwareButton) extends HasButtonState, HasHwButton, HasId:
   val st: ButtonStateSupplier = ButtonStateSupplier(this, id, btn)
 
+abstract class JamButtonLight[L <: HardwareLight](id: String, btn: HardwareButton)
+    extends JamButtonBase(id, btn),
+      HasLight[L]
+
+case class JamButton(id: String, btn: HardwareButton) extends JamButtonBase(id, btn)
+
 case class JamRgbButton(id: String, btn: HardwareButton, light: MultiStateHardwareLight)
-    extends JamButtonLight(id, btn, light)
+    extends JamButtonLight[MultiStateHardwareLight](id, btn)
 
 case class JamOnOffButton(id: String, btn: HardwareButton, light: OnOffHardwareLight)
-    extends JamButtonLight(id, btn, light)
+    extends JamButtonLight[OnOffHardwareLight](id, btn)
 
-class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(using ext: MonsterJamExt):
+class JamTouchStrip(touch: MidiInfo, slide: MidiInfo)(using ext: MonsterJamExt):
   val slider: HardwareSlider = ext.hw.createHardwareSlider(slide.id)
   slider.isBeingTouched.markInterested()
 

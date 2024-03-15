@@ -17,6 +17,9 @@ object JamSettings:
   enum ShiftPlay derives CanEqual:
     case Restart, `Pause/Resume`
 
+  enum SwitchRecord derives CanEqual:
+    case `Global Record`, `Current Clip`
+
   trait EnumSetting[E]:
     def setting: SettableEnumValue
     def set(v: E): Unit

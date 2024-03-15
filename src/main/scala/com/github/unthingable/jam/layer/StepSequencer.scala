@@ -13,7 +13,7 @@ import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.BindingDSL
 import com.github.unthingable.framework.binding.EB
 import com.github.unthingable.framework.binding.GlobalEvent
-import com.github.unthingable.framework.binding.GlobalEvent.ClipSelected
+import com.github.unthingable.framework.binding.GlobalEvent.SlotSelected
 import com.github.unthingable.framework.binding.HB
 import com.github.unthingable.framework.binding.JCB
 import com.github.unthingable.framework.binding.ModeCommand
@@ -83,10 +83,10 @@ trait StepSequencer extends BindingDSL:
     //   )
 
     // follow clip selection
-    ext.events.addSub((e: ClipSelected) =>
+    ext.events.addSub((e: SlotSelected) =>
       Util.println(s"received $e")
       if isOn then selectedClipTrack.selectChannel(superBank.getItemAt(e.globalTrack))
-      localState.selectedClips.update(e.globalTrack, e.globalClip)
+      localState.selectedClips.update(e.globalTrack, e.globalSlot)
     )
 
     Vector(

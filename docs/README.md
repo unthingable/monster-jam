@@ -1,6 +1,6 @@
 # MonsterJam
 
-Support for Native Instruments Maschine JAM. 
+Support for Native Instruments Maschine JAM.
 
 This only works on Mac and Windows (because it needs NI drivers for the Jam controller).
 
@@ -14,7 +14,7 @@ Maschine JAM must be in MIDI mode: press **SHIFT+HEADPHONES (MIDI)** buttons.
 
 ## Controller mapping
 
-MonsterJam is flexible about controller mappings. There are two ways 
+MonsterJam is flexible about controller mappings. There are two ways
 to go about this.
 
 ### Default
@@ -28,8 +28,8 @@ If there are multiple `*.ncmj` files MonsterJam will pick the first one.
 This is convenient if you already have a mapping you're using for other reasons.
 
 Obviously, if some controls are disabled in the controller mapping they
-will not function. Lights may behave incorrectly if they are set to 
-"For MIDI Out" instead of "For MIDI In". 
+will not function. Lights may behave incorrectly if they are set to
+"For MIDI Out" instead of "For MIDI In".
 Also, MonsterJam expects controls to be mapped to
 notes or CC. If you do something unorthodox like pitch bend or program change
 MonsterJam will probably ignore it or even fail to load.
@@ -37,7 +37,7 @@ MonsterJam will probably ignore it or even fail to load.
 # Overview
 
 MonsterJam focuses primarily on essential performance features, less on content creation (though more features will be added later).
-Implementation ideas borrowed from original script, Maschine and Moss 
+Implementation ideas borrowed from original script, Maschine and Moss
 (including some documentation snippets), among others.
 
 Buttons labelled A-H are called "group" by Maschine, we'll call them "track" for simplicity.
@@ -74,7 +74,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **SHIFT+TEMPO**: Tap Tempo
 * **TEMPO+KNOB turn**: change tempo
 * **GRID**: Hold to change launch grid quantization with SCENE buttons (see Launch grid quantization below)
-* **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically 
+* **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
 * **AUTO**: Toggle arranger automation write. Flashing when automation override is active, press to restore.
@@ -97,7 +97,7 @@ from the track, for additional fun and profit (like Maschine).
   * **MUTE**: Mute/unmute this track
   * **REC**: Arm track for recording
 * Doubleclick **TRACK(A-H)** on a group track to expand/collapse this group.
-  
+
 ## Launching scenes: Scene (1-8) buttons and clip buttons
 
 Scene buttons are lit in the color of their respective scenes or blank if scene does not exist. Use DPAD up/down arrows to scroll scenes and SHIFT-SCENE to select one of first 8 scene pages.
@@ -136,16 +136,16 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
 
 ## Touch Strips
 
-* **LEVEL**: Toggles between Volume and Panorama editing of 8 tracks. 
-  If Volume is active and playback is started the VU of the tracks is displayed as well. 
+* **LEVEL**: Toggles between Volume and Panorama editing of 8 tracks.
+  If Volume is active and playback is started the VU of the tracks is displayed as well.
   All strips are lit in their tracks' color.
   * Note: maximum slider range can be limited to values other than +6 dB, see **Settings**.
 * **AUX**: Edit send levels for a specific send for all tracks. Strips are lit in corresponding Effect track colors.
-* **AUX+TRACK(A-H)**: Hold **AUX** down to select from the first 8 Effect tracks. Track buttons are lit in corresponding 
+* **AUX+TRACK(A-H)**: Hold **AUX** down to select from the first 8 Effect tracks. Track buttons are lit in corresponding
   Effect track colors, currently selected send is in WHITE.
 * **CONTROL**: Edit device remote controls
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
-  * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
+  * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
   * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
@@ -154,16 +154,16 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
 
 ### Fine adjustment
 
-Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls. 
+Hold **SHIFT** to reduce strip sensitivity and adjust in finer increments. Strips behave like relative controls.
 This works in all touchstrip modes except user controls, because their implementation sucks.
 
 ### Control Slice
 
 Imagine the device controls laid out on a 8x8 knob controller, where each vertical column corresponds to the 8 device
-parameters per track. In Control mode you control a single column at a time with the touch strips. 
+parameters per track. In Control mode you control a single column at a time with the touch strips.
 
 In Control Slice mode you control a single row: one device parameter per each track. This is similar to how AUX sends
-operate and you can use them as such. This mode is most useful if you put relevant parameters in the same position 
+operate and you can use them as such. This mode is most useful if you put relevant parameters in the same position
 across your devices, e.g. parameter 1 -> filter cutoff, parameter 2 -> compressor attack, etc.
 
 To activate: press **LEFT+RIGHT** in regular Control mode (not User Control, **MACRO** not lit).
@@ -205,7 +205,7 @@ The button grid is bottom-focused. Note mode will push the grid up. When using n
 
 Hold **STEP** to see the clip matrix. Currently selected clip will be bright WHITE. Press any other clip to focus the step sequencer on it. If a slot is empty, new clip will be created. If transport is playing, newly created clips will play automatically.
 
-### Scene buttons 
+### Scene buttons
 
 Display/select current pattern page.
 
@@ -335,22 +335,22 @@ Works more or less exactly like Novation Circuit. Unlike the Circuit, changing a
 * Next 2 rows: select scale, current is bright pink
 
 The 16 scale buttons are laid out as follows, Chromatic scale is the default. Note that non-chromatic scales all have exactly 8 notes per octave.
-1. Natural Minor            
-1. Major                    
-1. Dorian                   
-1. Phrygian                 
-1. Mixolydian               
+1. Natural Minor
+1. Major
+1. Dorian
+1. Phrygian
+1. Mixolydian
 1. Melodic Minor (ascending)
-1. Harmonic Minor           
-1. Bebop Dorian             
-1. Blues                    
-1. Minor Pentatonic         
-1. Hungarian Minor          
-1. Ukranian Dorian          
-1. Marva                    
-1. Todi                     
-1. Whole Tone               
-1. Chromatic                
+1. Harmonic Minor
+1. Bebop Dorian
+1. Blues
+1. Minor Pentatonic
+1. Hungarian Minor
+1. Ukranian Dorian
+1. Marva
+1. Todi
+1. Whole Tone
+1. Chromatic
 
 ## Parameter/expressions adjustments (WIP)
 
@@ -401,7 +401,7 @@ When activating Step Sequencer:
 
 An important UX behavior used in majority of modes in MonsterJam.
 
-* A quick press on a mode button toggles the mode 
+* A quick press on a mode button toggles the mode
 * Long press turns mode off upon release (the mode becomes momentary)
 * Long press *with usage* (operate any of the mode's controls while holding the mode button) turns mode off upon release regardless of press duration
 
@@ -450,9 +450,9 @@ SuperScenes are saved with the project.
 
 **NOTE**: SuperScene launcher can only operate on tracks that are currently visible in Bitwig.
 Namely, if a clip is in a nested track and the group is folded, or not in the group when the group
-is entered, SuperScene will not be able to launch or stop it directly. 
+is entered, SuperScene will not be able to launch or stop it directly.
 
-If a group track containing SuperScene clips in its inner tracks was folded, 
+If a group track containing SuperScene clips in its inner tracks was folded,
 SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
 
 **NOTE**: SuperScenes are experimental and are built using undocumented implementation details of Bitwig API to derive unique track IDs. There is a chance things will randomly stop working with a new release.
@@ -471,8 +471,8 @@ Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to acces
 * **SCENE(1-8)**: select track remotes
 * **MST**: select project remotes
 
-Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
-it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
+Keep **CONTROL** pressed for a little longer and Device Selector will become sticky -
+it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**.
 **CONTROL** button will flash when Device Selector is active.
 
 If you don't need Device Selector you can turn it off with:
@@ -502,7 +502,7 @@ Additionally:
 
 ### Toggling devices
 
-When Device Selector is on, press **SELECT+PAD** to toggle a device. 
+When Device Selector is on, press **SELECT+PAD** to toggle a device.
 Note that Device Selector must be in sticky mode so that CONTROL button is not held, otherwise SELECT will behave differently.
 
 ### Page navigation
@@ -514,7 +514,7 @@ Use **ARROW** keys to:
 
 **NOTE**: unlike scenes, device banks do not all scroll together. Instead, devices on each
 track will scroll only if there are more devices to scroll to, others will stay in place.
-That is, if you have one track with 20 devices and another with 1, you will always see 
+That is, if you have one track with 20 devices and another with 1, you will always see
 the 1 device while the other 20 are scrolling.
 
 ## Track Selector
@@ -562,6 +562,8 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
     * _-10 dB_: slider maximum is -10 dB for all tracks
     * _Smart_: maximums are 0 dB for group tracks and -10 dB for regular tracks
   * **SHIFT+PLAY**: Toggle between restart and pause/continue
+  * **Footswitch tip**: toggle between global record/current clip launch
+  * **Footswitch ring**: toggle between global record/current clip launch
 * **Launcher**
   * **Launch Q forgiveness**: how late you can be for retroactive launch Q to work. 0.0 turns it off, 0.5-0.8 is probably a good range.
   * **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
@@ -578,6 +580,9 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 
 # Changelog
 
+## 0.0b19
+* Added footswtich
+
 ## 8.0b18
 
 * Added support for non-classic color schemes
@@ -593,13 +598,13 @@ Step sequencer fixes and improvements
 * When transport is playing, newly created clips will play too
 * Added "note interlace" setting
 * Changed alternating note colors to 8 rainbow colors, for better visual separation
-* Refactored controller settings: re-add MonsterJam in your Bitwig 
+* Refactored controller settings: re-add MonsterJam in your Bitwig
 
 ## 8.0b16
 
 Step sequencer fixes and improvements
 
-* Updated color scheme for alternarting note rows: now it's the note itself that gets the color instead of the background, looks much better
+* Updated color scheme for alternating note rows: now it's the note itself that gets the color instead of the background, looks much better
 * Fixed regression in quick clip selector activation, could break switching between STEP mode and clip matrix
 * Fixed regression in pattern page follow while holding steps, condition was flipped
 * Fixed quick clip selector colors, was showing empty scene clips as white
@@ -624,7 +629,7 @@ Other fixes
   * Pattern page follow disabled when holding steps
   * Previous slider mode auto-restores after expressions editor
 
-* Fixed: step size and pattern scroll position could be set impromperly when switching tracks
+* Fixed: step size and pattern scroll position could be set improperly when switching tracks
 * Fixed: currently playing pages no longer blink for non-playing clips
 
 ## 8.0b14

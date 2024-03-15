@@ -31,7 +31,8 @@ class Jam(implicit val ext: MonsterJamExt)
       Control,
       MacroL,
       SceneL,
-      StepSequencer:
+      StepSequencer,
+      Footswitch:
 
   implicit val j: JamSurface = new JamSurface()
 
@@ -58,7 +59,7 @@ class Jam(implicit val ext: MonsterJamExt)
   val selectedClipTrack = ext.cursorTrack // FIXME maybe abandon
   def selectedObserver(track: Int): IndexedBooleanValueChangedCallback =
     (idx: Int, selected: Boolean) =>
-      if selected then ext.events.eval("selectObserver")(GlobalEvent.ClipSelected(track, idx))
+      if selected then ext.events.eval("selectObserver")(GlobalEvent.SlotSelected(track, idx))
 
   for i <- 0 until superBank.getCapacityOfBank() do
     superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
@@ -119,7 +120,7 @@ class Jam(implicit val ext: MonsterJamExt)
     )
 
   val graph = new ModeDGraph(
-    init = Vector(levelCycle, sceneCycle, clipMatrix, home, shiftTempo),
+    init = Vector(levelCycle, sceneCycle, clipMatrix, home, shiftTempo, footswitch),
     dpad         -> top,
     play         -> top,
     position     -> Coexist(tempoLayer),

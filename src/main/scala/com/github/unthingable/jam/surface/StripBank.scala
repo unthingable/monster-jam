@@ -13,7 +13,7 @@ class StripBank()(implicit ext: MonsterJamExt) extends Util:
       new JamTouchStrip(
         touch = ext.xmlMap.button(s"CapTst$idx", ext.xmlMap.touchElems),
         slide = ext.xmlMap.knob(s"Tst$idx", ext.xmlMap.touchElems),
-        led = ext.xmlMap.led(s"Tst${idx}IDX", ext.xmlMap.touchElems)
+        // led = ext.xmlMap.led(s"Tst${idx}IDX", ext.xmlMap.touchElems)
       )
 
     }

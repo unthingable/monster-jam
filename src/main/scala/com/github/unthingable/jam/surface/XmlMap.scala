@@ -40,10 +40,11 @@ case class XmlMap(e: Elem):
   def findControl(id: String, etype: String, elem: NodeSeq = e): Option[MidiInfo] =
     find(id, etype, elem).flatMap(controlInfo)
 
-  def button(id: String, elem: NodeSeq = e): MidiInfo = findControl(id, "button", elem).get
-  def led(id: String, elem: NodeSeq = e): MidiInfo    = findControl(id, "led", elem).get
-  def knob(id: String, elem: NodeSeq = e): MidiInfo   = findControl(id, "knob", elem).get
-  def wheel(id: String, elem: NodeSeq = e): MidiInfo  = findControl(id, "wheel", elem).get
+  def button(id: String, elem: NodeSeq = e): MidiInfo     = findControl(id, "button", elem).get
+  def led(id: String, elem: NodeSeq = e): MidiInfo        = findControl(id, "led", elem).get
+  def knob(id: String, elem: NodeSeq = e): MidiInfo       = findControl(id, "knob", elem).get
+  def wheel(id: String, elem: NodeSeq = e): MidiInfo      = findControl(id, "wheel", elem).get
+  def footswitch(id: String, elem: NodeSeq = e): MidiInfo = findControl(id, "footswitch", elem).get
 end XmlMap
 
 object XmlMap:

@@ -611,7 +611,7 @@
         <reaction>ondown</reaction>
       </footswitch>
       <footswitch version="1" id="FswTip">
-        <controller>109</controller>
+        <controller>114</controller>
         <channel>0</channel>
         <off>0</off>
         <on>127</on>

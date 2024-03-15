@@ -6,7 +6,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>8.0-b18</version>
+    <version>8.0-b19</version>
 
     <repositories>
         <repository>
@@ -118,7 +118,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.5.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -152,8 +152,8 @@
                 <configuration>
                     <optimize>true</optimize>
                     <fork>true</fork>
-                    <source>17</source>
-                    <target>17</target>
+                    <source>21</source>
+                    <target>21</target>
                     <encoding>UTF-8</encoding>
                     <maxmem>1024m</maxmem>
                 </configuration>
@@ -222,4 +222,3 @@
     </build>
 
 </project>
-

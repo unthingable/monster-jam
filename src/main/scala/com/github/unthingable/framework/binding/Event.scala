@@ -31,4 +31,4 @@ Main point of events is to decouple from callback "actions" and pass events thro
  */
 
 object GlobalEvent:
-  case class ClipSelected(globalTrack: Int, globalClip: Int) extends ExtEvent
+  case class SlotSelected(globalTrack: Int, globalSlot: Int) extends ExtEvent
