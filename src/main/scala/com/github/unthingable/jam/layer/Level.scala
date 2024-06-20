@@ -34,9 +34,20 @@ trait Level:
         proxies.forindex {
           case (track, idx) =>
             val strip: JamTouchStrip = j.stripBank.strips(idx)
-            track.addVuMeterObserver(128, -1, true, v => if isOn then strip.update(v))
+            track.addVuMeterObserver(128, -1, true, v => 
+            if (isOn && !track.mute().get()) { // Check mute state before updating VU meter
+              strip.update(v)
+              })
+        
+            // Mute State Observer
+            track.mute().addValueObserver(isMuted => {
+            // If the track is muted and the volume mode is on, clear the VU meter display
+            if (isMuted && isOn) { 
+              strip.update(0) 
+            }
+            })
         }
-
+        
         override def onActivate(): Unit =
           super.onActivate()
           // clear meter values from whatever was happening before, let VU meters self update
