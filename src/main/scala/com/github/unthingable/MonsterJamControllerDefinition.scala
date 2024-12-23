@@ -13,9 +13,9 @@ object MonsterJamExtensionDefinition:
 class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
   override def getName = "MonsterJam"
 
-  override def getAuthor = "unthingable"
+  override def getAuthor = "Segtek"
 
-  override def getVersion = "8.0-b17"
+  override def getVersion = "1.0.0"
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 
@@ -23,7 +23,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
 
   override def getHardwareModel = "Maschine JAM"
 
-  override def getRequiredAPIVersion = 17
+  override def getRequiredAPIVersion = 18
 
   override def getNumMidiInPorts = 1
 
