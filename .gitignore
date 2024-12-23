@@ -3,6 +3,9 @@
 .settings/
 .vscode/
 target/
+.DS_Store
+.lsp/
+.metals/
 .classpath
 .project
 pom.xml.tag
