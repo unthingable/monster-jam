@@ -138,7 +138,7 @@ trait ClipMatrix:
             // Util.println(s"lenient calc: $qString $beat $qSize ${beat % (qSize * 4)}")
             Util.println(s"lenient calc: $clipQString $qString $prev $now $next")
             if prev < launchTolerance || (lookAhead > 0 && next < lookAhead) then
-              Some(clipQString, "continue_immediately")
+              Some(clipQString, "continue_or_from_start")
             else None
     end launchOptions
 
