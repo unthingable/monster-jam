@@ -87,11 +87,14 @@ object JamControl:
     import JamColorState.*
     val light: MultiStateHardwareLight   = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
     var updatedColorState: JamColorState = JamColorState.empty
+    var lastSentColor: Int = -1
 
     light.setColorToStateFunction(toState)
     light.state().onUpdateHardware { (state: JamColorState) =>
       updatedColorState = state
-      sendColor(state.value)
+      if state.value != lastSentColor then
+        lastSentColor = state.value
+        sendColor(state.value)
     }
     light.state().setValue(JamColorState.empty)
 
@@ -111,22 +114,26 @@ object JamControl:
 
   def onOffLight(info: MidiInfo)(implicit ext: MonsterJamExt): OnOffHardwareLight =
     val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
+    var lastSentOn: Int = -1
     light.onUpdateHardware { () =>
-      info.event match
-        case CC(cc) =>
-          // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
-          ext.midiOut.sendMidi(
-            ShortMidiMessage.CONTROL_CHANGE + info.channel,
-            cc,
-            if light.isOn.currentValue then 127 else 0
-          )
-        case Note(note) =>
-          // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
-          ext.midiOut.sendMidi(
-            ShortMidiMessage.NOTE_ON + info.channel,
-            note,
-            if light.isOn.currentValue then 127 else 0
-          )
+      val onValue = if light.isOn.currentValue then 1 else 0
+      if onValue != lastSentOn then
+        lastSentOn = onValue
+        info.event match
+          case CC(cc) =>
+            // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
+            ext.midiOut.sendMidi(
+              ShortMidiMessage.CONTROL_CHANGE + info.channel,
+              cc,
+              if light.isOn.currentValue then 127 else 0
+            )
+          case Note(note) =>
+            // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
+            ext.midiOut.sendMidi(
+              ShortMidiMessage.NOTE_ON + info.channel,
+              note,
+              if light.isOn.currentValue then 127 else 0
+            )
     }
     light.isOn.setValue(false)
     light
