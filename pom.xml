@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.unthingable</groupId>
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>8.1-b0</version>
+    <version>8.2-b0</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <scala.version>3.6.2</scala.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <specs2.version>5.2.0</specs2.version>
+        <scala.xml.version>2.3.0</scala.xml.version>
+        <bitwig.api.version>18</bitwig.api.version>
+    </properties>
 
     <repositories>
         <repository>
@@ -17,41 +28,31 @@
     </repositories>
 
     <dependencies>
-
-        <!-- <dependency>
-            <groupId>org.typelevel</groupId>
-            <artifactId>cats-core_3</artifactId>
-            <version>2.8.0</version>
-        </dependency> -->
-
         <dependency>
             <groupId>com.bitwig</groupId>
             <artifactId>extension-api</artifactId>
-            <version>18</version>
+            <version>${bitwig.api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala3-library_3</artifactId>
-            <version>3.3.1</version>
+            <version>${scala.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-xml -->
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-xml_3</artifactId>
-            <version>2.1.0</version>
+            <version>${scala.xml.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.specs2/specs2-core -->
         <dependency>
             <groupId>org.specs2</groupId>
             <artifactId>specs2-core_3</artifactId>
-            <version>5.2.0</version>
+            <version>${specs2.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.specs2/specs2-junit -->
         <dependency>
             <groupId>org.specs2</groupId>
             <artifactId>specs2-junit_3</artifactId>
-            <version>5.2.0</version>
+            <version>${specs2.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -92,19 +93,27 @@
             </properties>
         </profile>
     </profiles>
+
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>4.8.1</version>
+                <version>4.9.2</version>
                 <configuration>
                     <args>
                         <arg>-language:strictEquality</arg>
                         <arg>-Wunused:imports,privates,locals,explicits</arg>
+                        <arg>-deprecation</arg>
+                        <arg>-feature</arg>
+                        <arg>-Wvalue-discard</arg>
+                        <arg>-Wnonunit-statement</arg>
+                        <arg>-source:3.4-migration</arg>
                     </args>
+                    <scalaVersion>${scala.version}</scalaVersion>
                 </configuration>
                 <executions>
                     <execution>
@@ -133,7 +142,6 @@
                             </artifactSet>
                             <filters>
                                 <filter>
-                                    <!-- Silence overlap warnings -->
                                     <artifact>*:*</artifact>
                                     <excludes>
                                         <exclude>META-INF/*.MF</exclude>
@@ -148,17 +156,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.0</version>
+                <version>3.12.0</version>
                 <configuration>
-                    <optimize>true</optimize>
-                    <fork>true</fork>
-                    <source>17</source>
-                    <target>17</target>
-                    <encoding>UTF-8</encoding>
-                    <maxmem>1024m</maxmem>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
@@ -177,11 +181,10 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <id>package-release</id>
@@ -201,5 +204,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
