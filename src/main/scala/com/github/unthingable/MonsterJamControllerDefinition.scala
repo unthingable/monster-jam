@@ -10,12 +10,20 @@ import java.util.UUID
 object MonsterJamExtensionDefinition:
   private val DRIVER_ID = UUID.fromString("b4b8b16c-5855-4943-a8c6-45cbdaf9aee1")
 
+  val version: String =
+    val props = new java.util.Properties()
+    val stream = getClass.getResourceAsStream("/monsterjam.properties")
+    if stream != null then
+      try props.load(stream)
+      finally stream.close()
+    props.getProperty("version", "unknown")
+
 class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
   override def getName = "MonsterJam"
 
   override def getAuthor = "unthingable"
 
-  override def getVersion = "8.0-b17"
+  override def getVersion = MonsterJamExtensionDefinition.version
 
   override def getId: UUID = MonsterJamExtensionDefinition.DRIVER_ID
 
