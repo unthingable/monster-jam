@@ -45,9 +45,12 @@ def _parse_typed_tokens(type_chars, tokens):
             # This string consumes all tokens except those reserved for later args
             available = len(tokens) - tok_idx - tokens_needed_after
             if available < 1:
-                available = 1
-            args.append(" ".join(tokens[tok_idx:tok_idx + available]))
-            tok_idx += available
+                # No tokens left for this string — it was empty in the
+                # original message and collapsed during split().
+                args.append("")
+            else:
+                args.append(" ".join(tokens[tok_idx:tok_idx + available]))
+                tok_idx += available
         else:
             args.append(tokens[tok_idx])
             tok_idx += 1
@@ -251,6 +254,24 @@ class HarnessClient:
     # Internal
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _state_key(msg):
+        """Compute a state dict key that distinguishes multiplexed messages.
+
+        Some OSC addresses carry multiple logical values differentiated by
+        an index argument (e.g. /state/remote_control/param for each of 8
+        params).  Using the bare address would cause them to overwrite each
+        other in the state dict.
+        """
+        addr = msg["address"]
+        if addr == "/state/remote_control/param" and "index" in msg:
+            return f"{addr}/{msg['index']}"
+        elif addr == "/state/track" and "bank_index" in msg:
+            return f"{addr}/{msg['bank_index']}"
+        elif addr == "/state/clip" and "track" in msg and "scene" in msg:
+            return f"{addr}/{msg['track']}/{msg['scene']}"
+        return addr
+
     def _read_loop(self):
         """Read lines from osclisten.py stdout and parse them."""
         proc = self._listener_proc
@@ -268,7 +289,7 @@ class HarnessClient:
                 continue
             if msg:
                 with self._state_lock:
-                    self._state[msg["address"]] = msg
+                    self._state[self._state_key(msg)] = msg
                 try:
                     self._queue.put_nowait(msg)
                 except queue.Full:
@@ -328,6 +349,8 @@ class HarnessClient:
             msg["has_content"] = args[2]
             msg["is_playing"] = args[3]
             msg["is_recording"] = args[4]
+        elif address == "/state/project" and len(args) >= 1:
+            msg["name"] = args[0]
         elif address == "/midi/in" and len(args) >= 4:
             msg["channel"] = args[0]
             msg["status"] = args[1]
