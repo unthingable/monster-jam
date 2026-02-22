@@ -173,6 +173,53 @@ class JamClient:
             except TimeoutError:
                 continue
 
+    def control_submode(self, timeout=2.0):
+        """Query the current CONTROL submode.
+
+        Returns (index: int, name: str).
+        """
+        # Drain stale replies
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                break
+
+        self._osc_send("/mj/control/submode")
+
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Timed out waiting for /mj/control/submode reply")
+            try:
+                msg = self._queue.get(timeout=min(remaining, 0.1))
+                if msg.get("address") == "/mj/control/submode":
+                    args = msg.get("args", [])
+                    idx = args[0] if len(args) > 0 else -1
+                    name = args[1] if len(args) > 1 else ""
+                    return idx, name
+            except queue.Empty:
+                continue
+
+    def assert_control_submode(self, name, timeout=2.0):
+        """Poll control_submode() until the submode name matches."""
+        deadline = time.monotonic() + timeout
+        last_name = ""
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AssertionError(
+                    f"CONTROL submode '{name}' not active after {timeout}s "
+                    f"(current: '{last_name}')"
+                )
+            try:
+                _, last_name = self.control_submode(timeout=min(remaining, 1.0))
+                if last_name == name:
+                    return last_name
+            except TimeoutError:
+                continue
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
@@ -208,8 +255,6 @@ class JamClient:
 
         args = []
         if args_str:
-            # For /mj/mode/state the args are two strings (comma-separated mode lists).
-            # osclisten outputs them space-separated, but we know the type tag.
             type_chars = type_tag[1:]  # skip leading comma
             tokens = args_str.split()
             tok_idx = 0
@@ -223,9 +268,16 @@ class JamClient:
                     args.append(float(tokens[tok_idx]))
                     tok_idx += 1
                 elif tc == "s":
-                    # String consumes one token (our strings have no spaces)
-                    args.append(tokens[tok_idx])
-                    tok_idx += 1
+                    # Count fixed-size args remaining after this string
+                    remaining_fixed = sum(1 for t in type_chars[i + 1:] if t != "s")
+                    remaining_strings = sum(1 for t in type_chars[i + 1:] if t == "s")
+                    tokens_needed_after = remaining_fixed + remaining_strings
+                    available = len(tokens) - tok_idx - tokens_needed_after
+                    if available < 1:
+                        args.append("")
+                    else:
+                        args.append(" ".join(tokens[tok_idx:tok_idx + available]))
+                        tok_idx += available
                 else:
                     args.append(tokens[tok_idx])
                     tok_idx += 1

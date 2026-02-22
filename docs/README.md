@@ -61,6 +61,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
 * **NOTE REPEAT**: Fill mode
 * **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
+* **CONTROL+MACRO**: Toggle between device remotes and **track/project remotes** (see **CONTROL**)
 
 ## Transport
 
@@ -148,7 +149,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
-  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
+  * **CONTROL+MACRO**: Toggle between device controls and **track/project remote controls** (see below).
   * **LEFT+RIGHT**: Toggle Control Slice mode (see below)
 * **CLEAR+strip**: Reset parameter value
 
@@ -174,6 +175,20 @@ to the previously selected parameter when track button is released. This is usef
 
 To select a device and a page: whichever device was selected last on a track will be the device controlled in Slice mode.
 Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
+
+### Track & Project Remotes
+
+In addition to device remote controls, MonsterJam can control track-level and project-level remote parameters via the touch strips.
+
+* **CONTROL+MACRO**: Toggle between device remotes and track/project remote scope. The scope is sticky — it persists when CONTROL is deactivated and reactivated.
+* **PAGE LEFT/PAGE RIGHT**: Navigate remote control pages within the current scope.
+* Track buttons in remote scope fall through to track selection (same as in device remote mode).
+
+MonsterJam auto-selects between track and project remotes based on the cursor track:
+* **Regular track** → track remotes (warm yellow/orange alternating strip colors)
+* **Master track** → project remotes (white/cyan alternating strip colors)
+
+To set up track or project remotes, use Bitwig's remote control page editor on the track or project level.
 
 # Step Sequencer (WIP)
 
@@ -477,7 +492,7 @@ it will stay on after CONTROL button is released, unless you operate other contr
 
 If you don't need Device Selector you can turn it off with:
 
-* **CONTROL+SELECT**: Toggle device matrix
+* **CONTROL+SELECT**: Toggle device matrix popup
 
 In this mode the clip matrix shows devices in each track, just like in Mixer. Press a pad
 to select a device (selecting a device also selects its track).
@@ -531,10 +546,7 @@ Holding **MACRO** also switches control strips to user control mode.
 
 A bank of 64 user controls available for general global mapping, controlled by the touch strips.
 
-User controls are accessible in two ways:
-
-* Momentarily, by holding **MACRO**
-* In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
+User controls are activated momentarily by holding **MACRO**. All strips turn red when mapped.
 
 The 64 controls are grouped in 8 pages. To select a page use the track buttons, currently selected page is brightly lit.
 
@@ -577,6 +589,22 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 8.2
+
+* Added track and project remote controls via **CONTROL+MACRO** toggle
+  * Auto-switches between track and project scope based on cursor track type
+  * Track remotes: warm yellow/orange strips; Project remotes: white/cyan strips
+  * Left/Right page navigation within remote scope
+  * Scope is sticky across CONTROL deactivation/reactivation
+* API 21, Java 21
+
+## 8.1
+
+* Fixed clip launch crashing due to incorrect launch quantization mode (PR #1, @segudev)
+* Improved color conversion for JAM hardware (HSB-based matching with fixed color table)
+* Device Selector documentation: added PAD, SCENE, MST control descriptions
+* maven-shade-plugin 3.6.0
 
 ## 8.0b18
 

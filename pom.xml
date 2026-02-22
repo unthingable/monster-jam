@@ -97,6 +97,22 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>monsterjam.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>monsterjam.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
             <plugin>
@@ -161,6 +177,8 @@
                     <release>${maven.compiler.release}</release>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <parameters>true</parameters>
+                    <skipMain>true</skipMain>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
             <plugin>
