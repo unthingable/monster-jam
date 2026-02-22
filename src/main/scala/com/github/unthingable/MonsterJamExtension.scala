@@ -10,6 +10,8 @@ import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
+import java.io.IOException
+
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
   stepNoteInterlace: SettableBooleanValue,
@@ -130,8 +132,41 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
     jam = new Jam()(ext)
 
+    if ext.preferences.debugOutput.get() then
+      initOsc(host)
+
     host.showPopupNotification("MonsterJam Initialized")
   end init
+
+  private val OSC_PORT      = 9200
+  private val OSC_REPLY_PORT = 9201
+
+  private def initOsc(host: ControllerHost): Unit =
+    val oscModule       = host.getOscModule
+    val addressSpace    = oscModule.createAddressSpace()
+    val clientAddrSpace = oscModule.createAddressSpace()
+    val replyConn       = oscModule.connectToUdpServer("::ffff:127.0.0.1", OSC_REPLY_PORT, clientAddrSpace)
+
+    addressSpace.registerMethod("/mj/connect", ",i", "Client connect", (_, message) =>
+      val port = message.getInt(0)
+      Util.println(s"OSC client connected on port $port")
+    )
+
+    addressSpace.registerMethod("/mj/disconnect", ",i", "Client disconnect", (_, message) =>
+      val port = message.getInt(0)
+      Util.println(s"OSC client disconnected from port $port")
+    )
+
+    addressSpace.registerMethod("/mj/mode/state", ",", "Query mode state", (_, _) =>
+      val active   = jam.graph.activeModes.mkString(",")
+      val occulted = jam.graph.occultedModes.mkString(",")
+      try replyConn.sendMessage("/mj/mode/state", active, occulted)
+      catch case _: IOException => ()
+    )
+
+    oscModule.createUdpServer(OSC_PORT, addressSpace)
+    Util.println(s"OSC server listening on port $OSC_PORT")
+  end initOsc
 
   override def exit(): Unit =
     printer match

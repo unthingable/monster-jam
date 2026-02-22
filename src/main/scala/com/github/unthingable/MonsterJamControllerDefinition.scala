@@ -23,7 +23,7 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
 
   override def getHardwareModel = "Maschine JAM"
 
-  override def getRequiredAPIVersion = 17
+  override def getRequiredAPIVersion = 21
 
   override def getNumMidiInPorts = 1
 
