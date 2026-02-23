@@ -25,6 +25,9 @@ class TestDevices:
 
     def test_device_remote_page_next(self, harness):
         """Advancing the remote control page increments the page index."""
+        # Select device 0 (EQ) which should have 2+ remote control pages
+        harness.send_command("/device/select", ("i", "0"))
+        time.sleep(0.3)
         # Start from page 0 so "next" always has somewhere to go
         harness.send_command("/remote_control/page/select", ("i", "0"))
         harness.wait_for(

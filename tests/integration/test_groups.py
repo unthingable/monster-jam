@@ -36,6 +36,8 @@ def _navigate_to_top(harness):
     """Navigate to top level by holding GROUP[0]+DPAD_UP several times.
 
     At top level, DPAD_UP is a no-op, so this is always safe.
+    Waits for the harness track bank to reflect top-level state before
+    returning (the bank is global and changes asynchronously).
     """
     for _ in range(3):
         harness.hold(GROUP[0])
@@ -44,17 +46,35 @@ def _navigate_to_top(harness):
         time.sleep(0.3)
         harness.release(GROUP[0])
         time.sleep(0.3)
+    # Wait for harness track bank to show top-level tracks (first track
+    # should be "Synth 1", not a group child like "Grp Synth").
+    harness.wait_for(
+        "/state/track",
+        predicate=lambda m: m.get("bank_index") == 0 and m.get("type") != "Group"
+            and not m.get("name", "").startswith("Grp "),
+        timeout=3.0,
+    )
     harness.drain(timeout=0.3)
 
 
 def _enter_group(harness, group_idx):
-    """Navigate into a group track by holding GROUP[idx]+DPAD_DOWN."""
+    """Navigate into a group track by holding GROUP[idx]+DPAD_DOWN.
+
+    Waits for the harness track bank to reflect group-internal state
+    before returning (the bank is global and changes asynchronously).
+    """
     harness.hold(GROUP[group_idx])
     time.sleep(0.3)
     harness.press(DPAD_DOWN)
     time.sleep(0.5)
     harness.release(GROUP[group_idx])
-    time.sleep(0.5)
+    time.sleep(0.3)
+    # Wait for harness track bank to show group children.
+    harness.wait_for(
+        "/state/track",
+        predicate=lambda m: m.get("bank_index") == 0 and m.get("name", "").startswith("Grp "),
+        timeout=3.0,
+    )
     harness.drain(timeout=0.3)
 
 

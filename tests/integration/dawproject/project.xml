@@ -11,6 +11,41 @@
     <!-- Track 0: Synth 1 -->
     <Track id="t1" name="Synth 1" contentType="notes" color="#FF5533">
       <Channel id="ch-t1" name="Synth 1" role="regular" audioChannels="2" destination="master">
+        <Devices>
+          <Equalizer deviceName="Equalizer" deviceRole="audioFX" loaded="true" id="eq1">
+            <Band type="highShelf">
+              <Freq max="20000" min="20" unit="hertz" value="8000"/>
+              <Gain max="24" min="-24" unit="decibel" value="0"/>
+              <Q max="10" min="0.1" unit="linear" value="0.7"/>
+            </Band>
+            <Band type="bell">
+              <Freq max="20000" min="20" unit="hertz" value="2000"/>
+              <Gain max="24" min="-24" unit="decibel" value="0"/>
+              <Q max="10" min="0.1" unit="linear" value="1.0"/>
+            </Band>
+            <Band type="bell">
+              <Freq max="20000" min="20" unit="hertz" value="500"/>
+              <Gain max="24" min="-24" unit="decibel" value="0"/>
+              <Q max="10" min="0.1" unit="linear" value="1.0"/>
+            </Band>
+            <Band type="lowShelf">
+              <Freq max="20000" min="20" unit="hertz" value="100"/>
+              <Gain max="24" min="-24" unit="decibel" value="0"/>
+              <Q max="10" min="0.1" unit="linear" value="0.7"/>
+            </Band>
+            <InputGain max="24" min="-24" unit="decibel" value="0"/>
+            <OutputGain max="24" min="-24" unit="decibel" value="0"/>
+          </Equalizer>
+          <Compressor deviceName="Compressor" deviceRole="audioFX" loaded="true" id="comp1">
+            <Threshold max="0" min="-60" unit="decibel" value="-20"/>
+            <Ratio max="100" min="1" unit="percent" value="4"/>
+            <Attack max="2" min="0.001" unit="seconds" value="0.01"/>
+            <Release max="8" min="0.01" unit="seconds" value="0.1"/>
+            <InputGain max="24" min="-24" unit="decibel" value="0"/>
+            <OutputGain max="24" min="-24" unit="decibel" value="0"/>
+            <AutoMakeup value="false"/>
+          </Compressor>
+        </Devices>
         <Mute value="false"/>
         <Pan max="1" min="0" unit="normalized" value="0.5"/>
         <Volume max="2" min="0" unit="linear" value="0.8"/>
