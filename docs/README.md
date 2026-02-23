@@ -134,7 +134,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
   * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
 * **SHIFT+...** in SuperScene mode:
   * Track buttons and arrow keys same as above
-  * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
+  * **SCENE(1-8)**: select SuperScene page. Pages with contents are **orange**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
 * **MACRO** lets you jump directly to one of 64 tracks using pad buttons
 * **SONG** (hold): clip pads become page selectors, same logic as SHIFT+SCENE/TRACK
@@ -209,7 +209,7 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 
 ## Default layout
 
-* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white. Hold **SHIFT** to select between banks of 8 pages.
+* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is blinking white. Hold **SHIFT** to select between banks of 8 pages.
 * **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
 * **DPAD** arrows up/down: scroll notes up or down by pages, left/right: by one step
 * **KNOB**: scroll notes up or down by one
@@ -601,11 +601,16 @@ After changing preferences it may be necessary to reinitialize the extension (tu
   * Left/Right page navigation
   * Selection is sticky across CONTROL deactivation/reactivation
   * Perform FX (touch-triggered) works in track/project remote mode
+* Group-aware clip/scene launching:
+  * Pressing a clip pad on a group track launches the scene
+  * Inside a group, SCENE buttons launch clips per-track
+* Added footswitch documentation (default mapping: tip=REC, ring=MUTE)
 * VU meters now clear when track is muted (@segudev)
 * Optimized light updates to prevent redundant MIDI messages
 * Removed SCENE/MST remote selection from Device Selector from documentation (implemented as CONTROL+MACRO toggle)
 * Configurable OSC port setting (Debug preferences)
 * Fixed CONTROL button not blinking when Device Selector is active
+* Fixed user control bank offset
 * API 21, Java 21
 
 ## 8.1
