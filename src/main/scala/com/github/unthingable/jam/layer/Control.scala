@@ -60,6 +60,7 @@ trait Control:
       page.c.pageNames().markInterested()
       page.c.selectedPageIndex().markInterested()
 
+      // Device-level touch cursor for Perform FX
       val secondCursor: CursorRemoteControlsPage =
         device.createCursorRemoteControlsPage(touchFX, 8, "")
       var touchPage: Option[CursorRemoteControlsPage] = None
@@ -72,6 +73,22 @@ trait Control:
             case (_, idx) =>
               secondCursor.selectedPageIndex().set(idx)
               secondCursor
+          }
+        )
+
+      // Track-level touch cursor for Perform FX in track/project remote mode
+      val trackTouchCursor: CursorRemoteControlsPage =
+        ext.cursorTrack.createCursorRemoteControlsPage(touchFX, 8, "")
+      var trackTouchPage: Option[CursorRemoteControlsPage] = None
+      trackTouchCursor.pageNames().markInterested()
+      trackTouchCursor.selectedPageIndex().markInterested()
+      trackTouchCursor
+        .pageNames()
+        .addValueObserver(names =>
+          trackTouchPage = names.zipWithIndex.find(_._1 == touchFX).map {
+            case (_, idx) =>
+              trackTouchCursor.selectedPageIndex().set(idx)
+              trackTouchCursor
           }
         )
 
@@ -284,6 +301,12 @@ trait Control:
           ):
             j.stripBank.strips.forindex {
               case (strip, idx) =>
+                strip.slider.isBeingTouched.addValueObserver(v =>
+                  if isOn then
+                    trackTouchPage.foreach(tp =>
+                      if idx < tp.getParameterCount then tp.getParameter(idx).value().set(if v then 1 else 0)
+                    )
+                )
                 val param = sliderParams(idx)
                 param.p.modulatedValue().markInterested()
                 param.p
