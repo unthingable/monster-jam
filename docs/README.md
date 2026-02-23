@@ -7,7 +7,7 @@ This only works on Mac and Windows (because it needs NI drivers for the Jam cont
 # Installation
 
 1. Drop `MonsterJam.bwextension` into your `Bitwig Extensions` folder
-1. Ensure correct controller mapping is loaded on Jam
+1. Open NI Controller Editor and load `Bitwig Studio ext.ncmj`! Do not use the CE template, or things won't always work.
 1. If Bitwig did not autodetect, add the `MonsterJam` controller device and map the MIDI ports
 
 Maschine JAM must be in MIDI mode: press **SHIFT+HEADPHONES (MIDI)** buttons.
@@ -180,13 +180,14 @@ Same goes for remote control pages within a device. You can use Device Selector 
 
 In addition to device remote controls, MonsterJam can control track-level and project-level remote parameters via the touch strips.
 
-* **CONTROL+MACRO**: Toggle between device remotes and track/project remote scope. The scope is sticky — it persists when CONTROL is deactivated and reactivated.
-* **PAGE LEFT/PAGE RIGHT**: Navigate remote control pages within the current scope.
-* Track buttons in remote scope fall through to track selection (same as in device remote mode).
+* **CONTROL+MACRO**: Toggle between device remotes and track/project remote mode. The selection is sticky — it persists when CONTROL is deactivated and reactivated. **MACRO** will light up.
+* **PAGE LEFT/PAGE RIGHT**: Navigate remote control pages.
+* Track buttons in track/project remote mode fall through to track selection (same as in device remote mode).
 
 MonsterJam auto-selects between track and project remotes based on the cursor track:
-* **Regular track** → track remotes (warm yellow/orange alternating strip colors)
-* **Master track** → project remotes (white/cyan alternating strip colors)
+* **Regular track** → track remotes
+* **Group track** → group remotes
+* **Master track** → project remotes
 
 To set up track or project remotes, use Bitwig's remote control page editor on the track or project level.
 
@@ -483,8 +484,6 @@ If this happens, try duplicating the offending track and deleting the original, 
 Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
 
 * **PAD**: select device
-* **SCENE(1-8)**: select track remotes
-* **MST**: select project remotes
 
 Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
 it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
@@ -579,6 +578,7 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
 * **Debug**
   * **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
+  * **OSC port**: UDP port for the OSC server (default 9200). Used by the integration test harness.
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
 
@@ -590,13 +590,18 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 
 # Changelog
 
-## 8.2
+## 9.0
 
 * Added track and project remote controls via **CONTROL+MACRO** toggle
   * Auto-switches between track and project scope based on cursor track type
-  * Track remotes: warm yellow/orange strips; Project remotes: white/cyan strips
-  * Left/Right page navigation within remote scope
-  * Scope is sticky across CONTROL deactivation/reactivation
+  * Left/Right page navigation
+  * Selection is sticky across CONTROL deactivation/reactivation
+  * Perform FX (touch-triggered) works in track/project remote mode
+* VU meters now clear when track is muted (@segudev)
+* Optimized light updates to prevent redundant MIDI messages
+* Removed SCENE/MST remote selection from Device Selector from documentation (implemented as CONTROL+MACRO toggle)
+* Configurable OSC port setting (Debug preferences)
+* Fixed CONTROL button not blinking when Device Selector is active
 * API 21, Java 21
 
 ## 8.1

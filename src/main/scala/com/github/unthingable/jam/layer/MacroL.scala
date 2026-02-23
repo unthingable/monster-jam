@@ -30,7 +30,9 @@ trait MacroL:
         if !controlLayer.isRemoteSelected then
           controlToggleSub = controlLayer.selected
           controlLayer.selectRemote()
-        else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
+        else
+          controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
+          controlToggleSub = None
       else
         bumpedStrip = stripGroup.layers
           .find(_.isOn)
