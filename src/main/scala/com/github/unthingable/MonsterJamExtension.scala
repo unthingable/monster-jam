@@ -10,6 +10,8 @@ import com.github.unthingable.jam.Jam
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
+import java.io.IOException
+
 case class MonsterPref(
   shiftRow: SettableBooleanValue,
   stepNoteInterlace: SettableBooleanValue,
@@ -24,6 +26,7 @@ case class MonsterPref(
   launchTolerance: SettableRangedValue,
   launchLookahead: SettableRangedValue,
   debugOutput: SettableBooleanValue,
+  oscPort: SettableRangedValue,
 )
 
 case class MonsterDocPrefs(
@@ -111,6 +114,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
         preferences.getNumberSetting("Launch Q forgiveness", "Launcher", 0, 1, 0.1, "beats", 0.5),
         preferences.getNumberSetting("Launch Q lookahead", "Launcher", 0, .5, 0.02, "beats", 0.1),
         preferences.getBooleanSetting("Verbose console output", "Debug", false),
+        preferences.getNumberSetting("OSC port", "Debug", 9000, 9999, 1, "", 9200),
       ),
       MonsterDocPrefs(
         EnumSetting(host.getDocumentState, "Tracks", "Hide disabled", JamSettings.ShowHide.Show),
@@ -130,8 +134,47 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
     jam = new Jam()(ext)
 
+    if ext.preferences.debugOutput.get() then
+      initOsc(host)
+
     host.showPopupNotification("MonsterJam Initialized")
   end init
+
+  private def initOsc(host: ControllerHost): Unit =
+    val oscPort      = ext.preferences.oscPort.getRaw.toInt
+    val oscReplyPort = oscPort + 1
+    val oscModule       = host.getOscModule
+    val addressSpace    = oscModule.createAddressSpace()
+    val clientAddrSpace = oscModule.createAddressSpace()
+    val replyConn       = oscModule.connectToUdpServer("::ffff:127.0.0.1", oscReplyPort, clientAddrSpace)
+
+    addressSpace.registerMethod("/mj/connect", ",i", "Client connect", (_, message) =>
+      val port = message.getInt(0)
+      Util.println(s"OSC client connected on port $port")
+    )
+
+    addressSpace.registerMethod("/mj/disconnect", ",i", "Client disconnect", (_, message) =>
+      val port = message.getInt(0)
+      Util.println(s"OSC client disconnected from port $port")
+    )
+
+    addressSpace.registerMethod("/mj/mode/state", ",", "Query mode state", (_, _) =>
+      val active   = jam.graph.activeModes.mkString(",")
+      val occulted = jam.graph.occultedModes.mkString(",")
+      try replyConn.sendMessage("/mj/mode/state", active, occulted)
+      catch case _: IOException => ()
+    )
+
+    addressSpace.registerMethod("/mj/control/submode", ",", "Query CONTROL submode", (_, _) =>
+      val idx = jam.controlLayer.selected.getOrElse(-1)
+      val name = jam.controlLayer.selected.map(jam.controlLayer.subModes(_).id).getOrElse("")
+      try replyConn.sendMessage("/mj/control/submode", idx.asInstanceOf[Integer], name)
+      catch case _: IOException => ()
+    )
+
+    oscModule.createUdpServer(oscPort, addressSpace)
+    Util.println(s"OSC server listening on port $oscPort (reply: $oscReplyPort)")
+  end initOsc
 
   override def exit(): Unit =
     printer match

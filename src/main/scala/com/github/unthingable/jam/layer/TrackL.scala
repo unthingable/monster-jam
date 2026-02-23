@@ -101,11 +101,8 @@ trait TrackL:
     new ModeButtonLayer(s"track gate $idx", j.groupButtons(idx), GateMode.Gate, silent = true):
       import com.github.unthingable.jam.surface.KeyMaster.*
       val track = trackBank.getItemAt(idx)
-      val isAtTop = ext.host.getProject.getRootTrackGroup
-        .createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
 
       track.isGroup.markInterested()
-      isAtTop.markInterested()
 
       track.mute().markInterested()
       track.solo().markInterested()

@@ -191,6 +191,12 @@ object Graph:
     def maybeReactivate(layers: ModeLayer*): Unit =
       layers.foreach(l => if isOcculted(l) then reactivate(l))
 
+    def activeModes: Seq[String] =
+      layerMap.values.filter(_.isActive).map(_.layer.id).toSeq
+
+    def occultedModes: Seq[String] =
+      layerMap.values.filter(_.bumpingMe.nonEmpty).map(_.layer.id).toSeq
+
     protected def activate(reason: String)(node: ModeNode): Unit =
       node.layer.setModeState(ModeState.Activating)
       Util.println(s"activating node ${node.layer.id}: $reason")

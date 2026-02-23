@@ -68,6 +68,10 @@ class Jam(implicit val ext: MonsterJamExt)
   lazy val sceneBank: SceneBank     = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
 
+  val isAtTop: BooleanValue = ext.host.getProject.getRootTrackGroup
+    .createEqualsValue(ext.host.getProject.getShownTopLevelTrackGroup)
+  isAtTop.markInterested()
+
   sceneBank.canScrollForwards.markInterested()
   sceneBank.canScrollBackwards.markInterested()
   sceneBank.itemCount().markInterested()

@@ -7,7 +7,7 @@ This only works on Mac and Windows (because it needs NI drivers for the Jam cont
 # Installation
 
 1. Drop `MonsterJam.bwextension` into your `Bitwig Extensions` folder
-1. Ensure correct controller mapping is loaded on Jam
+1. Open NI Controller Editor and load `Bitwig Studio ext.ncmj`! Do not use the CE template, or things won't always work.
 1. If Bitwig did not autodetect, add the `MonsterJam` controller device and map the MIDI ports
 
 Maschine JAM must be in MIDI mode: press **SHIFT+HEADPHONES (MIDI)** buttons.
@@ -61,6 +61,11 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
   * **SHIFT-PAD 1**: Toggle hiding/showing disabled tracks
 * **NOTE REPEAT**: Fill mode
 * **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
+* **CONTROL+MACRO**: Toggle between device remotes and **track/project remotes** (see **CONTROL**)
+
+## Footswitch
+
+In the default mapping the footswitch shares CCs with existing buttons: **tip** acts as **REC**, **ring** acts as **MUTE**. Remap in NI Controller Editor if needed.
 
 ## Transport
 
@@ -129,7 +134,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
   * The currently selected scene/track page is **white**, available pages are **yellow**. If the view is currently between pages, two adjacent pages will be orange.
 * **SHIFT+...** in SuperScene mode:
   * Track buttons and arrow keys same as above
-  * **SCENE(1-8)**: select SuperScene page. Pages with contents are **cyan**, current page is **white**, page with last selected scene is **lime**.
+  * **SCENE(1-8)**: select SuperScene page. Pages with contents are **orange**, current page is **white**, page with last selected scene is **lime**.
   * **(PAD) (bottom row)**: scene page selector is preserved but is now on the bottom matrix row instead of SCENE buttons.
 * **MACRO** lets you jump directly to one of 64 tracks using pad buttons
 * **SONG** (hold): clip pads become page selectors, same logic as SHIFT+SCENE/TRACK
@@ -148,7 +153,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
   * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
-  * **CONTROL+MACRO**: Toggle between device controls (rainbow) and **user controls** (all red when mapped).
+  * **CONTROL+MACRO**: Toggle between device controls and **track/project remote controls** (see below).
   * **LEFT+RIGHT**: Toggle Control Slice mode (see below)
 * **CLEAR+strip**: Reset parameter value
 
@@ -175,6 +180,21 @@ to the previously selected parameter when track button is released. This is usef
 To select a device and a page: whichever device was selected last on a track will be the device controlled in Slice mode.
 Same goes for remote control pages within a device. You can use Device Selector to quickly select a device on each track.
 
+### Track & Project Remotes
+
+In addition to device remote controls, MonsterJam can control track-level and project-level remote parameters via the touch strips.
+
+* **CONTROL+MACRO**: Toggle between device remotes and track/project remote mode. The selection is sticky — it persists when CONTROL is deactivated and reactivated. **MACRO** will light up.
+* **PAGE LEFT/PAGE RIGHT**: Navigate remote control pages.
+* Track buttons in track/project remote mode fall through to track selection (same as in device remote mode).
+
+MonsterJam auto-selects between track and project remotes based on the cursor track:
+* **Regular track** → track remotes
+* **Group track** → group remotes
+* **Master track** → project remotes
+
+To set up track or project remotes, use Bitwig's remote control page editor on the track or project level.
+
 # Step Sequencer (WIP)
 
 * **STEP**: Toggle sequencer mode
@@ -189,7 +209,7 @@ Whenever a sequencer state changes, a relevant notification will pop up.
 
 ## Default layout
 
-* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is dim white. Hold **SHIFT** to select between banks of 8 pages.
+* **SCENE** (top): pattern pages. Currently selected page is bright white, currently playing page is blinking white. Hold **SHIFT** to select between banks of 8 pages.
 * **PAD** matrix: select and edit steps. When transport is playing the currently playing step is white (a chasing light).
 * **DPAD** arrows up/down: scroll notes up or down by pages, left/right: by one step
 * **KNOB**: scroll notes up or down by one
@@ -468,8 +488,6 @@ If this happens, try duplicating the offending track and deleting the original, 
 Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to access this.
 
 * **PAD**: select device
-* **SCENE(1-8)**: select track remotes
-* **MST**: select project remotes
 
 Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
 it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
@@ -477,7 +495,7 @@ it will stay on after CONTROL button is released, unless you operate other contr
 
 If you don't need Device Selector you can turn it off with:
 
-* **CONTROL+SELECT**: Toggle device matrix
+* **CONTROL+SELECT**: Toggle device matrix popup
 
 In this mode the clip matrix shows devices in each track, just like in Mixer. Press a pad
 to select a device (selecting a device also selects its track).
@@ -531,10 +549,7 @@ Holding **MACRO** also switches control strips to user control mode.
 
 A bank of 64 user controls available for general global mapping, controlled by the touch strips.
 
-User controls are accessible in two ways:
-
-* Momentarily, by holding **MACRO**
-* In **CONTROL** mode, press **CONTROL+MACRO** to switch user controls on and off
+User controls are activated momentarily by holding **MACRO**. All strips turn red when mapped.
 
 The 64 controls are grouped in 8 pages. To select a page use the track buttons, currently selected page is brightly lit.
 
@@ -567,6 +582,7 @@ will change the colors of the top row of the clip matrix buttons to indicate tha
   * **Launch Q lookahead**: compensation for event processing delay. If you attempt to launch on-beat but still miss the window, increase this value.
 * **Debug**
   * **Verbose console output**: Enable if you're me or just really curious about internal workings of MonsterJam, otherwise leave it off.
+  * **OSC port**: UDP port for the OSC server (default 9200). Used by the integration test harness.
 
 After changing preferences it may be necessary to reinitialize the extension (turn it off an on again in Controllers settings, or select a different project).
 
@@ -577,6 +593,32 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 9.0
+
+* Added track and project remote controls via **CONTROL+MACRO** toggle
+  * Auto-switches between track and project scope based on cursor track type
+  * Left/Right page navigation
+  * Selection is sticky across CONTROL deactivation/reactivation
+  * Perform FX (touch-triggered) works in track/project remote mode
+* Group-aware clip/scene launching:
+  * Pressing a clip pad on a group track launches the scene
+  * Inside a group, SCENE buttons launch clips per-track
+* Added footswitch documentation (default mapping: tip=REC, ring=MUTE)
+* VU meters now clear when track is muted (@segudev)
+* Optimized light updates to prevent redundant MIDI messages
+* Removed SCENE/MST remote selection from Device Selector from documentation (implemented as CONTROL+MACRO toggle)
+* Configurable OSC port setting (Debug preferences)
+* Fixed CONTROL button not blinking when Device Selector is active
+* Fixed user control bank offset
+* API 21, Java 21
+
+## 8.1
+
+* Fixed clip launch crashing due to incorrect launch quantization mode (PR #1, @segudev)
+* Improved color conversion for JAM hardware (HSB-based matching with fixed color table)
+* Device Selector documentation: added PAD, SCENE, MST control descriptions
+* maven-shade-plugin 3.6.0
 
 ## 8.0b18
 

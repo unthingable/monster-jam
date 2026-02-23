@@ -26,11 +26,13 @@ trait MacroL:
       super.onActivate()
       // dirty hack to show user controls
       if j.control.btn.isPressed().get then
-        // CONTROL is already active, just need to toggle
-        if !controlLayer.isUserSelected then
+        // CONTROL is already active, toggle device ↔ track/project remotes
+        if !controlLayer.isRemoteSelected then
           controlToggleSub = controlLayer.selected
-          controlLayer.selectUser()
-        else controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
+          controlLayer.selectRemote()
+        else
+          controlToggleSub.orElse(Some(0)).foreach(controlLayer.select(_))
+          controlToggleSub = None
       else
         bumpedStrip = stripGroup.layers
           .find(_.isOn)

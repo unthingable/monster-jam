@@ -30,6 +30,8 @@ trait Control:
   trait UserControlPages:
     def selectUser(): Unit
     def isUserSelected: Boolean
+    def selectRemote(): Unit
+    def isRemoteSelected: Boolean
 
   lazy val controlLayer: ModeButtonCycleLayer with UserControlPages =
     new ModeButtonCycleLayer("CONTROL", j.control, CycleMode.Select) with UserControlPages:
@@ -42,11 +44,23 @@ trait Control:
       var currentSlice: Int            = 0
       var previousSlice: Int           = 0
 
+      val trackRemoteIdx: Int = 17
+
+      val trackRemotePage: CursorRemoteControlsPage =
+        ext.cursorTrack.createCursorRemoteControlsPage("TRACK_REMOTES", 8, "")
+
+      trackRemotePage.hasNext.markInterested()
+      trackRemotePage.hasPrevious.markInterested()
+      trackRemotePage.pageNames().markInterested()
+      trackRemotePage.selectedPageIndex().markInterested()
+
+
       device.hasNext.markInterested()
       device.hasPrevious.markInterested()
       page.c.pageNames().markInterested()
       page.c.selectedPageIndex().markInterested()
 
+      // Device-level touch cursor for Perform FX
       val secondCursor: CursorRemoteControlsPage =
         device.createCursorRemoteControlsPage(touchFX, 8, "")
       var touchPage: Option[CursorRemoteControlsPage] = None
@@ -62,6 +76,22 @@ trait Control:
           }
         )
 
+      // Track-level touch cursor for Perform FX in track/project remote mode
+      val trackTouchCursor: CursorRemoteControlsPage =
+        ext.cursorTrack.createCursorRemoteControlsPage(touchFX, 8, "")
+      var trackTouchPage: Option[CursorRemoteControlsPage] = None
+      trackTouchCursor.pageNames().markInterested()
+      trackTouchCursor.selectedPageIndex().markInterested()
+      trackTouchCursor
+        .pageNames()
+        .addValueObserver(names =>
+          trackTouchPage = names.zipWithIndex.find(_._1 == touchFX).map {
+            case (_, idx) =>
+              trackTouchCursor.selectedPageIndex().set(idx)
+              trackTouchCursor
+          }
+        )
+
       val userBank: UserControlBank = ext.host.createUserControls(64)
 
       /* User mode */
@@ -71,7 +101,12 @@ trait Control:
 
       def selectUser(): Unit = select(currentUserPage + userOffset)
 
-      def isUserSelected: Boolean = selected.exists(_ >= userOffset)
+      def isUserSelected: Boolean = selected.exists(i => i >= userOffset && i < trackRemoteIdx)
+
+      def isRemoteSelected: Boolean =
+        selected.contains(trackRemoteIdx)
+
+      def selectRemote(): Unit = select(trackRemoteIdx)
 
       override val subModes: Vector[ModeLayer] =
         ((
@@ -217,7 +252,7 @@ trait Control:
           EIGHT.map { idx =>
             new SliderBankMode(
               s"strips user bank $idx",
-              i => userBank.getControl(i + idx),
+              i => userBank.getControl(i + idx * 8),
               JamParameter.UserControl.apply,
               barMode = Seq.fill(8)(BarMode.SINGLE),
             ):
@@ -256,7 +291,45 @@ trait Control:
                     )
                   )
                 )
-          }
+          } :+
+          // Track/project remotes (index 17) — project remotes are just track remotes on Master
+          (new SliderBankMode(
+            "strips track remote",
+            trackRemotePage.getParameter,
+            JamParameter.Regular.apply,
+            Seq.fill(8)(BarMode.DUAL),
+          ):
+            j.stripBank.strips.forindex {
+              case (strip, idx) =>
+                strip.slider.isBeingTouched.addValueObserver(v =>
+                  if isOn then
+                    trackTouchPage.foreach(tp =>
+                      if idx < tp.getParameterCount then tp.getParameter(idx).value().set(if v then 1 else 0)
+                    )
+                )
+                val param = sliderParams(idx)
+                param.p.modulatedValue().markInterested()
+                param.p
+                  .modulatedValue()
+                  .addValueObserver(v => if isOn then strip.update((v * 127).toInt))
+            }
+
+            override def onActivate(): Unit =
+              sliderParams.forindex {
+                case (param, idx) =>
+                  j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
+              }
+              super.onActivate()
+
+            override val modeBindings: Seq[Binding[?, ?, ?]] = super.modeBindings ++
+              Vector(
+                SupBooleanB(j.macroButton.light, () => true),
+                SupBooleanB(j.left.light, () => trackRemotePage.hasPrevious.get()),
+                SupBooleanB(j.right.light, () => trackRemotePage.hasNext.get()),
+                EB(j.left.st.release, "track remote prev page", () => trackRemotePage.selectPreviousPage(false)),
+                EB(j.right.st.release, "track remote next page", () => trackRemotePage.selectNextPage(false)),
+              )
+          )
 
       /* Control mode */
       def m(default: () => Boolean, modePressed: () => Boolean): BooleanSupplier =
