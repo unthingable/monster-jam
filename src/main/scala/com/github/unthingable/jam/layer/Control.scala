@@ -252,7 +252,7 @@ trait Control:
           EIGHT.map { idx =>
             new SliderBankMode(
               s"strips user bank $idx",
-              i => userBank.getControl(i + idx),
+              i => userBank.getControl(i + idx * 8),
               JamParameter.UserControl.apply,
               barMode = Seq.fill(8)(BarMode.SINGLE),
             ):

@@ -63,6 +63,10 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 * **CONTROL+MACRO**: Toggle between device remotes and **track/project remotes** (see **CONTROL**)
 
+## Footswitch
+
+In the default mapping the footswitch shares CCs with existing buttons: **tip** acts as **REC**, **ring** acts as **MUTE**. Remap in NI Controller Editor if needed.
+
 ## Transport
 
 * **PLAY**: Start/Stop playback
