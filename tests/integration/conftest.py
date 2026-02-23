@@ -11,7 +11,7 @@ from jam_client import JamClient
 from log_watcher import LogWatcher
 
 _TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_FILE = os.path.join(_TEST_DIR, "test-project.bwproject")
+_PROJECT_FILE = os.path.join(_TEST_DIR, "test-project.dawproject")
 
 
 @pytest.fixture(scope="session")

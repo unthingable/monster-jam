@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project version="1.0">
+  <Application name="MonsterJam Test" version="1.0"/>
+
+  <Transport>
+    <Tempo max="666" min="20" unit="bpm" value="120" name="Tempo"/>
+    <TimeSignature denominator="4" numerator="4" name="Time Signature"/>
+  </Transport>
+
+  <Structure>
+    <!-- Track 0: Synth 1 -->
+    <Track id="t1" name="Synth 1" contentType="notes" color="#FF5533">
+      <Channel id="ch-t1" name="Synth 1" role="regular" audioChannels="2" destination="master">
+        <Mute value="false"/>
+        <Pan max="1" min="0" unit="normalized" value="0.5"/>
+        <Volume max="2" min="0" unit="linear" value="0.8"/>
+      </Channel>
+    </Track>
+
+    <!-- Track 1: Bass -->
+    <Track id="t2" name="Bass" contentType="notes" color="#33AA55">
+      <Channel id="ch-t2" name="Bass" role="regular" audioChannels="2" destination="master">
+        <Mute value="false"/>
+        <Pan max="1" min="0" unit="normalized" value="0.5"/>
+        <Volume max="2" min="0" unit="linear" value="0.8"/>
+      </Channel>
+    </Track>
+
+    <!-- Track 2: Group 1 (group track with 2 children) -->
+    <Track id="grp" name="Group 1" contentType="tracks" color="#3355FF">
+      <Channel id="ch-grp" name="Group 1" role="regular" audioChannels="2" destination="master">
+        <Mute value="false"/>
+        <Pan max="1" min="0" unit="normalized" value="0.5"/>
+        <Volume max="2" min="0" unit="linear" value="0.8"/>
+      </Channel>
+
+      <!-- Group child 0: Grp Synth -->
+      <Track id="gt1" name="Grp Synth" contentType="notes" color="#AA55FF">
+        <Channel id="ch-gt1" name="Grp Synth" role="regular" audioChannels="2" destination="ch-grp">
+          <Mute value="false"/>
+          <Pan max="1" min="0" unit="normalized" value="0.5"/>
+          <Volume max="2" min="0" unit="linear" value="0.8"/>
+        </Channel>
+      </Track>
+
+      <!-- Group child 1: Grp Bass -->
+      <Track id="gt2" name="Grp Bass" contentType="notes" color="#FFAA33">
+        <Channel id="ch-gt2" name="Grp Bass" role="regular" audioChannels="2" destination="ch-grp">
+          <Mute value="false"/>
+          <Pan max="1" min="0" unit="normalized" value="0.5"/>
+          <Volume max="2" min="0" unit="linear" value="0.8"/>
+        </Channel>
+      </Track>
+    </Track>
+
+    <!-- Track 3: Pad -->
+    <Track id="t3" name="Pad" contentType="notes" color="#FFDD33">
+      <Channel id="ch-t3" name="Pad" role="regular" audioChannels="2" destination="master">
+        <Mute value="false"/>
+        <Pan max="1" min="0" unit="normalized" value="0.5"/>
+        <Volume max="2" min="0" unit="linear" value="0.8"/>
+      </Channel>
+    </Track>
+
+    <!-- Track 4: Lead -->
+    <Track id="t4" name="Lead" contentType="notes" color="#FF33AA">
+      <Channel id="ch-t4" name="Lead" role="regular" audioChannels="2" destination="master">
+        <Mute value="false"/>
+        <Pan max="1" min="0" unit="normalized" value="0.5"/>
+        <Volume max="2" min="0" unit="linear" value="0.8"/>
+      </Channel>
+    </Track>
+
+    <!-- Master channel -->
+    <Channel id="master" name="Master" role="master" audioChannels="2">
+      <Mute value="false"/>
+      <Pan max="1" min="0" unit="normalized" value="0.5"/>
+      <Volume max="2" min="0" unit="linear" value="1.0"/>
+    </Channel>
+  </Structure>
+
+  <Scenes>
+    <!-- Scene 0 -->
+    <Scene id="scene0" name="Scene 1">
+      <Lanes>
+        <ClipSlot track="t1">
+          <Clip time="0" duration="4" name="Synth 1-A">
+            <Notes>
+              <Note time="0" duration="1" channel="0" key="60" vel="0.8"/>
+              <Note time="1" duration="1" channel="0" key="64" vel="0.7"/>
+              <Note time="2" duration="1" channel="0" key="67" vel="0.75"/>
+              <Note time="3" duration="1" channel="0" key="72" vel="0.8"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="t2">
+          <Clip time="0" duration="4" name="Bass-A">
+            <Notes>
+              <Note time="0" duration="2" channel="0" key="36" vel="0.9"/>
+              <Note time="2" duration="2" channel="0" key="41" vel="0.85"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="gt1">
+          <Clip time="0" duration="4" name="Grp Synth-A">
+            <Notes>
+              <Note time="0" duration="1" channel="0" key="48" vel="0.7"/>
+              <Note time="2" duration="1" channel="0" key="55" vel="0.7"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="gt2">
+          <Clip time="0" duration="4" name="Grp Bass-A">
+            <Notes>
+              <Note time="0" duration="2" channel="0" key="36" vel="0.85"/>
+              <Note time="2" duration="2" channel="0" key="38" vel="0.85"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="t3">
+          <Clip time="0" duration="4" name="Pad-A">
+            <Notes>
+              <Note time="0" duration="4" channel="0" key="60" vel="0.6"/>
+              <Note time="0" duration="4" channel="0" key="64" vel="0.6"/>
+              <Note time="0" duration="4" channel="0" key="67" vel="0.6"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="t4">
+          <Clip time="0" duration="4" name="Lead-A">
+            <Notes>
+              <Note time="0" duration="0.5" channel="0" key="72" vel="0.8"/>
+              <Note time="0.5" duration="0.5" channel="0" key="74" vel="0.75"/>
+              <Note time="1" duration="1" channel="0" key="76" vel="0.8"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+      </Lanes>
+    </Scene>
+
+    <!-- Scene 1 -->
+    <Scene id="scene1" name="Scene 2">
+      <Lanes>
+        <ClipSlot track="t1">
+          <Clip time="0" duration="4" name="Synth 1-B">
+            <Notes>
+              <Note time="0" duration="2" channel="0" key="65" vel="0.8"/>
+              <Note time="2" duration="2" channel="0" key="69" vel="0.75"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="t2">
+          <Clip time="0" duration="4" name="Bass-B">
+            <Notes>
+              <Note time="0" duration="4" channel="0" key="33" vel="0.9"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+        <ClipSlot track="gt1">
+          <Clip time="0" duration="4" name="Grp Synth-B">
+            <Notes>
+              <Note time="0" duration="2" channel="0" key="53" vel="0.7"/>
+              <Note time="2" duration="2" channel="0" key="60" vel="0.7"/>
+            </Notes>
+          </Clip>
+        </ClipSlot>
+      </Lanes>
+    </Scene>
+  </Scenes>
+</Project>
