@@ -5,6 +5,7 @@ state waiters.  Uses oscsend.py/osclisten.py from the harness tools dir
 as subprocesses.
 """
 
+import contextlib
 import os
 import queue
 import re
@@ -171,6 +172,20 @@ class HarnessClient:
         status_byte, data1 = button
         self.send_midi(status_byte, data1, 0)
 
+    @contextlib.contextmanager
+    def holding(self, button):
+        """Context manager: hold a button, guarantee release on exit.
+
+        Usage:
+            with harness.holding(CLEAR):
+                harness.press(PAD[0][0])
+        """
+        self.hold(button)
+        try:
+            yield
+        finally:
+            self.release(button)
+
     def send_command(self, address, *type_value_pairs):
         """Send an arbitrary OSC command to the harness.
 
@@ -335,6 +350,13 @@ class HarnessClient:
             msg["name"] = args[1]
             msg["position"] = args[2]
             msg["type"] = args[3]
+            if len(args) >= 8:
+                msg["mute"] = args[4]
+                msg["solo"] = args[5]
+                msg["arm"] = args[6]
+                msg["volume"] = args[7]
+        elif address == "/state/track_bank" and len(args) >= 1:
+            msg["scroll_position"] = args[0]
         elif address == "/state/remote_control/page" and len(args) >= 3:
             msg["name"] = args[0]
             msg["index"] = args[1]

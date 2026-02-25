@@ -113,8 +113,12 @@ trait ClipMatrix:
       pressedAt: PressedAt
     ): Unit =
       if Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))) then () // clip.select() -- see above
-      else if track.isGroup.get() then sceneBank.getScene(row).launch()
       else if clip.isPlaying.get() && ext.transport.isPlaying.get() then clips.stop()
+      else if track.isGroup.get() then
+        // Group clip slots don't report isPlaying, so use transport state:
+        // if playing, stop the group; otherwise launch the scene.
+        if ext.transport.isPlaying.get() then clips.stop()
+        else sceneBank.getScene(row).launch()
       else
         launchOptions(clip) match
           case None => clip.launch()

@@ -51,7 +51,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 ## Global
 
 * **KNOB turn**: Move arranger playhead, jog through the project timeline. Hold **SHIFT** to adjust in finer increments (e.g. in TEMPO mode).
-* **SONG**: **SuperScene** mode (see below) or "home" (return to default Clip Launcher view if not already there)
+* **SONG**: Cycle between **Scene** and **SuperScene** submodes, or "home" (return to default Clip Launcher view if not already there)
 * **STEP**: Step Sequencer
 * **CLEAR**: Use in combination with other buttons to delete a scene (scene buttons), clip (a pad in session mode) or track (group buttons).
 * **DUPLICATE**: Combine with a scene pad (duplicate scene) or a track button (duplicate track). To copy clips in session mode keep the Duplicate button pressed; choose the source clip (it must be a clip with content, you can still select a different clip as the source); select the destination clip (this must be an empty clip, which can also be on a different track); release the Duplicate button.
@@ -79,9 +79,11 @@ In the default mapping the footswitch shares CCs with existing buttons: **tip** 
 * **SHIFT+TEMPO**: Tap Tempo
 * **TEMPO+KNOB turn**: change tempo
 * **GRID**: Hold to change launch grid quantization with SCENE buttons (see Launch grid quantization below)
-* **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically 
+* **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
+* SOLO and MUTE are mutually exclusive — activating one deactivates the other.
+* **CLEAR** in SOLO mode: unsolo all tracks. **CLEAR** in MUTE mode: unmute all tracks.
 * **AUTO**: Toggle arranger automation write. Flashing when automation override is active, press to restore.
 * **SHIFT+AUTO**: Toggle launcher automation write
 
@@ -108,7 +110,7 @@ from the track, for additional fun and profit (like Maschine).
 Scene buttons are lit in the color of their respective scenes or blank if scene does not exist. Use DPAD up/down arrows to scroll scenes and SHIFT-SCENE to select one of first 8 scene pages.
 
 * **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
-* **(PAD)**: On a group track, launch the group clip as a scene
+* **(PAD)**: On a group track: if the clip is playing, stop it; otherwise launch the group clip as a scene
 
 When inside a group, the SCENE buttons launch the group scenes, not the main ones.
 
@@ -460,7 +462,7 @@ Make a remote page called `MonsterFX` and fill it with buttons (macro knobs work
 
 SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperScenes are available per project.
 
-* **SONG** (short press) toggles SuperScene mode. Scene buttons are lit according to existing SuperScenes and rainbow colored.
+* **SONG** (short press) cycles between Scene and SuperScene submodes. In SuperScene mode, scene buttons are lit according to existing SuperScenes and rainbow colored.
 * Empty **SCENE(1-8)** creates new SuperScene from playing clips
 * Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Currently selected scene is **white**.
 * **CLEAR+SCENE(1-8)** deletes the SuperScene (clips and their playing states are unaffected)
@@ -489,15 +491,13 @@ Allows directly selecting devices in **CONTROL** mode. Hold **CONTROL** to acces
 
 * **PAD**: select device
 
-Keep **CONTROL** pressed for a little longer and Device Selector will become sticky - 
-it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**. 
+Keep **CONTROL** pressed for a little longer and Device Selector will become sticky —
+it will stay on after CONTROL button is released, unless you operate other controls while holding **CONTROL**.
 **CONTROL** button will flash when Device Selector is active.
 
-If you don't need Device Selector you can turn it off with:
+If you find Device Selector getting in the way, turn it off with **CONTROL+SELECT**. When off, holding CONTROL will not show the device overlay or intercept pad presses. Press **CONTROL+SELECT** again to re-enable.
 
-* **CONTROL+SELECT**: Toggle device matrix popup
-
-In this mode the clip matrix shows devices in each track, just like in Mixer. Press a pad
+When Device Selector is on, the clip matrix shows devices in each track, just like in Mixer. Press a pad
 to select a device (selecting a device also selects its track).
 
 Devices are color coded:
@@ -520,8 +520,8 @@ Additionally:
 
 ### Toggling devices
 
-When Device Selector is on, press **SELECT+PAD** to toggle a device. 
-Note that Device Selector must be in sticky mode so that CONTROL button is not held, otherwise SELECT will behave differently.
+When Device Selector is in sticky mode (CONTROL not held), press **SELECT+PAD** to toggle a device on/off.
+If CONTROL is held, SELECT will behave differently.
 
 ### Page navigation
 
@@ -602,7 +602,7 @@ After changing preferences it may be necessary to reinitialize the extension (tu
   * Selection is sticky across CONTROL deactivation/reactivation
   * Perform FX (touch-triggered) works in track/project remote mode
 * Group-aware clip/scene launching:
-  * Pressing a clip pad on a group track launches the scene
+  * Pressing a clip pad on a group track stops a playing clip, or launches the scene if not playing
   * Inside a group, SCENE buttons launch clips per-track
 * Added footswitch documentation (default mapping: tip=REC, ring=MUTE)
 * VU meters now clear when track is muted (@segudev)

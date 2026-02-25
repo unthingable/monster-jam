@@ -20,10 +20,8 @@ def _ensure_device_remote(harness, jam):
     """
     harness.press(LEVEL)
     jam.assert_mode_active("LEVEL")
-    time.sleep(0.3)
     harness.press(CONTROL)
     jam.assert_mode_active("CONTROL")
-    time.sleep(0.3)
 
     # Check if stickiness left us in remote scope — if so, toggle back
     idx, name = jam.control_submode()
@@ -39,17 +37,11 @@ def _toggle_remote(harness):
     presses MACRO (which triggers the toggle in MacroL.onActivate),
     then releases both.
     """
-    # We need CONTROL button physically held when MACRO fires.
-    # Since CONTROL is already active (CycleMode.Select stays on after release),
-    # we just hold the button and press MACRO.
-    harness.hold(CONTROL)
-    time.sleep(0.5)
-    harness.hold(MACRO)
-    time.sleep(0.5)
-    harness.release(MACRO)
-    time.sleep(0.5)
-    harness.release(CONTROL)
-    time.sleep(0.3)
+    with harness.holding(CONTROL):
+        time.sleep(0.1)
+        with harness.holding(MACRO):
+            time.sleep(0.1)
+        time.sleep(0.1)
 
 
 class TestRemoteScope:
@@ -93,12 +85,10 @@ class TestRemoteScope:
         harness.press(LEVEL)
         jam.assert_mode_active("LEVEL")
         jam.assert_mode_inactive("CONTROL")
-        time.sleep(0.3)
 
         # Reactivate CONTROL — should still be in remote scope
         harness.press(CONTROL)
         jam.assert_mode_active("CONTROL")
-        time.sleep(0.3)
 
         idx, name = jam.control_submode()
         assert "remote" in name and name != "strips remote", (
@@ -110,17 +100,14 @@ class TestRemoteScope:
         # Ensure CONTROL is not active
         harness.press(LEVEL)
         jam.assert_mode_active("LEVEL")
-        time.sleep(0.3)
 
-        harness.hold(MACRO)
-        time.sleep(0.5)
-        jam.assert_mode_active("MACRO")
+        with harness.holding(MACRO):
+            jam.assert_mode_active("MACRO")
 
-        idx, name = jam.control_submode()
-        assert "user bank" in name, (
-            f"MACRO alone should select user bank, got: '{name}' (idx={idx})"
-        )
-        harness.release(MACRO)
+            idx, name = jam.control_submode()
+            assert "user bank" in name, (
+                f"MACRO alone should select user bank, got: '{name}' (idx={idx})"
+            )
 
     def test_page_nav_in_remote_scope(self, harness, jam):
         """Left/Right navigate remote control pages when in remote scope."""
@@ -134,8 +121,6 @@ class TestRemoteScope:
 
         # Press RIGHT — should stay in remote scope
         harness.press(RIGHT)
-        time.sleep(0.3)
-
         idx2, name2 = jam.control_submode()
         assert name2 == name, (
             f"Right arrow should not change submode, was '{name}' now '{name2}'"
@@ -143,8 +128,6 @@ class TestRemoteScope:
 
         # Press LEFT — should stay in remote scope
         harness.press(LEFT)
-        time.sleep(0.3)
-
         idx3, name3 = jam.control_submode()
         assert name3 == name, (
             f"Left arrow should not change submode, was '{name}' now '{name3}'"

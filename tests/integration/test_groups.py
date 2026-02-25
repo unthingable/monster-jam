@@ -36,46 +36,31 @@ def _navigate_to_top(harness):
     """Navigate to top level by holding GROUP[0]+DPAD_UP several times.
 
     At top level, DPAD_UP is a no-op, so this is always safe.
-    Waits for the harness track bank to reflect top-level state before
-    returning (the bank is global and changes asynchronously).
+
+    Note: the harness track bank is a top-level-only createMainTrackBank
+    and does not follow MonsterJam's group navigation — we cannot verify
+    navigation state through it.  Use a generous settle time instead.
     """
     for _ in range(3):
-        harness.hold(GROUP[0])
-        time.sleep(0.2)
-        harness.press(DPAD_UP)
-        time.sleep(0.3)
-        harness.release(GROUP[0])
-        time.sleep(0.3)
-    # Wait for harness track bank to show top-level tracks (first track
-    # should be "Synth 1", not a group child like "Grp Synth").
-    harness.wait_for(
-        "/state/track",
-        predicate=lambda m: m.get("bank_index") == 0 and m.get("type") != "Group"
-            and not m.get("name", "").startswith("Grp "),
-        timeout=3.0,
-    )
-    harness.drain(timeout=0.3)
+        with harness.holding(GROUP[0]):
+            harness.press(DPAD_UP)
+            time.sleep(0.1)
+        time.sleep(0.1)
+    harness.drain(timeout=0.1)
 
 
 def _enter_group(harness, group_idx):
     """Navigate into a group track by holding GROUP[idx]+DPAD_DOWN.
 
-    Waits for the harness track bank to reflect group-internal state
-    before returning (the bank is global and changes asynchronously).
+    Note: the harness track bank is top-level-only and cannot observe
+    group navigation.  We settle with a time-based wait instead.
     """
-    harness.hold(GROUP[group_idx])
-    time.sleep(0.3)
-    harness.press(DPAD_DOWN)
+    with harness.holding(GROUP[group_idx]):
+        harness.press(DPAD_DOWN)
+        time.sleep(0.1)
+    # Settle time for MonsterJam to process navigation (no observable state)
     time.sleep(0.5)
-    harness.release(GROUP[group_idx])
-    time.sleep(0.3)
-    # Wait for harness track bank to show group children.
-    harness.wait_for(
-        "/state/track",
-        predicate=lambda m: m.get("bank_index") == 0 and m.get("name", "").startswith("Grp "),
-        timeout=3.0,
-    )
-    harness.drain(timeout=0.3)
+    harness.drain(timeout=0.1)
 
 
 class TestGroupClip:
@@ -83,6 +68,8 @@ class TestGroupClip:
 
     @pytest.fixture(autouse=True)
     def at_top_level(self, harness):
+        _navigate_to_top(harness)
+        yield
         _navigate_to_top(harness)
 
     def test_group_pad_launches_scene(self, harness):
@@ -126,8 +113,6 @@ class TestGroupScene:
 
         harness.press(SCENE[0])
 
-        # Group scene launch fires clipLauncherSlotBank().launch(0) for
-        # each track in the bank.  Verify at least one clip starts playing.
         msg = harness.wait_for(
             "/state/clip",
             predicate=lambda m: m.get("is_playing") == 1,
@@ -137,12 +122,96 @@ class TestGroupScene:
 
     def test_scene_at_top_launches_globally(self, harness):
         """At top level, pressing SCENE[0] still performs a global scene launch."""
-        # Sanity check: normal scene behavior at top level (isAtTop=true)
         harness.press(SCENE[0])
 
         msg = harness.wait_for(
             "/state/clip",
             predicate=lambda m: m.get("scene") == 0 and m.get("is_playing") == 1,
+            timeout=3.0,
+        )
+        assert msg["is_playing"] == 1
+
+
+class TestTrackGate:
+    """Track gate: hold GROUP to access DPAD navigation in/out of groups."""
+
+    @pytest.fixture(autouse=True)
+    def at_top_level(self, harness):
+        _navigate_to_top(harness)
+        yield
+        _navigate_to_top(harness)
+
+    def test_group_hold_enters_group_with_dpad_down(self, harness, jam):
+        """Hold GROUP[n] + press DPAD_DOWN enters the group track.
+
+        Verified by observing that the GROUP button LEDs are repainted
+        after navigation — inside the group, the LEDs reflect child
+        tracks instead of top-level tracks.  Direct clip observation
+        inside the group is not possible because the harness track bank
+        is top-level-only.
+        """
+        group_idx = _find_group_track(harness)
+        if group_idx is None:
+            pytest.skip("No group track found in current bank")
+
+        harness.drain(timeout=0.1)
+
+        # Navigate into the group (inline, without draining, so we can
+        # observe the LED repaint burst).
+        with harness.holding(GROUP[group_idx]):
+            harness.press(DPAD_DOWN)
+            time.sleep(0.1)
+        time.sleep(0.5)
+
+        # Entering a group triggers a surface repaint.  The GROUP button
+        # LEDs (NoteOn ch1, notes 8-15) are updated to reflect child
+        # tracks.  Collect MIDI that arrived during navigation.
+        # Filter out the held button itself (note 8+group_idx) to avoid
+        # false positives from the hold/release LED feedback.
+        held_note = GROUP[group_idx][1]
+        midi = harness.collect_midi(timeout=0.5)
+        group_leds = [
+            m for m in midi
+            if m.get("status") == 0x90
+            and m.get("channel") == 1
+            and 8 <= m.get("data1", -1) <= 15
+            and m.get("data1") != held_note
+        ]
+
+        # MonsterJam repaints all 8 GROUP LEDs when navigating into a
+        # group, so we expect updates on buttons other than the held one.
+        assert len(group_leds) > 0, (
+            "No GROUP LED updates observed after entering group "
+            f"(excluding held button note={held_note}) — "
+            "navigation may not have occurred"
+        )
+
+    def test_group_hold_exits_group_with_dpad_up(self, harness, jam):
+        """Hold GROUP[n] + DPAD_DOWN enters, then DPAD_UP exits the group."""
+        group_idx = _find_group_track(harness)
+        if group_idx is None:
+            pytest.skip("No group track found in current bank")
+
+        _enter_group(harness, group_idx)
+
+        # Exit via DPAD_UP
+        with harness.holding(GROUP[group_idx]):
+            harness.press(DPAD_UP)
+            time.sleep(0.1)
+        # Settle for navigation (no observable state)
+        time.sleep(0.5)
+        harness.drain(timeout=0.1)
+
+        # Verify we're back at top level by checking that pressing the
+        # group track's pad launches a scene (top-level group behavior)
+        harness.press(PAD[0][group_idx])
+        msg = harness.wait_for(
+            "/state/clip",
+            predicate=lambda m: (
+                m.get("scene") == 0
+                and m.get("is_playing") == 1
+                and m.get("track") != group_idx
+            ),
             timeout=3.0,
         )
         assert msg["is_playing"] == 1

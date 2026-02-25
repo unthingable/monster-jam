@@ -7,11 +7,9 @@ The harness MIDI proxy forwards MonsterJam's MIDI output as /midi/in OSC
 messages with args: channel, status, data1, data2.
 """
 
-import time
-
 import pytest
 
-from jam_midi import PLAY, LEVEL, AUX, GROUP
+from jam_midi import PLAY, LEVEL, AUX, CONTROL, MACRO, SOLO, MUTE, GROUP
 
 # MIDI status bytes (without channel)
 CC = 0xB0    # 176
@@ -51,7 +49,6 @@ class TestLeds:
             predicate=lambda m: _is_cc(PLAY[1], m) and m.get("data2", 0) > 0,
         )
 
-        time.sleep(0.3)
         harness.drain(timeout=0.1)
 
         harness.press(PLAY)
@@ -68,8 +65,7 @@ class TestLeds:
         """Activating LEVEL mode lights up the Level button LED."""
         # Ensure LEVEL is off first by activating a different strip mode
         harness.press(AUX)
-        time.sleep(0.3)
-        harness.drain(timeout=0.2)
+        harness.drain(timeout=0.1)
 
         harness.press(LEVEL)
 
@@ -84,18 +80,16 @@ class TestLeds:
         """Switching from LEVEL to AUX turns off Level LED and lights Aux LED."""
         # Ensure LEVEL is active
         harness.press(AUX)
-        time.sleep(0.3)
         harness.press(LEVEL)
         harness.wait_for(
             "/midi/in",
             predicate=lambda m: _is_cc(LEVEL[1], m) and m.get("data2", 0) > 0,
         )
-        time.sleep(0.3)
         harness.drain(timeout=0.1)
 
         # Switch to AUX — collect ALL MIDI from the burst
         harness.press(AUX)
-        midi = harness.collect_midi(timeout=1.5)
+        midi = harness.collect_midi(timeout=0.5)
 
         aux_on = [m for m in midi if _is_cc(AUX[1], m) and m["data2"] > 0]
         level_off = [m for m in midi if _is_cc(LEVEL[1], m) and m["data2"] == 0]
@@ -107,8 +101,7 @@ class TestLeds:
         """Selecting a different track updates group button LED color."""
         # Select group B first to force a state change on group A
         harness.press(GROUP[1])
-        time.sleep(0.3)
-        harness.drain(timeout=0.2)
+        harness.drain(timeout=0.1)
 
         group_a_note = GROUP[0][1]  # note number = 8
         harness.press(GROUP[0])
@@ -124,3 +117,80 @@ class TestLeds:
             timeout=2.0,
         )
         assert msg["data2"] > 0  # non-zero = some color at some brightness
+
+    def test_solo_led_on_off(self, harness):
+        """SOLO LED lights when solo mode activates, dims when deactivated."""
+        harness.drain(timeout=0.1)
+
+        harness.press(SOLO)
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(SOLO[1], m) and m.get("data2", 0) > 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] > 0
+
+        harness.drain(timeout=0.1)
+
+        harness.press(SOLO)
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(SOLO[1], m) and m.get("data2", 0) == 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] == 0
+
+    def test_mute_led_on_off(self, harness):
+        """MUTE LED lights when mute mode activates, dims when deactivated."""
+        harness.drain(timeout=0.1)
+
+        harness.press(MUTE)
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(MUTE[1], m) and m.get("data2", 0) > 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] > 0
+
+        harness.drain(timeout=0.1)
+
+        harness.press(MUTE)
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(MUTE[1], m) and m.get("data2", 0) == 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] == 0
+
+    def test_macro_led_during_gate(self, harness):
+        """MACRO LED lights while held, turns off on release."""
+        harness.drain(timeout=0.1)
+
+        with harness.holding(MACRO):
+            msg = harness.wait_for(
+                "/midi/in",
+                predicate=lambda m: _is_cc(MACRO[1], m) and m.get("data2", 0) > 0,
+                timeout=2.0,
+            )
+            assert msg["data2"] > 0
+
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(MACRO[1], m) and m.get("data2", 0) == 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] == 0
+
+    def test_control_led_on(self, harness):
+        """CONTROL LED lights when CONTROL mode activates."""
+        # Switch to a different strip mode first
+        harness.press(LEVEL)
+        harness.drain(timeout=0.1)
+
+        harness.press(CONTROL)
+        msg = harness.wait_for(
+            "/midi/in",
+            predicate=lambda m: _is_cc(CONTROL[1], m) and m.get("data2", 0) > 0,
+            timeout=2.0,
+        )
+        assert msg["data2"] > 0

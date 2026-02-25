@@ -6,8 +6,6 @@ remote control parameters.
 Mark: known_project
 """
 
-import time
-
 import pytest
 
 pytestmark = pytest.mark.known_project
@@ -17,25 +15,23 @@ pytestmark = pytest.mark.known_project
 def select_track_0(harness):
     """Ensure cursor is on track 0 (not master) for device tests."""
     harness.send_command("/track/select", ("i", "0"))
-    time.sleep(0.5)
-    harness.drain(timeout=0.3)
+    harness.drain(timeout=0.2)
 
 
 class TestDevices:
 
     def test_device_remote_page_next(self, harness):
         """Advancing the remote control page increments the page index."""
-        # Select device 0 (EQ) which should have 2+ remote control pages
         harness.send_command("/device/select", ("i", "0"))
-        time.sleep(0.3)
-        # Start from page 0 so "next" always has somewhere to go
         harness.send_command("/remote_control/page/select", ("i", "0"))
-        harness.wait_for(
+        msg0 = harness.wait_for(
             "/state/remote_control/page",
             predicate=lambda m: m.get("index") == 0,
             timeout=2.0,
         )
-        harness.drain(timeout=0.3)
+        if msg0.get("count", 999) < 2:
+            pytest.skip("Device has fewer than 2 remote pages")
+        harness.drain(timeout=0.1)
 
         harness.send_command("/remote_control/page/next")
 
@@ -48,11 +44,9 @@ class TestDevices:
 
     def test_device_remote_set(self, harness):
         """Setting a remote control parameter updates its value."""
-        # Ensure we're on device 0, page 0 with named parameters
         harness.send_command("/device/select", ("i", "0"))
         harness.send_command("/remote_control/page/select", ("i", "0"))
-        time.sleep(0.3)
-        harness.drain(timeout=0.3)
+        harness.drain(timeout=0.1)
 
         target_value = 0.5
         harness.send_command("/remote_control/set", ("i", "0"), ("f", str(target_value)))
