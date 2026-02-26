@@ -93,6 +93,40 @@ class TestGroupClip:
         )
         assert msg["is_playing"] == 1
 
+    def test_group_pad_launches_while_playing(self, harness):
+        """Pressing a group pad while transport is playing launches (not stops).
+
+        Regression test: prior to 8.0, the code checked transport state for
+        group tracks and called clips.stop() when playing.  The correct
+        behavior is to always call clip.launch(), which Bitwig translates
+        into a scene launch for group clip slots.
+        """
+        group_idx = _find_group_track(harness)
+        if group_idx is None:
+            pytest.skip("No group track found in current bank")
+
+        # Start transport playing first
+        harness.send_command("/transport/play")
+        harness.wait_for(
+            "/state/transport",
+            predicate=lambda m: m["state"] == "playing",
+        )
+
+        harness.press(PAD[0][group_idx])
+
+        # The group pad should launch the scene even though transport is
+        # already playing.  Verify a clip starts on a non-group track.
+        msg = harness.wait_for(
+            "/state/clip",
+            predicate=lambda m: (
+                m.get("scene") == 0
+                and m.get("is_playing") == 1
+                and m.get("track") != group_idx
+            ),
+            timeout=3.0,
+        )
+        assert msg["is_playing"] == 1
+
 
 class TestGroupScene:
     """S6.6: Inside a group, SCENE buttons launch clips per-track."""

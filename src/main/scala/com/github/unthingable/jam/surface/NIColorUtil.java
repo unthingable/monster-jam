@@ -74,16 +74,6 @@ public class NIColorUtil {
       return convertColorX(color.red(), color.green(), color.blue());
    }
 
-   /*    
-   public static int convertColor(final BitWigColor color) {
-      final Integer colorIndex = fixedColorTable.get(color.getLookupIndex());
-      if (colorIndex != null) {
-         return colorIndex.intValue();
-      }
-      return 68;
-   } 
-   */
-
    public static boolean isOff(final SettableColorValue color) {
       return color.green() == 0 && color.red() == 0 && color.blue() == 0;
    }
@@ -131,32 +121,6 @@ public class NIColorUtil {
       return color;
    }
 
-   public static int convertColor_(final float red, final float green, final float blue) {
-	final int rv = (int) Math.floor(red * 255);
-	final int gv = (int) Math.floor(green * 255);
-	final int bv = (int) Math.floor(blue * 255);
-	if (rv == 0 && gv == 0 && bv == 0) {
-	   return 0;
-	}
-	final int lookupIndex = rv << 16 | gv << 8 | bv;
-
-	final Hsb hsb = rgbToHsb(rv, gv, bv);
-	if (hsb.bright < 1 || hsb.sat < 3) {
-	   colorTable.put(lookupIndex, 68);
-	   return colorTable.get(lookupIndex);
-	}
-	int off = 0;
-	if (hsb.bright + hsb.sat < 22) {
-	   off = 1;
-	}
-	if (2 <= hsb.hue && hsb.hue <= 6 && hsb.bright < 13) {
-	   off = 2;
-	}
-	final int color_index = Math.min(hsb.hue + off + 1, 16);
-	final int color = color_index << 2;
-	colorTable.put(lookupIndex, color);
-	return color;
- }
    private static Hsb rgbToHsb(final int rv, final int gv, final int bv) {
       float[] hsbValues = new float[3];
       Color.RGBtoHSB(rv, gv, bv, hsbValues);

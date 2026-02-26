@@ -35,7 +35,7 @@ class TestSuperScene:
 
         # Enter SuperScene mode
         harness.press(SONG)
-        jam.assert_mode_active("sceneCycle")
+        jam.assert_mode_active("superSceneSub")
 
         # Press SCENE[0] to save the current playing state as a SuperScene
         harness.press(SCENE[0])
@@ -58,13 +58,16 @@ class TestSuperScene:
     def test_superscene_clear(self, harness, jam):
         """CLEAR+SCENE[0] in SuperScene mode should delete the slot without crashing."""
         harness.press(SONG)
-        jam.assert_mode_active("sceneCycle")
+        # Must wait for superSceneSub specifically — sceneCycle is always active,
+        # so asserting it would pass instantly before SONG is processed.
+        # CLEAR+SCENE in sceneSub (normal mode) would delete the Bitwig scene!
+        jam.assert_mode_active("superSceneSub")
 
         with harness.holding(CLEAR):
             harness.press(SCENE[0])
 
         # Mode should still be active — the delete does not exit SuperScene mode
-        jam.assert_mode_active("sceneCycle")
+        jam.assert_mode_active("superSceneSub")
 
     def test_song_cycles_submodes(self, harness, jam):
         """Pressing SONG multiple times cycles between scene submodes.

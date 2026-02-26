@@ -4,6 +4,8 @@ import os
 import subprocess
 import time
 import warnings
+import xml.etree.ElementTree as ET
+import zipfile
 
 import pytest
 
@@ -161,35 +163,85 @@ def project_name(harness, jam, _check_engine):
         return state.get("/state/project", {}).get("name", "")
 
 
-@pytest.fixture(scope="session")
-def _check_clips(harness, project_name):
-    """Verify the test project has clips.  Runs once per session.
+def _parse_dawproject_clips(path):
+    """Extract expected clip positions from a .dawproject file.
 
-    Launches scene 0 via OSC and checks for a playing clip.  If no clip
-    state arrives, the project is likely missing clips (e.g. they were
-    accidentally deleted by a previous test run).
+    Returns a set of (track_index, scene_index) tuples for slots that should
+    have content.  Track indices follow Bitwig's depth-first flattening of
+    the track tree (group track first, then its children).
+    """
+    with zipfile.ZipFile(path) as zf:
+        root = ET.parse(zf.open("project.xml")).getroot()
+
+    # Build track-id → flat-index mapping (depth-first, matching Bitwig)
+    track_index = {}
+    idx = 0
+
+    def _walk_tracks(parent):
+        nonlocal idx
+        for track in parent:
+            if track.tag != "Track":
+                continue
+            tid = track.get("id")
+            track_index[tid] = idx
+            idx += 1
+            # Recurse into group children
+            _walk_tracks(track)
+
+    structure = root.find("Structure")
+    if structure is not None:
+        _walk_tracks(structure)
+
+    # Collect clip slots from scenes
+    clips = set()
+    for scene_idx, scene in enumerate(root.findall(".//Scenes/Scene")):
+        for clip_slot in scene.findall(".//ClipSlot"):
+            track_id = clip_slot.get("track")
+            if track_id in track_index and clip_slot.find("Clip") is not None:
+                clips.add((track_index[track_id], scene_idx))
+
+    return clips
+
+
+@pytest.fixture(scope="session")
+def _check_project_clips(harness, project_name):
+    """Verify clip state matches what the .dawproject file defines.
+
+    Parses test-project.dawproject to determine which (track, scene) slots
+    should have clips, then checks harness.last_state for each one.  Exits
+    the session immediately on mismatch so failures are clearly attributed
+    to project damage rather than test bugs.
     """
     if project_name != EXPECTED_PROJECT:
         return  # wrong project — _skip_known_project_if_wrong handles it
 
-    harness.drain(timeout=0.1)
-    harness.send_command("/scene/launch", ("i", "0"))
-    try:
-        harness.wait_for(
-            "/state/clip",
-            predicate=lambda m: m.get("has_content") == 1,
-            timeout=5.0,
-        )
-    except TimeoutError:
+    expected = _parse_dawproject_clips(_PROJECT_FILE)
+    if not expected:
         pytest.exit(
-            "No clips found in test project.  Clips may have been deleted "
-            "by a previous test run.  Reimport: open test-project.dawproject "
-            "in Bitwig, or run with FORCE_RELOAD=1.",
+            "Could not extract any clips from test-project.dawproject.  "
+            "Is the file corrupt?",
             returncode=1,
         )
-    finally:
-        harness.send_command("/transport/stop")
-        harness.drain(timeout=0.3)
+
+    # Ensure clip state has arrived from the harness
+    harness.drain(timeout=0.3)
+    state = harness.last_state
+
+    missing = []
+    for track, scene in sorted(expected):
+        key = f"/state/clip/{track}/{scene}"
+        actual = state.get(key, {})
+        if actual.get("has_content") != 1:
+            missing.append((track, scene))
+
+    if missing:
+        coords = ", ".join(f"(track={t}, scene={s})" for t, s in missing)
+        pytest.exit(
+            f"PROJECT STATE MISMATCH — clips missing at {coords}.\n"
+            "The test project has been damaged (clips deleted by a previous "
+            "test run).  Reimport: open test-project.dawproject in Bitwig.",
+            returncode=1,
+        )
 
 
 @pytest.fixture(scope="session")
@@ -217,7 +269,7 @@ def _check_track0_devices(harness, project_name):
 
 
 @pytest.fixture(autouse=True)
-def _skip_known_project_if_wrong(request, project_name, _check_clips, _check_track0_devices):
+def _skip_known_project_if_wrong(request, project_name, _check_project_clips, _check_track0_devices):
     """Skip known_project tests if the wrong project is loaded."""
     marker = request.node.get_closest_marker("known_project")
     if marker is not None and project_name != EXPECTED_PROJECT:
@@ -246,9 +298,11 @@ def settle(harness, jam, log):
     harness.send_command("/track/bank/scroll", ("i", "0"))
     harness.send_command("/track/select", ("i", "0"))
 
-    # Deactivate sceneCycle if active
-    modes = jam.mode_state(timeout=1.0)
-    active = modes.get("active", []) if isinstance(modes, dict) else []
+    # Ensure we're in the default scene submode (sceneSub, not superSceneSub).
+    # sceneCycle is always active (it's in the init list), so checking for it
+    # would blindly toggle the submode every test.  Instead, only press SONG
+    # when superSceneSub is active to cycle back to sceneSub.
+    active, _ = jam.mode_state(timeout=1.0)
 
     # Fail loudly if CLEAR is still active despite the release above —
     # a stuck CLEAR turns every subsequent pad press into a clip delete.
@@ -256,14 +310,13 @@ def settle(harness, jam, log):
         # Try once more: explicit release + drain
         harness.release(CLEAR)
         harness.drain(timeout=0.2)
-        modes = jam.mode_state(timeout=1.0)
-        active = modes.get("active", []) if isinstance(modes, dict) else []
+        active, _ = jam.mode_state(timeout=1.0)
         assert "CLEAR" not in active, (
             "CLEAR modifier is stuck active after two release attempts — "
             "aborting to prevent clip deletion"
         )
 
-    if "sceneCycle" in active:
+    if "superSceneSub" in active:
         harness.press(SONG)
         harness.drain(timeout=0.1)
 

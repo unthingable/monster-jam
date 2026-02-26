@@ -110,9 +110,6 @@ from the track, for additional fun and profit (like Maschine).
 Scene buttons are lit in the color of their respective scenes or blank if scene does not exist. Use DPAD up/down arrows to scroll scenes and SHIFT-SCENE to select one of first 8 scene pages.
 
 * **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
-* **(PAD)**: On a group track: if the clip is playing, stop it; otherwise launch the group clip as a scene
-
-When inside a group, the SCENE buttons launch the group scenes, not the main ones.
 
 ## Clip Launcher
 
@@ -152,7 +149,7 @@ MonsterJam will attempt to retroactively launch the clip "on time" even if you a
   Effect track colors, currently selected send is in WHITE.
 * **CONTROL**: Edit device remote controls
   * **PAGE LEFT/PAGE RIGHT**: Select previous/next device in the device chain
-  * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up 
+  * **CONTROL + PAGE LEFT/PAGE RIGHT**: Select previous/next parameter page in the current device. Page buttons light up
     when there are pages to navigate to.
   * **CONTROL+SELECT**: Enable **Device Selector** mode (see below)
   * **CONTROL+MACRO**: Toggle between device controls and **track/project remote controls** (see below).
@@ -594,6 +591,13 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 
 # Changelog
 
+## 9.1
+
+* Fixed CONTROL button not blinking when Device Selector is active
+* Fixed GROUP button brightness inversion for certain track colors (green/cyan/teal range)
+* Restored active remote page switching in CONTROL mode
+* Restored scene/clip launching in group tracks
+
 ## 9.0
 
 * Added track and project remote controls via **CONTROL+MACRO** toggle
@@ -601,17 +605,13 @@ After changing preferences it may be necessary to reinitialize the extension (tu
   * Left/Right page navigation
   * Selection is sticky across CONTROL deactivation/reactivation
   * Perform FX (touch-triggered) works in track/project remote mode
-* Group-aware clip/scene launching:
-  * Pressing a clip pad on a group track stops a playing clip, or launches the scene if not playing
-  * Inside a group, SCENE buttons launch clips per-track
-* Added footswitch documentation (default mapping: tip=REC, ring=MUTE)
 * VU meters now clear when track is muted (@segudev)
+* Fixed user control bank offset
 * Optimized light updates to prevent redundant MIDI messages
 * Removed SCENE/MST remote selection from Device Selector from documentation (implemented as CONTROL+MACRO toggle)
+* Added footswitch documentation (default mapping: tip=REC, ring=MUTE)
 * Configurable OSC port setting (Debug preferences)
-* Fixed CONTROL button not blinking when Device Selector is active
-* Fixed user control bank offset
-* API 21, Java 21
+* API 21, Java 21, tested in 5.3.13
 
 ## 8.1
 

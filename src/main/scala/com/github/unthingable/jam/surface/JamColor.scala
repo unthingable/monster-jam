@@ -35,7 +35,7 @@ case class JamColorState(color: Int | Color, brightness: Int) extends InternalHa
     case c: Int   => c
     case c: Color => JamColorState.toColorIndex(c)
 
-  val value: Int = if brightness >= 0 then _color + brightness else 0
+  val value: Int = if brightness >= 0 then (_color & ~3) + brightness else 0
 
 object JamColorState:
   val empty: JamColorState = JamColorState(0, 0)

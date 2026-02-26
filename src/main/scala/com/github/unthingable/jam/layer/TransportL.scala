@@ -230,6 +230,7 @@ trait TransportL extends BindingDSL, Util:
       )
     } ++
       Vector(
+        // BB.omni added in d5f3e72 (unverified — was CLEAR broken without it in solo/mute modes?)
         EB(j.clear.st.press, "", () => superBank.itemView.map(prop).foreach(_.set(false)), BB.omni)
       ),
     gateMode = gateMode,

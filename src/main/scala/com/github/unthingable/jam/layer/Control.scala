@@ -54,7 +54,6 @@ trait Control:
       trackRemotePage.pageNames().markInterested()
       trackRemotePage.selectedPageIndex().markInterested()
 
-
       device.hasNext.markInterested()
       device.hasPrevious.markInterested()
       page.c.pageNames().markInterested()
@@ -117,7 +116,7 @@ trait Control:
             Seq.fill(8)(BarMode.DUAL)
           ):
 
-            j.stripBank.strips.forindex {
+            val _ = j.stripBank.strips.forindex {
               case (strip, idx) =>
                 strip.slider.isBeingTouched.markInterested()
                 strip.slider.isBeingTouched.addValueObserver(v =>
@@ -134,7 +133,7 @@ trait Control:
             }
 
             override def onActivate(): Unit =
-              sliderParams.forindex {
+              val _ = sliderParams.forindex {
                 case (param, idx) =>
                   j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
               }
@@ -147,9 +146,9 @@ trait Control:
                 EB(
                   j.left.st.release,
                   "scroll left",
-                  m(() => device.selectPrevious(), page.selectPrevious)
+                  m(() => { device.selectPrevious(); device.selectInEditor() }, page.selectPrevious)
                 ),
-                EB(j.right.st.release, "scroll right", m(() => device.selectNext(), page.selectNext)),
+                EB(j.right.st.release, "scroll right", m(() => { device.selectNext(); device.selectInEditor() }, page.selectNext)),
                 // FIXME make combo
                 EB(j.left.st.press, "left", () => if j.right.st.isPressed then select(currentSlice + 1)),
                 EB(j.right.st.press, "right", () => if j.left.st.isPressed then select(currentSlice + 1)),
@@ -163,7 +162,7 @@ trait Control:
               barMode = Seq.fill(8)(BarMode.DUAL),
               stripColor = Some(_ => Util.rainbow8(idx))
             ):
-              j.stripBank.strips.forindex {
+              val _ = j.stripBank.strips.forindex {
                 case (strip, stripIdx) =>
                   strip.slider.isBeingTouched.markInterested()
 
@@ -199,7 +198,7 @@ trait Control:
 
               override def onActivate(): Unit =
                 currentSlice = idx
-                sliderParams.forindex {
+                val _ = sliderParams.forindex {
                   case (param, idx) =>
                     j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
                 }
@@ -299,7 +298,7 @@ trait Control:
             JamParameter.Regular.apply,
             Seq.fill(8)(BarMode.DUAL),
           ):
-            j.stripBank.strips.forindex {
+            val _ = j.stripBank.strips.forindex {
               case (strip, idx) =>
                 strip.slider.isBeingTouched.addValueObserver(v =>
                   if isOn then
@@ -315,7 +314,7 @@ trait Control:
             }
 
             override def onActivate(): Unit =
-              sliderParams.forindex {
+              val _ = sliderParams.forindex {
                 case (param, idx) =>
                   j.stripBank.strips(idx).update((param.p.modulatedValue().get() * 127).toInt)
               }

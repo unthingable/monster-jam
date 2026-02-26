@@ -52,7 +52,7 @@ case class MonsterJamExt(
 
   type Schedulable = (Int, () => Boolean, () => Unit) | (Int, () => Unit)
 
-  final def sequence(tasks: List[Schedulable])(using Util.SelfEqual[Schedulable]): Unit =
+  final def sequence(tasks: List[Schedulable]): Unit =
     tasks match
       case Nil => ()
       case (wait, action) :: tt =>
@@ -72,7 +72,7 @@ case class MonsterJamExt(
           wait
         )
 
-  final inline def sequence(tasks: Schedulable*)(using Util.SelfEqual[Schedulable]): Unit = sequence(tasks.toList)
+  final inline def sequence(tasks: Schedulable*): Unit = sequence(tasks.toList)
 
   // for when you need a quick action
   def a(f: => Unit): HardwareActionBindable = host.createAction(() => f, () => "")
@@ -137,7 +137,7 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
     if ext.preferences.debugOutput.get() then
       initOsc(host)
 
-    host.showPopupNotification("MonsterJam Initialized")
+    host.showPopupNotification(s"MonsterJam ${MonsterJamExtensionDefinition.version} Initialized")
   end init
 
   private def initOsc(host: ControllerHost): Unit =

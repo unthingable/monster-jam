@@ -31,19 +31,19 @@ trait Level:
         }
         ext.preferences.limitLevel.addValueObserver(_ => if isOn then updateLimits(None))
 
-        proxies.forindex {
+        val _ = proxies.forindex {
           case (track, idx) =>
             val strip: JamTouchStrip = j.stripBank.strips(idx)
-            track.addVuMeterObserver(128, -1, true, v => 
+            track.addVuMeterObserver(128, -1, true, v =>
             if (isOn && !track.mute().get()) { // Check mute state before updating VU meter
               strip.update(v)
               })
-        
+
             // Mute State Observer
             track.mute().addValueObserver(isMuted => {
             // If the track is muted and the volume mode is on, clear the VU meter display
-            if (isMuted && isOn) { 
-              strip.update(0) 
+            if (isMuted && isOn) {
+              strip.update(0)
             }
             })
         }

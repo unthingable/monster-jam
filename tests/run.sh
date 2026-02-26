@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run integration tests. Usage:
-#   tests/run.sh              # Tier 1 only (any project state)
-#   tests/run.sh --all        # All tiers (needs test project)
-#   tests/run.sh [pytest args]  # Pass-through, e.g. tests/run.sh -k play -v
+#   tests/run.sh                    # Tier 1 only (any project state)
+#   tests/run.sh --all              # All tiers (needs test project)
+#   tests/run.sh [pytest args]      # Pass-through, e.g. tests/run.sh -k play -v
 
 set -euo pipefail
 cd "$(dirname "$0")/integration"

@@ -48,7 +48,7 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
   protected var activeAt: Option[Instant] = None
 
   import ModeState.*
-  protected var modeState: (ModeState, Instant) = (Inactive, Instant.now())
+  protected var modeState = (Inactive, Instant.now())
 
   /** Current mode state, set externally by ModeGraph, read by mode implementations. For when mode needs to know when
     * it's being activated or shut down.
@@ -87,12 +87,10 @@ trait ModeLayer extends IntActivatedLayer, HasId derives CanEqual:
 
   override def toggleEvent = if isOn then deactivateEvent else activateEvent
 
-  def lightOn: BooleanSupplier = () => isOn
-
   protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
     val ml = JamControl.maybeLight(b)
     Util.println(s"$id light: $ml $silent")
-    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l, lightOn))
+    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l, () => isOn))
 
   // let's just say we're too lazy to import cats and make a proper Show instance
   override def toString(): String = s"ML:$id"
@@ -340,7 +338,11 @@ abstract class ModeButtonCycleLayer(
       case _ => Vector.empty
 
   // overrideable
-  override def lightOn: BooleanSupplier = () => isOn
+  def lightOn: BooleanSupplier = () => isOn
+
+  override protected def maybeLightB(b: HasButtonState): Seq[SupBooleanB] =
+    val ml = JamControl.maybeLight(b)
+    ml.filter(_ => !silent).toSeq.map((l: OnOffHardwareLight) => SupBooleanB(l, lightOn))
 
   // if overriding, remember to include these
   def modeBindings: Seq[Binding[?, ?, ?]] = cycleMode match

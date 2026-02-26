@@ -43,17 +43,16 @@ trait SceneL:
               1
             )
         ),
-        EB(btn.st.press, s"scene $i press", () => handlePress(scene, i))
+        EB(btn.st.press, s"scene $i press", () => handlePress(scene))
       )
     }
 
-    private def handlePress(scene: Scene, sceneIdx: Int): Unit =
+    private def handlePress(scene: Scene): Unit =
       if GlobalMode.Clear.isOn then scene.deleteObject()
       else if GlobalMode.Duplicate.isOn then scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
       else
         superSceneSub.lastScene = None
-        if isAtTop.get() then scene.launch()
-        else EIGHT.foreach(col => trackBank.getItemAt(col).clipLauncherSlotBank().launch(sceneIdx))
+        scene.launch()
 
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util:
     val maxTracks =

@@ -41,7 +41,6 @@ trait ClipMatrix:
     override val modeBindings: Seq[Binding[?, ?, ?]] = j.matrix.indices.flatMap { col =>
       val track = trackBank.getItemAt(col)
       track.isQueuedForStop.markInterested()
-      track.isGroup.markInterested()
 
       val clips = track.clipLauncherSlotBank()
 
@@ -71,7 +70,7 @@ trait ClipMatrix:
           EB(
             btn.st.release,
             s"clipRelease $row:$col",
-            () => handleClipRelease(track, row, clip, clips, pressedAt(col))
+            () => handleClipRelease(clip, clips, pressedAt(col))
           ),
         )
       }
@@ -106,19 +105,12 @@ trait ClipMatrix:
       else pressedAt.value = Instant.now()
 
     private def handleClipRelease(
-      track: Track,
-      row: Int,
       clip: ClipLauncherSlot,
       clips: ClipLauncherSlotBank,
       pressedAt: PressedAt
     ): Unit =
       if Instant.now().isAfter(pressedAt.value.plus(Duration.ofSeconds(1))) then () // clip.select() -- see above
       else if clip.isPlaying.get() && ext.transport.isPlaying.get() then clips.stop()
-      else if track.isGroup.get() then
-        // Group clip slots don't report isPlaying, so use transport state:
-        // if playing, stop the group; otherwise launch the scene.
-        if ext.transport.isPlaying.get() then clips.stop()
-        else sceneBank.getScene(row).launch()
       else
         launchOptions(clip) match
           case None => clip.launch()
