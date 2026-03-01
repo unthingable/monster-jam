@@ -186,6 +186,27 @@ class HarnessClient:
         finally:
             self.release(button)
 
+    def send_sysex(self, hex_string):
+        """Send a sysex message via the harness MIDI proxy.
+
+        `hex_string` is a hex-encoded sysex message (e.g. "f0...f7").
+        """
+        self._osc_send("/midi/sysex/send", ("s", hex_string))
+
+    @contextlib.contextmanager
+    def holding_shift(self):
+        """Context manager: hold SHIFT (sysex), guarantee release on exit.
+
+        SHIFT on the JAM is sysex-based, not CC.  Uses the constants from
+        jam_midi to send the correct sysex down/up messages.
+        """
+        from jam_midi import SHIFT_DOWN_SYSEX, SHIFT_UP_SYSEX
+        self.send_sysex(SHIFT_DOWN_SYSEX)
+        try:
+            yield
+        finally:
+            self.send_sysex(SHIFT_UP_SYSEX)
+
     def send_command(self, address, *type_value_pairs):
         """Send an arbitrary OSC command to the harness.
 

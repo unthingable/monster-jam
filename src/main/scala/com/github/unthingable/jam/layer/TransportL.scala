@@ -62,23 +62,35 @@ trait TransportL extends BindingDSL, Util:
     ext.transport.isArrangerRecordEnabled.markInterested()
     ext.transport.isAutomationOverrideActive.markInterested()
     ext.transport.isArrangerAutomationWriteEnabled.markInterested()
+    ext.application.hasActiveEngine.markInterested()
+
+    var engineActivating: Boolean = false
+    ext.application.hasActiveEngine.addValueObserver(_ =>
+      engineActivating = false
+    )
 
     inline def shiftResume = ext.preferences.shiftPlay.get() == JamSettings.ShiftPlay.`Pause/Resume`
 
     var playPressed: Option[Instant] = None
 
     def playPress(): Unit =
-      val now              = Instant.now
-      lazy val isDoubleTap = playPressed.exists(_.isAfter(now.minusMillis(200)))
-      val isPlaying        = ext.transport.isPlaying
-      val t                = ext.transport
-      (isPlaying.get(), j.Mod.Shift.btn.isPressed) match
-        case (true, _) if isDoubleTap => restart(true)
-        case (true, true)             => if shiftResume then t.stop() else restart(true)
-        case (true, false)            => t.stop()
-        case (false, false)           => t.play()
-        case (false, true)            => if shiftResume then t.continuePlayback() else restart(true)
-      playPressed = Some(now)
+      if !ext.application.hasActiveEngine.get() then
+        if !engineActivating then
+          engineActivating = true
+          ext.application.activateEngine()
+        playPressed = Some(Instant.now)
+      else
+        val now              = Instant.now
+        lazy val isDoubleTap = playPressed.exists(_.isAfter(now.minusMillis(200)))
+        val isPlaying        = ext.transport.isPlaying
+        val t                = ext.transport
+        (isPlaying.get(), j.Mod.Shift.btn.isPressed) match
+          case (true, _) if isDoubleTap => restart(true)
+          case (true, true)             => if shiftResume then t.stop() else restart(true)
+          case (true, false)            => t.stop()
+          case (false, false)           => t.play()
+          case (false, true)            => if shiftResume then t.continuePlayback() else restart(true)
+        playPressed = Some(now)
 
     def restart(go: Boolean): Unit =
       val h = ext.host
@@ -100,7 +112,11 @@ trait TransportL extends BindingDSL, Util:
     override val modeBindings = Vector(
       // HB(j.play.btn.pressed, "play pressed", playPressAction, BB(tracked = false)),
       EB(j.play.st.press, "", () => playPress(), BB(tracked = false)),
-      SupBooleanB(j.play.light, ext.transport.isPlaying),
+      SupBooleanB(j.play.light, () =>
+        if !ext.application.hasActiveEngine.get() then
+          if engineActivating then j.Mod.blink3 else j.Mod.blink
+        else ext.transport.isPlaying.get()
+      ),
       EB(
         j.noteRepeat.st.press,
         "note repeat pressed",
@@ -159,7 +175,9 @@ trait TransportL extends BindingDSL, Util:
       b(j.record, "record", overdub),
       b(j.left, "metro", metro),
       b(j.auto, "auto", auto)
-    ).flatten
+    ).flatten ++ Vector(
+      EB(j.mute.st.press, "stop all clips", () => EIGHT.foreach(col => trackBank.getItemAt(col).stop()))
+    )
 
   lazy val shiftTempo = SimpleModeLayer(
     "shiftTempo",

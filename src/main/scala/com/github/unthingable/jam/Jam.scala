@@ -31,6 +31,7 @@ class Jam(implicit val ext: MonsterJamExt)
       Control,
       MacroL,
       SceneL,
+      SelectL,
       StepSequencer:
 
   implicit val j: JamSurface = new JamSurface()
@@ -63,7 +64,34 @@ class Jam(implicit val ext: MonsterJamExt)
   for i <- 0 until superBank.getCapacityOfBank() do
     superBank.getItemAt(i).clipLauncherSlotBank().addIsSelectedObserver(selectedObserver(i))
 
-  given tracker: TrackTracker = UnsafeTracker(superBank)
+  given tracker: TrackTracker = ChannelIdTracker(superBank)
+
+
+  // SuperScene storage
+  val sceneStore: SettableStringValue =
+    ext.document.getStringSetting(
+      "superScene",
+      "MonsterJam",
+      ((superBank.getSizeOfBank * superBank.sceneBank().getSizeOfBank * 4) / 3) * 5,
+      ""
+    )
+  sceneStore.asInstanceOf[Setting].hide()
+
+  // StepSequencer state storage
+  val stepStore: SettableStringValue =
+    ext.document.getStringSetting("stepState", "MonsterJam", 1024 * 1024, "")
+  stepStore.asInstanceOf[Setting].hide()
+
+  // Migration: rewrite old Int-based TrackIds in document settings before components read them.
+  // Runs synchronously so stores are migrated before lazy components (superSceneSub, stepSequencer) read them.
+  private val migrator = TrackIdMigrator(
+    tracker.asInstanceOf[ChannelIdTracker],
+    sceneStore,
+    stepStore,
+  )
+  migrator.migrate()
+  ext.application.projectName().addValueObserver(_ => migrator.migrate())
+
 
   lazy val sceneBank: SceneBank     = trackBank.sceneBank()
   lazy val masterTrack: MasterTrack = ext.host.createMasterTrack(8)
@@ -128,7 +156,7 @@ class Jam(implicit val ext: MonsterJamExt)
     play         -> top,
     position     -> Coexist(tempoLayer),
     sceneCycle   -> top,
-    bottom       -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages),
+    bottom       -> Coexist(globalQuant, shiftTransport, shiftMatrix, shiftPages, selectNav),
     bottom       -> Exclusive(GlobalMode.Clear, GlobalMode.Duplicate, GlobalMode.Select),
     trackGroup   -> Exclusive(solo, mute, record),
     bottom       -> Coexist(clipMatrix, pageMatrix, stepSequencer, stepGateActivator),

@@ -1,10 +1,12 @@
 """Tier 1 — Extended transport and global feature tests.
 
 Covers AUTO, TEMPO, track-hold combos (solo/mute/arm), Control Slice mode,
-and AUX effect track selection.  Works with any Bitwig project state.
+AUX effect track selection, and stop-all-clips.
 """
 
 import time
+
+import pytest
 
 from jam_midi import (
     AUTO,
@@ -438,3 +440,44 @@ class TestAux:
         # Clean up
         harness.press(LEVEL)
         jam.assert_mode_active("LEVEL")
+
+
+# ---------------------------------------------------------------------------
+# Stop all clips (SHIFT+MUTE)
+# ---------------------------------------------------------------------------
+
+class TestStopAllClips:
+    """SHIFT+MUTE stops all playing clips (v9.1 feature)."""
+
+    @pytest.mark.known_project
+    def test_shift_mute_stops_all_clips(self, harness):
+        """Launch scene via OSC, then SHIFT+MUTE to stop all clips."""
+        # Launch scene 0 so clips are playing
+        harness.send_command("/scene/launch", ("i", "0"))
+        harness.wait_for(
+            "/state/clip",
+            predicate=lambda m: m.get("scene") == 0 and m.get("is_playing") == 1,
+            timeout=3.0,
+        )
+
+        # Hold SHIFT (sysex) and press MUTE
+        with harness.holding_shift():
+            time.sleep(0.1)  # let shiftTransport mode activate
+            harness.press(MUTE)
+
+        # All clips in scene 0 should stop
+        # Check multiple tracks to confirm it's a stop-all, not just one track
+        harness.wait_for(
+            "/state/clip",
+            predicate=lambda m: m.get("scene") == 0 and m.get("is_playing") == 0,
+            timeout=3.0,
+        )
+
+        # Verify no clips are still playing across visible tracks
+        time.sleep(0.5)
+        state = harness.last_state
+        playing = [
+            key for key, val in state.items()
+            if key.startswith("/state/clip/") and val.get("is_playing") == 1
+        ]
+        assert len(playing) == 0, f"Clips still playing after SHIFT+MUTE: {playing}"

@@ -5,7 +5,7 @@ import com.bitwig.extension.controller.api.CursorTrack
 import com.bitwig.extension.controller.api.DeviceBank
 import com.bitwig.extension.controller.api.NoteStep
 import com.bitwig.extension.controller.api.PinnableCursorClip
-import com.bitwig.extension.controller.api.Setting
+import com.bitwig.extension.controller.api.SettableStringValue
 import com.github.unthingable.MonsterJamExt
 import com.github.unthingable.Util
 import com.github.unthingable.framework.Watched
@@ -19,7 +19,7 @@ import scala.collection.mutable
 
 import Util.trace
 
-transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
+transparent trait TrackedState(val selectedClipTrack: CursorTrack, val stateStore: SettableStringValue)(using
   ext: MonsterJamExt,
   tracker: TrackTracker
 ):
@@ -28,13 +28,9 @@ transparent trait TrackedState(val selectedClipTrack: CursorTrack)(using
   private var _tid: Option[TrackId] = None
   private val stateCache            = mutable.HashMap.empty[TrackId, SeqState]
 
-  private val bufferSize = 1024 * 1024
-  private val stateStore = ext.document.getStringSetting("stepState", "MonsterJam", bufferSize, "")
-  stateStore.asInstanceOf[Setting].hide()
-
   ext.application.projectName().addValueObserver(_ => restoreState())
   selectedClipTrack.position.addValueObserver(pos =>
-    val tid = tracker.trackId(selectedClipTrack) // .trace(s"TrackedState: caching id for $pos")
+    val tid = tracker.idForPosition(pos)
     _tid = tid
     updateState(tid)
   )

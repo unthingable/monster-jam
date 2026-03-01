@@ -62,6 +62,7 @@ Chorded buttons are sensitive to order. For example, **SHIFT+CONTROL** is not th
 * **NOTE REPEAT**: Fill mode
 * **MACRO**: Activate **Track Selector** and **user controls** mode (see **CONTROL**)
 * **CONTROL+MACRO**: Toggle between device remotes and **track/project remotes** (see **CONTROL**)
+* **SELECT+PAGE LEFT/PAGE RIGHT**: Switch between open Bitwig projects
 
 ## Footswitch
 
@@ -69,7 +70,7 @@ In the default mapping the footswitch shares CCs with existing buttons: **tip** 
 
 ## Transport
 
-* **PLAY**: Start/Stop playback
+* **PLAY**: Start/Stop playback. When audio engine is inactive, PLAY flashes — press to reactivate.
 * **REC**: Toggle recording
 * **REC (hold)**: Arm tracks via track buttons
 * **SHIFT+PLAY** Restart or pause/continue (see **Settings**)
@@ -82,6 +83,7 @@ In the default mapping the footswitch shares CCs with existing buttons: **tip** 
 * **SOLO**: Solo mode, press track buttons to enable/disable solo. Keep holding SOLO button to automatically
   disable Solo mode when released.
 * **MUTE**: Mute mode, same as Solo
+* **SHIFT+MUTE**: Stop all playing clips
 * SOLO and MUTE are mutually exclusive — activating one deactivates the other.
 * **CLEAR** in SOLO mode: unsolo all tracks. **CLEAR** in MUTE mode: unmute all tracks.
 * **AUTO**: Toggle arranger automation write. Flashing when automation override is active, press to restore.
@@ -109,7 +111,7 @@ from the track, for additional fun and profit (like Maschine).
 
 Scene buttons are lit in the color of their respective scenes or blank if scene does not exist. Use DPAD up/down arrows to scroll scenes and SHIFT-SCENE to select one of first 8 scene pages.
 
-* **SCENE(1-8)**: Launch the scenes in the current page of the scene bank
+* **SCENE(1-8)**: Launch the scenes in the current page of the scene bank. Pressing a scene that is already playing stops all clips on visible tracks instead of re-launching. Playing scenes are lit at full brightness.
 
 ## Clip Launcher
 
@@ -461,7 +463,7 @@ SuperScenes are arbitrary groups of clips, similar to Maschine. Up to 64 SuperSc
 
 * **SONG** (short press) cycles between Scene and SuperScene submodes. In SuperScene mode, scene buttons are lit according to existing SuperScenes and rainbow colored.
 * Empty **SCENE(1-8)** creates new SuperScene from playing clips
-* Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Currently selected scene is **white**.
+* Lit **SCENE(1-8)** launches clips in that SuperScene and stops others. Pressing the active SuperScene again stops all clips and deactivates it. Currently selected scene is **white**.
 * **CLEAR+SCENE(1-8)** deletes the SuperScene (clips and their playing states are unaffected)
 * **SHIFT+SCENE(1-8)** selects a SuperScene page (see **Page navigation**)
 
@@ -474,13 +476,7 @@ is entered, SuperScene will not be able to launch or stop it directly.
 If a group track containing SuperScene clips in its inner tracks was folded, 
 SuperScene will launch the _entire_ last (bottom-most) scene of that group track that has a playing clip.
 
-**NOTE**: SuperScenes are experimental and are built using undocumented implementation details of Bitwig API to derive unique track IDs. There is a chance things will randomly stop working with a new release.
-
-### ID collision warnings
-
-Due to experimental nature of the underlying track ID mechanism, MonsterJam monitors track IDs for uniqueness. If a duplicate ID is detected, a notification will pop up with the names of tracks.
-
-If this happens, try duplicating the offending track and deleting the original, and definitely let me know.
+**NOTE**: SuperScenes use Bitwig's official `channelId()` API (v20+) for stable track identification. Legacy projects using the old reflection-based IDs are migrated automatically on load.
 
 ## Device Selector
 
@@ -590,6 +586,16 @@ After changing preferences it may be necessary to reinitialize the extension (tu
 * Hide disabled: tracks — disabled tracks are skipped
 
 # Changelog
+
+## 9.2
+
+* **Stop all clips**: **SHIFT+MUTE** stops all playing clips on visible tracks
+* **Scene toggle**: pressing a playing scene now stops its clips instead of re-launching; playing scenes light at full brightness
+* **SuperScene toggle**: pressing the active SuperScene stops all clips and deactivates it
+* **Project navigation**: **SELECT+PAGE LEFT/PAGE RIGHT** switches between open Bitwig projects
+* **Audio engine indicator**: PLAY button flashes when audio engine is inactive — press to reactivate
+* **Stable track IDs**: SuperScenes and step sequencer state now use the official `channelId()` API instead of reflection-based hashing. Legacy project data is migrated automatically on load.
+* Fixed step sequencer clip creation crashing when transport is playing (deprecated launch mode)
 
 ## 9.1
 

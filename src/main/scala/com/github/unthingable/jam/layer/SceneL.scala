@@ -1,8 +1,6 @@
 package com.github.unthingable.jam.layer
 
 import com.bitwig.extension.controller.api.Scene
-import com.bitwig.extension.controller.api.SettableStringValue
-import com.bitwig.extension.controller.api.Setting
 import com.github.unthingable.Util
 import com.github.unthingable.framework.binding.Binding
 import com.github.unthingable.framework.binding.BindingBehavior
@@ -14,7 +12,10 @@ import com.github.unthingable.framework.mode.ModeCycleLayer
 import com.github.unthingable.framework.mode.ModeLayer
 import com.github.unthingable.framework.mode.SimpleModeLayer
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.jam.ChannelIdTracker
+import com.github.unthingable.jam.LegacyTrackId
 import com.github.unthingable.jam.TrackId
+import com.github.unthingable.jam.TrackIdMigration
 import com.github.unthingable.jam.surface.JamColor.JamColorBase
 import com.github.unthingable.jam.surface.JamColorState
 import com.github.unthingable.jam.surface.JamRgbButton
@@ -37,47 +38,67 @@ trait SceneL:
         SupColorStateB(
           btn.light,
           () =>
+            val isPlaying = EIGHT.exists(col =>
+              trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(i).isPlaying.get()
+            )
             JamColorState(
               if scene.clipCount().get() > 0 then JamColorState.toColorIndex(scene.color().get())
               else JamColorBase.OFF,
-              1
+              if isPlaying then 3 else 1
             )
         ),
-        EB(btn.st.press, s"scene $i press", () => handlePress(scene))
+        EB(btn.st.press, s"scene $i press", () => handlePress(scene, i))
       )
     }
 
-    private def handlePress(scene: Scene): Unit =
+    private def handlePress(scene: Scene, idx: Int): Unit =
       if GlobalMode.Clear.isOn then scene.deleteObject()
       else if GlobalMode.Duplicate.isOn then scene.nextSceneInsertionPoint().copySlotsOrScenes(scene)
       else
-        superSceneSub.lastScene = None
-        scene.launch()
+        val isPlaying = EIGHT.exists(col =>
+          trackBank.getItemAt(col).clipLauncherSlotBank().getItemAt(idx).isPlaying.get()
+        )
+        if isPlaying then EIGHT.foreach(col => trackBank.getItemAt(col).stop())
+        else
+          superSceneSub.lastScene = None
+          scene.launch()
 
   object superSceneSub extends SimpleModeLayer("superSceneSub") with Util:
     val maxTracks =
       superBank.getSizeOfBank // can be up to 256 before serialization needs to be rethought
     val maxScenes  = superBank.sceneBank().getSizeOfBank
-    val bufferSize = ((maxTracks * maxScenes * 4) / 3) * 5 // will this be enough with the new serializer? no idea
     var pageIndex  = 0
     var lastScene: Option[Int] = None
-
-    val sceneStore: SettableStringValue =
-      ext.document.getStringSetting("superScene", "MonsterJam", bufferSize, "")
-    sceneStore.asInstanceOf[Setting].hide()
 
     val superScenes: mutable.ArraySeq[Map[TrackId, Int]] =
       mutable.ArraySeq.from(fromSettings(sceneStore.get()))
 
     private def fromSettings(s: String): Iterable[Map[TrackId, Int]] =
+      if s == null || s.isEmpty then return Vector.fill(maxTracks)(Map.empty)
       Util
         .deserialize[superScenes.type](s)
         .filterOrElse(_.nonEmpty, new Exception("Deserialized empty"))
-        .left
-        .map { e =>
-          Util.println(s"Failed to deserialize superscenes: ${e}"); e
-        }
-        .getOrElse(Vector.fill(maxTracks)(Map.empty))
+        match
+          case Right(data) => data
+          case Left(e) =>
+            // Try legacy format (Int-based TrackId with old serialVersionUID)
+            type LegacyScenes = mutable.ArraySeq[Map[LegacyTrackId, Int]]
+            TrackIdMigration.deserializeLegacy[LegacyScenes](s) match
+              case Right(legacy) =>
+                val mapping = TrackIdMigration.buildMapping(superBank, tracker.asInstanceOf[ChannelIdTracker])
+                if mapping.nonEmpty then
+                  val migrated = mutable.ArraySeq.from(legacy.map(_.flatMap {
+                    case (LegacyTrackId(hash), clip) => mapping.get(hash).map(TrackId(_) -> clip)
+                  }))
+                  sceneStore.set(Util.serialize(migrated))
+                  Util.println(s"Migrated superscenes in-place (${migrated.count(_.nonEmpty)} non-empty)")
+                  migrated
+                else
+                  Util.println("Legacy superscenes found but track mapping not yet available")
+                  Vector.fill(maxTracks)(Map.empty)
+              case Left(_) =>
+                Util.println(s"Failed to deserialize superscenes: $e")
+                Vector.fill(maxTracks)(Map.empty)
 
     ext.application.projectName().markInterested()
     ext.application
@@ -121,12 +142,13 @@ trait SceneL:
 
     def pressed(sceneIdx: Int): Unit =
       if GlobalMode.Clear.isOn then superScenes.update(sceneIdx, Map.empty)
+      else if lastScene.contains(sceneIdx) then
+        (0 until maxTracks).foreach(idx => superBank.getItemAt(idx).stop())
+        lastScene = None
       else if superScenes(sceneIdx).isEmpty then
         superScenes.update(sceneIdx, scan().map(ct => ct.trackId -> ct.clip).toMap)
         val data = Util.serialize(superScenes)
-        Util.println(
-          s"saving superScenes: ${data.size} chars, ${data.size.doubleValue() / bufferSize} of buffer"
-        )
+        Util.println(s"saving superScenes: ${data.size} chars")
         sceneStore.set(data)
       else recall(sceneIdx)
 

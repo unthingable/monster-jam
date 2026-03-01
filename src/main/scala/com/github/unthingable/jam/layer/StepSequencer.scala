@@ -59,7 +59,7 @@ trait StepSequencer extends BindingDSL:
       extends ModeButtonLayer("STEP", j.step, GateMode.AutoInverse),
         MultiModeLayer,
         ListeningLayer,
-        TrackedState(selectedClipTrack),
+        TrackedState(selectedClipTrack, stepStore),
         StepCap,
         StepModes:
     // a mirror of the bitwig clip, channel / x / y
@@ -403,7 +403,7 @@ trait StepSequencer extends BindingDSL:
       val slot: ClipLauncherSlot      = slots.getItemAt(slotNum)
       track.createNewLauncherClip(slotNum)
       slots.select(slotNum)
-      if ext.transport.isPlaying().get() then slot.launchWithOptions("default", "continue_with_quantization")
+      if ext.transport.isPlaying().get() then slot.launchWithOptions("default", "continue_or_synced")
 
     override def onActivate(): Unit =
       // restoreState()

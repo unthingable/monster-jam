@@ -27,7 +27,8 @@ object KeyMaster:
 
   enum KeyType derives CanEqual:
     case Modifier, Normal
-
+  
+  // JC is a vitrual button triggered by a key chord. It emits ComboEvents and can be used in bindings like a normal button
   case class JC(b: NamedButton, mods: NamedButton*)(using ext: MonsterJamExt) extends Clearable, HasId:
     override val id = b.id + "<" + mods.map(_.id).mkString("+")
 

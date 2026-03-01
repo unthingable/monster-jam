@@ -11,7 +11,7 @@ import pytest
 
 from harness_client import HarnessClient
 from jam_client import JamClient
-from jam_midi import CLEAR, DUPLICATE, LEVEL, SONG
+from jam_midi import CLEAR, DUPLICATE, LEVEL, SHIFT_UP_SYSEX, SONG
 from log_watcher import LogWatcher
 
 # Destructive modifiers released before each test.  CLEAR+pad deletes clips,
@@ -31,6 +31,8 @@ def harness():
     client = HarnessClient(reply_port=9002)
     client.connect()
     yield client
+    # Stop transport so Bitwig isn't left playing after the suite
+    client.send_command("/transport/stop")
     client.disconnect()
 
 
@@ -167,38 +169,44 @@ def _parse_dawproject_clips(path):
     """Extract expected clip positions from a .dawproject file.
 
     Returns a set of (track_index, scene_index) tuples for slots that should
-    have content.  Track indices follow Bitwig's depth-first flattening of
-    the track tree (group track first, then its children).
+    have content.  Track indices follow Bitwig's flat track bank: top-level
+    tracks are numbered sequentially, and group children are hidden (groups
+    are collapsed by default after import).  Clips on group children are
+    mapped to the group track instead, since the group's clip slots aggregate
+    its children in Bitwig's launcher view.
     """
     with zipfile.ZipFile(path) as zf:
         root = ET.parse(zf.open("project.xml")).getroot()
 
-    # Build track-id → flat-index mapping (depth-first, matching Bitwig)
-    track_index = {}
+    # Build track-id → flat-index mapping (top-level only, matching Bitwig's
+    # default collapsed-group bank layout).  Also record which child track
+    # ids belong to each group so we can remap their clips.
+    track_index = {}   # track-id → bank index
+    child_to_group = {}  # child track-id → group track-id
     idx = 0
 
-    def _walk_tracks(parent):
-        nonlocal idx
-        for track in parent:
+    structure = root.find("Structure")
+    if structure is not None:
+        for track in structure:
             if track.tag != "Track":
                 continue
             tid = track.get("id")
             track_index[tid] = idx
             idx += 1
-            # Recurse into group children
-            _walk_tracks(track)
-
-    structure = root.find("Structure")
-    if structure is not None:
-        _walk_tracks(structure)
+            # Map group children to the group track
+            for child in track:
+                if child.tag == "Track":
+                    child_to_group[child.get("id")] = tid
 
     # Collect clip slots from scenes
     clips = set()
     for scene_idx, scene in enumerate(root.findall(".//Scenes/Scene")):
         for clip_slot in scene.findall(".//ClipSlot"):
             track_id = clip_slot.get("track")
-            if track_id in track_index and clip_slot.find("Clip") is not None:
-                clips.add((track_index[track_id], scene_idx))
+            # Remap group children to their parent group
+            effective_id = child_to_group.get(track_id, track_id)
+            if effective_id in track_index and clip_slot.find("Clip") is not None:
+                clips.add((track_index[effective_id], scene_idx))
 
     return clips
 
@@ -287,6 +295,8 @@ def settle(harness, jam, log):
     # pad press would delete a clip.
     for btn in _DESTRUCTIVE_MODIFIERS:
         harness.release(btn)
+    # Release sysex SHIFT to prevent stuck-SHIFT cascading across tests
+    harness.send_sysex(SHIFT_UP_SYSEX)
     # Drain after releasing destructive modifiers so the releases are
     # processed before any subsequent button presses in this fixture.
     harness.drain(timeout=0.1)
