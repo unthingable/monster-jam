@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# deploy-build: install MonsterJam from any git ref, with local build cache
+#
+# Usage:
+#   deploy-build <ref>          build if uncached, then install
+#   deploy-build <ref> --bg     build in background, notify when done
+#   deploy-build --list         show cached builds
+#   deploy-build --purge <ref>  remove a ref from cache
+#
+# <ref> can be a tag (v8.0-b18), branch, or commit hash.
+# Cached builds install instantly. Cache lives at $XDG_CACHE_HOME/monsterjam-builds/.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/monsterjam-builds"
+EXTENSIONS_DIR="$HOME/Documents/Bitwig Studio/Extensions"
+
+mkdir -p "$CACHE_DIR"
+
+# ── argument parsing ──────────────────────────────────────────────────────────
+
+BG=false
+PURGE=false
+REF=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --list|-l)
+      echo "Cached builds:"
+      ls -1 "$CACHE_DIR" 2>/dev/null | sed 's/\.bwextension$//' || echo "  (none)"
+      exit 0
+      ;;
+    --bg|-b)
+      BG=true; shift
+      ;;
+    --purge)
+      PURGE=true; shift
+      ;;
+    --help|-h)
+      sed -n '2,10p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2; exit 1
+      ;;
+    *)
+      REF="$1"; shift
+      ;;
+  esac
+done
+
+[[ -z "$REF" ]] && { echo "Usage: deploy-build <ref>  (try --help)"; exit 1; }
+
+# ── resolve ref ───────────────────────────────────────────────────────────────
+
+HASH=$(git -C "$REPO_ROOT" rev-parse "$REF^{commit}" 2>/dev/null) || {
+  echo "Error: unknown ref '$REF'" >&2; exit 1
+}
+SHORT="${HASH:0:8}"
+TAG=$(git -C "$REPO_ROOT" tag --points-at "$HASH" 2>/dev/null | head -1)
+LABEL="${TAG:-$SHORT}"
+
+# ── purge ─────────────────────────────────────────────────────────────────────
+
+if $PURGE; then
+  removed=0
+  for f in "$CACHE_DIR/$HASH.bwextension" "${TAG:+$CACHE_DIR/$TAG.bwextension}"; do
+    [[ -n "$f" && -f "$f" ]] && rm "$f" && removed=$((removed+1))
+  done
+  [[ $removed -gt 0 ]] && echo "Purged: $LABEL" || echo "Not in cache: $LABEL"
+  exit 0
+fi
+
+# ── build ─────────────────────────────────────────────────────────────────────
+
+CACHE_FILE="$CACHE_DIR/$HASH.bwextension"
+SDKMAN_CANDIDATES="${SDKMAN_CANDIDATES_DIR:-/opt/homebrew/opt/sdkman-cli/libexec/candidates}"
+
+# Detect required JDK from a pom.xml and set JAVA_HOME accordingly.
+# Checks maven.compiler.release first, then <target>, defaults to 21.
+select_jdk() {
+  local pom="$1"
+  local jdk_ver=21
+
+  local release
+  release=$(sed -n 's/.*<maven.compiler.release>\([0-9]*\)<.*/\1/p' "$pom" | head -1)
+  if [[ -n "$release" ]]; then
+    jdk_ver="$release"
+  else
+    local target
+    target=$(sed -n 's/.*<target>\([0-9]*\)<.*/\1/p' "$pom" | head -1)
+    [[ -n "$target" ]] && jdk_ver="$target"
+  fi
+
+  # Find the best matching installed JDK (exact prefix match)
+  local jdk_home=""
+  for d in "$SDKMAN_CANDIDATES/java/"*/; do
+    [[ "$(basename "$d")" == current ]] && continue
+    if [[ "$(basename "$d")" == "${jdk_ver}"* ]]; then
+      jdk_home="$d"
+      break
+    fi
+  done
+
+  # Fall back: for old targets (e.g. 12), use the lowest available JDK
+  if [[ -z "$jdk_home" ]]; then
+    jdk_home=$(for d in "$SDKMAN_CANDIDATES/java/"*/; do
+      [[ "$(basename "$d")" == current ]] && continue
+      echo "$d"
+    done | sort -t/ -k$(echo "$SDKMAN_CANDIDATES/java/x/" | tr '/' '\n' | wc -l) -n | head -1)
+  fi
+
+  if [[ -n "$jdk_home" ]]; then
+    export JAVA_HOME="$jdk_home"
+    echo "Using JDK: $(basename "$jdk_home") (target: $jdk_ver)"
+  fi
+}
+
+build_and_cache() {
+  local worktree="/tmp/monsterjam-build-$SHORT"
+  local log="$CACHE_DIR/build-$SHORT.log"
+
+  git -C "$REPO_ROOT" worktree remove --force "$worktree" 2>/dev/null || true
+  git -C "$REPO_ROOT" worktree add --detach -q "$worktree" "$HASH"
+
+  select_jdk "$worktree/pom.xml"
+
+  echo "Building $LABEL... (log: $log)"
+  if ! mvn -f "$worktree/pom.xml" package -q -DskipTests >"$log" 2>&1; then
+    echo "Build FAILED. See $log" >&2
+    git -C "$REPO_ROOT" worktree remove --force "$worktree" 2>/dev/null || true
+    return 1
+  fi
+
+  local jar
+  jar=$(ls "$worktree/target/"monsterjam-*.jar | grep -v '/original-' | head -1)
+  cp "$jar" "$CACHE_FILE"
+  [[ -n "$TAG" ]] && cp "$CACHE_FILE" "$CACHE_DIR/$TAG.bwextension"
+
+  git -C "$REPO_ROOT" worktree remove --force "$worktree"
+  rm -f "$log"
+  echo "Cached: $LABEL"
+}
+
+install_build() {
+  cp "$CACHE_FILE" "$EXTENSIONS_DIR/MonsterJam.bwextension"
+  echo "Deployed: $LABEL"
+}
+
+notify() {
+  osascript -e "display notification \"$LABEL deployed\" with title \"MonsterJam\"" 2>/dev/null || true
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+if [[ -f "$CACHE_FILE" ]]; then
+  install_build
+  $BG && notify   # still notify if --bg was passed (harmless)
+elif $BG; then
+  (
+    build_and_cache && install_build && notify \
+      || osascript -e "display notification \"Build FAILED: $LABEL\" with title \"MonsterJam\"" 2>/dev/null || true
+  ) &
+  disown
+  echo "Building $LABEL in background (PID $!)"
+else
+  build_and_cache && install_build
+fi

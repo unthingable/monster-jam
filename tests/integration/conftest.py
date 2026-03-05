@@ -68,11 +68,13 @@ def _engine_health_check(harness, jam):
         pytest.exit(
             "MonsterJam not responding on port 9200. "
             "Ensure Bitwig is running with MonsterJam enabled "
-            "and 'Verbose console output' is on.",
+            "and 'Debug ports' and 'Verbose console output' are on.",
             returncode=1,
         )
 
-    # Phase 2: Audio engine liveness
+    # Phase 2: Audio engine liveness — try activating via PLAY button if needed
+    from jam_midi import PLAY
+
     harness.drain(timeout=0.1)
     harness.send_command("/transport/play")
     try:
@@ -82,11 +84,24 @@ def _engine_health_check(harness, jam):
             timeout=3.0,
         )
     except TimeoutError:
-        pytest.exit(
-            "Audio engine not running — /transport/play had no effect. "
-            "Activate the audio engine in Bitwig (power icon in status bar).",
-            returncode=1,
-        )
+        # Engine may be inactive — press PLAY on the JAM to activate it
+        harness.press(PLAY)
+        import time; time.sleep(2.0)
+        harness.drain(timeout=0.1)
+        harness.send_command("/transport/play")
+        try:
+            harness.wait_for(
+                "/state/transport",
+                predicate=lambda m: m["state"] == "playing",
+                timeout=3.0,
+            )
+        except TimeoutError:
+            pytest.exit(
+                "Audio engine not running — /transport/play had no effect "
+                "even after pressing PLAY to activate. "
+                "Check Bitwig status bar.",
+                returncode=1,
+            )
     finally:
         harness.send_command("/transport/stop")
         harness.drain(timeout=0.3)

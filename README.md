@@ -25,6 +25,24 @@ This is intended as a replacement for Bitwig's bundled Maschine JAM extension. R
 1. Follow the installation instructions for each of the above requirements.
 2. Run `mvn install`.
 
+### Dual MIDI ports (mirror port)
+
+The extension can be built with a second MIDI in/out port pair that mirrors all
+output sent to the hardware. This is useful for external tools (emulators,
+test harnesses, visualizers) that need to observe the controller's LED and
+strip state in real time. The secondary input port also forwards incoming
+MIDI to the extension, so an external tool can inject button presses and
+fader moves.
+
+To enable, set the `dualPorts` Maven property to `true`:
+
+```bash
+mvn install -DdualPorts=true
+```
+
+The included `bin/build-info.sh` dev-build script enables dual ports
+automatically on non-master branches.
+
 ### Debugging
 
 1. Set an environment variable `BITWIG_DEBUG_PORT` to an unused port number.

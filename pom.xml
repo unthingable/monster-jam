@@ -7,7 +7,7 @@
     <artifactId>monsterjam</artifactId>
     <packaging>jar</packaging>
     <name>MonsterJam</name>
-    <version>9.2</version>
+    <version>9.3</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,6 +18,7 @@
         <scala.xml.version>2.3.0</scala.xml.version>
         <bitwig.api.version>21</bitwig.api.version>
         <buildSuffix></buildSuffix>
+        <dualPorts>false</dualPorts>
     </properties>
 
     <repositories>
@@ -93,6 +94,55 @@
                 <bitwig.extension.directory>${env.HOME}/Bitwig Studio/Extensions</bitwig.extension.directory>
             </properties>
         </profile>
+        <profile>
+            <id>dev-build-info</id>
+            <activation>
+                <file>
+                    <exists>bin/build-info.sh</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>generate-build-info</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bin/build-info.sh</executable>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>1.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>read-build-info</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>read-project-properties</goal>
+                                </goals>
+                                <configuration>
+                                    <files>
+                                        <file>${project.build.directory}/build-info.properties</file>
+                                    </files>
+                                    <override>true</override>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <build>
@@ -116,61 +166,6 @@
         </resources>
         <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>increment-build-number</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument><![CDATA[
-DESC=$(git describe --tags --match "devel-v*" 2>/dev/null || true)
-if [ -z "$DESC" ]; then
-  mkdir -p target && echo "buildSuffix=" > target/build-info.properties
-  exit 0
-fi
-
-COUNTER_FILE="$(git rev-parse --git-common-dir)/monsterjam-build-number"
-[ ! -f "$COUNTER_FILE" ] && echo "0" > "$COUNTER_FILE"
-
-N=$(( $(cat "$COUNTER_FILE") + 1 ))
-echo "$N" > "$COUNTER_FILE"
-
-mkdir -p target
-echo "buildSuffix=-dev.${N}" > target/build-info.properties
-                                ]]></argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>properties-maven-plugin</artifactId>
-                <version>1.2.1</version>
-                <executions>
-                    <execution>
-                        <id>read-build-info</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>read-project-properties</goal>
-                        </goals>
-                        <configuration>
-                            <files>
-                                <file>${project.build.directory}/build-info.properties</file>
-                            </files>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>

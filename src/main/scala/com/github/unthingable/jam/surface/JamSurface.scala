@@ -71,9 +71,12 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util:
       val enc: MidiInfo              = ext.xmlMap.wheel("EncBrowse", ext.xmlMap.masterElems)
       val knob: RelativeHardwareKnob = ext.hw.createRelativeHardwareKnob(enc.id)
 
-      knob.setAdjustValueMatcher(
-        ext.midiIn.createRelative2sComplementCCValueMatcher(enc.channel, enc.event.value, 127)
-      )
+      val primaryMatcher = ext.midiIn.createRelative2sComplementCCValueMatcher(enc.channel, enc.event.value, 127)
+      val matcher = ext.debugMidiIn match
+        case Some(di) => ext.host.createOrRelativeHardwareValueMatcher(primaryMatcher,
+          di.createRelative2sComplementCCValueMatcher(enc.channel, enc.event.value, 127))
+        case None => primaryMatcher
+      knob.setAdjustValueMatcher(matcher)
       knob.setStepSize(1 / 127.0)
       knob
 
@@ -177,19 +180,27 @@ class JamSurface(implicit ext: MonsterJamExt) extends Util:
     // wire sysex
     import com.github.unthingable.jam.surface.BlackSysexMagic.*
 
-    ext.midiIn.setSysexCallback {
+    val sysexHandler: String => Unit = {
       case ShiftDownCommand =>
-        // ext.events.eval(Mod.Shift.st.press.value)
         Mod.Shift.btn.pressedAction.invoke()
       case ShiftReleaseCommand =>
-        // ext.events.eval(Mod.Shift.st.release.value)
         Mod.Shift.btn.releasedAction.invoke()
       case ReturnFromHostCommand =>
-        ext.host.println("return from host")
-        ext.hw.invalidateHardwareOutputState()
-        ext.host.requestFlush()
-      case x => "Unhandled sysex from controller: " + ext.host.println(x)
+        ext.host.scheduleTask(() => {
+          Util.println("return from host: resending all LED states")
+          JamControl.lightResetters.foreach(_())
+          ext.hw.invalidateHardwareOutputState()
+          ext.host.requestFlush()
+          stripBank.flushColors()
+          stripBank.flushValues()
+          stripBank.flushCCValues()
+        }, 0)
+      case x =>
+        ext.host.scheduleTask(() => Util.println(s"Unhandled sysex from controller: $x"), 0)
     }
+
+    ext.midiIn.setSysexCallback(sysexHandler(_))
+    ext.debugMidiIn.foreach(_.setSysexCallback(sysexHandler(_)))
   }
 
   val j = this

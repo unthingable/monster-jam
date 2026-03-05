@@ -83,11 +83,16 @@ object JamControl:
 
     button
 
+  /** Collected reset functions for all lights — call before invalidate+flush to force resend. */
+  val lightResetters = scala.collection.mutable.ArrayBuffer.empty[() => Unit]
+
   def rgbLight(info: MidiInfo)(implicit ext: MonsterJamExt): MultiStateHardwareLight =
     import JamColorState.*
     val light: MultiStateHardwareLight   = ext.hw.createMultiStateHardwareLight(info.id + "_LED")
     var updatedColorState: JamColorState = JamColorState.empty
     var lastSentColor: Int = -1
+
+    lightResetters += (() => lastSentColor = -1)
 
     light.setColorToStateFunction(toState)
     light.state().onUpdateHardware { (state: JamColorState) =>
@@ -104,10 +109,8 @@ object JamControl:
     def sendColor(color: Int): Unit =
       info.event match
         case CC(cc) =>
-          // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${color.toString}")
           ext.midiOut.sendMidi(ShortMidiMessage.CONTROL_CHANGE + info.channel, cc, color)
         case Note(note) =>
-          // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${color.toString}")
           ext.midiOut.sendMidi(ShortMidiMessage.NOTE_ON + info.channel, note, color)
     light
   end rgbLight
@@ -115,20 +118,21 @@ object JamControl:
   def onOffLight(info: MidiInfo)(implicit ext: MonsterJamExt): OnOffHardwareLight =
     val light: OnOffHardwareLight = ext.hw.createOnOffHardwareLight(info.id + "_LED")
     var lastSentOn: Int = -1
+
+    lightResetters += (() => lastSentOn = -1)
+
     light.onUpdateHardware { () =>
       val onValue = if light.isOn.currentValue then 1 else 0
       if onValue != lastSentOn then
         lastSentOn = onValue
         info.event match
           case CC(cc) =>
-            // ext.host.println(s"${info.id} setting CC ${info.channel} ${cc} ${light.isOn.currentValue()}")
             ext.midiOut.sendMidi(
               ShortMidiMessage.CONTROL_CHANGE + info.channel,
               cc,
               if light.isOn.currentValue then 127 else 0
             )
           case Note(note) =>
-            // ext.host.println(s"${info.id} setting NOTE ${info.channel} ${note} ${light.isOn.currentValue()}")
             ext.midiOut.sendMidi(
               ShortMidiMessage.NOTE_ON + info.channel,
               note,
@@ -147,17 +151,26 @@ object JamControl:
 end JamControl
 
 object JamButton:
+  private def orAction(primary: HardwareActionMatcher, debugMidiIn: Option[MidiIn], f: MidiIn => HardwareActionMatcher)(using ext: MonsterJamExt): HardwareActionMatcher =
+    debugMidiIn match
+      case Some(di) => ext.host.createOrHardwareActionMatcher(primary, f(di))
+      case None     => primary
+
   def infoActionMatchers(info: MidiInfo)(using ext: MonsterJamExt): (HardwareActionMatcher, HardwareActionMatcher) =
     info.event match
       case CC(cc) =>
         (
-          ext.midiIn.createCCActionMatcher(info.channel, cc, 127),
-          ext.midiIn.createCCActionMatcher(info.channel, cc, 0)
+          orAction(ext.midiIn.createCCActionMatcher(info.channel, cc, 127), ext.debugMidiIn,
+            _.createCCActionMatcher(info.channel, cc, 127)),
+          orAction(ext.midiIn.createCCActionMatcher(info.channel, cc, 0), ext.debugMidiIn,
+            _.createCCActionMatcher(info.channel, cc, 0))
         )
       case Note(note) =>
         (
-          ext.midiIn.createNoteOnActionMatcher(info.channel, note),
-          ext.midiIn.createNoteOffActionMatcher(info.channel, note)
+          orAction(ext.midiIn.createNoteOnActionMatcher(info.channel, note), ext.debugMidiIn,
+            _.createNoteOnActionMatcher(info.channel, note)),
+          orAction(ext.midiIn.createNoteOffActionMatcher(info.channel, note), ext.debugMidiIn,
+            _.createNoteOffActionMatcher(info.channel, note))
         )
 
 /* These represent actual hardware buttons, with one HardwareButton with raw events and one light.
@@ -183,7 +196,11 @@ class JamTouchStrip(touch: MidiInfo, slide: MidiInfo, led: MidiInfo)(using ext: 
   slider.isBeingTouched.markInterested()
 
   // assume it's always CC
-  val matcher = ext.midiIn.createAbsoluteCCValueMatcher(slide.channel, slide.event.value)
+  val primaryMatcher = ext.midiIn.createAbsoluteCCValueMatcher(slide.channel, slide.event.value)
+  val matcher = ext.debugMidiIn match
+    case Some(di) => ext.host.createOrAbsoluteHardwareValueMatcher(primaryMatcher,
+      di.createAbsoluteCCValueMatcher(slide.channel, slide.event.value))
+    case None => primaryMatcher
   slider.setAdjustValueMatcher(matcher)
 
   val (on, off) = JamButton.infoActionMatchers(touch)

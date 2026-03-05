@@ -7,6 +7,7 @@ import com.github.unthingable.framework.EventBus
 import com.github.unthingable.framework.binding.Binder
 import com.github.unthingable.framework.binding.Event
 import com.github.unthingable.jam.Jam
+import com.github.unthingable.util.MirroringMidiOut
 import com.github.unthingable.jam.surface.XmlMap
 import com.github.unthingable.jam.surface.XmlMap.loadMap
 
@@ -37,6 +38,7 @@ case class MonsterJamExt(
   host: ControllerHost,
   midiIn: MidiIn,
   midiOut: MidiOut,
+  debugMidiIn: Option[MidiIn],
   hw: HardwareSurface,
   cursorTrack: CursorTrack,
   trackBank: TrackBank,
@@ -89,10 +91,17 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
   override def init(): Unit =
     val host = getHost
+
+    val dualPorts = MonsterJamExtensionDefinition.dualPorts
+
+    val mirroringOut = new MirroringMidiOut(host.getMidiOutPort(0))
+    if dualPorts then mirroringOut.setMirror(host.getMidiOutPort(1))
+
     ext = MonsterJamExt(
       host,
       host.getMidiInPort(0),
-      host.getMidiOutPort(0),
+      mirroringOut,
+      if dualPorts then Some(host.getMidiInPort(1)) else None,
       host.createHardwareSurface,
       host.createCursorTrack(1, 0),
       host.createMainTrackBank(8, 8, 8),
@@ -134,10 +143,12 @@ class MonsterJamExtension(val definition: MonsterJamExtensionDefinition, val hos
 
     jam = new Jam()(ext)
 
-    if ext.preferences.debugOutput.get() then
+    if dualPorts || ext.preferences.debugOutput.get() then
       initOsc(host)
 
-    host.showPopupNotification(s"MonsterJam ${MonsterJamExtensionDefinition.version} Initialized")
+    val versionStr = s"MonsterJam ${MonsterJamExtensionDefinition.version}"
+    Util.println(s"$versionStr Initialized")
+    host.showPopupNotification(s"$versionStr Initialized")
   end init
 
   private def initOsc(host: ControllerHost): Unit =

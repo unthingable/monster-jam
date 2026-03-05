@@ -10,13 +10,16 @@ import java.util.UUID
 object MonsterJamExtensionDefinition:
   private val DRIVER_ID = UUID.fromString("b4b8b16c-5855-4943-a8c6-45cbdaf9aee1")
 
-  val version: String =
-    val props = new java.util.Properties()
+  private val props =
+    val p = new java.util.Properties()
     val stream = getClass.getResourceAsStream("/monsterjam.properties")
     if stream != null then
-      try props.load(stream)
+      try p.load(stream)
       finally stream.close()
-    props.getProperty("version", "unknown")
+    p
+
+  val version: String = props.getProperty("version", "unknown")
+  val dualPorts: Boolean = props.getProperty("dualPorts", "false").toBoolean
 
 class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
   override def getName = "MonsterJam"
@@ -33,14 +36,15 @@ class MonsterJamExtensionDefinition() extends ControllerExtensionDefinition:
 
   override def getRequiredAPIVersion = 21
 
-  override def getNumMidiInPorts = 1
+  override def getNumMidiInPorts = if MonsterJamExtensionDefinition.dualPorts then 2 else 1
 
-  override def getNumMidiOutPorts = 1
+  override def getNumMidiOutPorts = if MonsterJamExtensionDefinition.dualPorts then 2 else 1
 
   override def listAutoDetectionMidiPortNames(list: AutoDetectionMidiPortNamesList, platformType: PlatformType): Unit =
+    val extra = if MonsterJamExtensionDefinition.dualPorts then Array("") else Array.empty[String]
     (1 to 4).foreach { n =>
-      list.add(Array[String](s"Maschine Jam - $n"), Array[String](s"Maschine Jam - $n"))
-      list.add(Array[String](s"Maschine Jam - $n Input"), Array[String](s"Maschine Jam - $n Output"))
+      list.add(Array(s"Maschine Jam - $n") ++ extra, Array(s"Maschine Jam - $n") ++ extra)
+      list.add(Array(s"Maschine Jam - $n Input") ++ extra, Array(s"Maschine Jam - $n Output") ++ extra)
     }
 
   override def createInstance(host: ControllerHost) = new MonsterJamExtension(this, host)
